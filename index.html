@@ -401,9 +401,6 @@ select option { background: var(--s2); }
     <div class="panel"><div class="ph"><span class="pt">📦 Low Stock</span></div><div class="pb" id="lowStock"></div></div>
   </div>
   <div class="panel"><div class="ph"><span class="pt">⚡ Recent Activity</span></div><div class="pb" id="recentAct"></div></div>
-  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);text-align:right">
-    <button class="btn bgh bsm" onclick="resetAllData()" style="border-color:var(--red);color:var(--red)">⚠️ Reset All Data</button>
-  </div>
 </div>
 
 <!-- ── FIXTURES ── -->
@@ -654,14 +651,29 @@ function lload() {
   } catch(e) {}
 }
 
-// ── Remote data handler — Firebase is single source of truth ──
+// ── Remote data handler (called by Firebase listener) ──
 window._onRemoteData = function(remote) {
-  db.technicians = remote.technicians || [];
-  db.fixtures    = remote.fixtures    || [];
-  db.outages     = remote.outages     || [];
-  db.inventory   = remote.inventory   || [];
-  db.orders      = remote.orders      || [];
-  db.usageLog    = remote.usageLog    || [];
+  // Merge — remote wins for inventory/orders/usageLog (simple overwrite),
+  // outages/fixtures merged by ID so local-only additions are kept
+  if (remote.technicians) db.technicians = remote.technicians;
+  if (remote.inventory)   db.inventory   = remote.inventory;
+  if (remote.orders)      db.orders      = remote.orders;
+  if (remote.usageLog)    db.usageLog    = remote.usageLog;
+
+  if (remote.fixtures) {
+    remote.fixtures.forEach(rf => {
+      const lf = db.fixtures.find(x=>x.id===rf.id);
+      if (!lf) db.fixtures.push(rf);
+      else Object.assign(lf, rf);
+    });
+  }
+  if (remote.outages) {
+    remote.outages.forEach(ro => {
+      const lo = db.outages.find(x=>x.id===ro.id);
+      if (!lo) db.outages.push(ro);
+      else Object.assign(lo, ro);
+    });
+  }
   lsave();
   refreshPage();
 };
@@ -677,9 +689,8 @@ async function save() {
   }
 }
 
-// ── Seed demo data — only runs in local mode with no data ──
+// ── Seed demo data ──
 function seed() {
-  if (window._syncMode === 'firebase') return;
   if (db.technicians.length || db.fixtures.length) return;
   db.technicians = [
     {id:'t1',name:'Alex Johnson',role:'Head Technician',avatar:'👷'},
@@ -730,11 +741,7 @@ window.addEventListener('syncStatus', e => {
   setSyncState(state, msg);
   if (state === 'ok') updSyncTime();
   if (state === 'local') {
-    // Firebase not configured — seed demo data and render now
     document.getElementById('cfgNotice').style.display = '';
-    seed();
-    loadTech();
-    go('dashboard');
   }
 });
 
@@ -826,21 +833,6 @@ function renderFix() {
           <button class="btn bgh bsm" onclick="deleteFixture('${f.id}')" title="Delete">🗑️</button>
         </div></td>
       </tr>`).join('');
-}
-
-function resetAllData() {
-  if (!confirm('RESET EVERYTHING?
-
-This will wipe all fixtures, inventory, outages, crew and history from ALL devices.
-
-Type OK to confirm.')) return;
-  const confirm2 = prompt('Type RESET to confirm complete wipe:');
-  if (confirm2 !== 'RESET') { toast('Reset cancelled','info'); return; }
-  db = { fixtures:[], outages:[], inventory:[], orders:[], usageLog:[], technicians:[] };
-  try { localStorage.removeItem(LS_KEY); } catch(e) {}
-  save();
-  toast('All data wiped','info');
-  refreshPage();
 }
 
 function deleteFixture(id) {
@@ -1232,10 +1224,9 @@ function toast(msg, type='info') {
 // BOOT
 // ══════════════════════════════════════════════════
 lload();
+seed();
 loadTech();
-go('dashboard'); // render immediately from local cache while Firebase connects
-// Firebase listener will call _onRemoteData once connected, which re-renders
-// Local mode syncStatus event will call seed()+render if no Firebase config
+go('dashboard');
 </script>
 </body>
 </html>
