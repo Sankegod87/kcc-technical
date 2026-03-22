@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Stage Light Tracker</title>
+
+<!-- Firebase v10 -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ═══════════════════════════════════════════════════
+// 🔧 PASTE YOUR FIREBASE CONFIG HERE
+// (replace the placeholder values below)
+// ═══════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyCWuthng40k55iBrQAccYE4zCg012Pt2fA",
+  authDomain:        "light-tracker-d708f.firebaseapp.com",
+  projectId:         "light-tracker-d708f",
+  storageBucket:     "light-tracker-d708f.firebasestorage.app",
+  messagingSenderId: "268758980349",
+  appId:             "1:268758980349:web:111d497335e8bbefb65094"
+};
+// ═══════════════════════════════════════════════════
+
+const DB_DOC = "stage-light-tracker/main";
+let app, fsdb, unsubscribe;
+let _firebaseReady = false;
+
+function initFirebase() {
+  try {
+    if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+      window._syncMode = "local";
+      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "local", msg: "Local mode — add Firebase config to enable sync" } }));
+      return;
+    }
+    app  = initializeApp(firebaseConfig);
+    fsdb = getFirestore(app);
+    window._syncMode = "firebase";
+    window._fsdb = fsdb;
+    window._fbDoc = () => doc(fsdb, DB_DOC);
+    window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "syncing", msg: "Connecting to Firebase…" } }));
+
+    // Real-time listener
+    unsubscribe = onSnapshot(doc(fsdb, DB_DOC), (snap) => {
+      if (snap.exists()) {
+        const remote = snap.data();
+        if (remote && remote.payload) {
+          try {
+            const parsed = JSON.parse(remote.payload);
+            window._onRemoteData(parsed);
+          } catch(e) {}
+        }
+      }
+      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "ok", msg: "Live sync ✓" } }));
+    }, (err) => {
+      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "error", msg: "Sync error: " + err.code } }));
+    });
+
+    _firebaseReady = true;
+  } catch(e) {
+    window._syncMode = "local";
+    window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "error", msg: "Firebase init failed" } }));
+  }
+}
+
+window._saveToFirebase = async (data) => {
+  if (!_firebaseReady || !window._fbDoc) return false;
+  try {
+    await setDoc(window._fbDoc(), { payload: JSON.stringify(data), updatedAt: serverTimestamp() });
+    return true;
+  } catch(e) { return false; }
+};
+
+initFirebase();
+</script>
+
+<!-- QR Scanner -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<!-- QR Code generator -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:       #080b10;
+  --s1:       #0e1219;
+  --s2:       #151b26;
+  --s3:       #1c2433;
+  --border:   #1f2d42;
+  --border2:  #2a3d55;
+  --amber:    #f0a500;
+  --amber2:   #ffc23e;
+  --aglow:    rgba(240,165,0,.14);
+  --aglow2:   rgba(240,165,0,.06);
+  --red:      #e03c3c;
+  --rglow:    rgba(224,60,60,.13);
+  --green:    #28c97a;
+  --gglow:    rgba(40,201,122,.12);
+  --blue:     #3d9be9;
+  --bglow:    rgba(61,155,233,.12);
+  --text:     #bfcbde;
+  --dim:      #4e637e;
+  --dim2:     #7a8fa8;
+  --mono:     'IBM Plex Mono', monospace;
+  --head:     'Barlow Condensed', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--head);
+  font-weight: 400;
+  font-size: 15px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Noise texture overlay ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: .35;
+}
+
+/* ── Header ── */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,11,16,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  height: 54px;
+  display: flex; align-items: center;
+  padding: 0 16px; gap: 14px;
+}
+.logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; text-decoration: none; }
+.logo-bulb { font-size: 20px; filter: drop-shadow(0 0 10px var(--amber)); animation: flicker 8s infinite; }
+@keyframes flicker { 0%,95%,100%{opacity:1} 96%,98%{opacity:.6} 97%,99%{opacity:.9} }
+.logo-text { font-family: var(--head); font-weight: 900; font-size: 18px; letter-spacing: 3px; text-transform: uppercase; color: var(--amber); line-height: 1; }
+.logo-sub  { font-family: var(--mono); font-size: 9px; color: var(--dim2); letter-spacing: 3px; text-transform: uppercase; }
+nav { margin-left: auto; display: flex; gap: 2px; }
+.nb {
+  background: none; border: none; color: var(--dim2);
+  font-family: var(--head); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 6px 10px; border-radius: 5px; cursor: pointer; transition: all .18s; white-space: nowrap;
+}
+.nb:hover { color: var(--text); background: var(--s2); }
+.nb.active { color: var(--amber); background: var(--aglow); }
+.nb .ic { margin-right: 4px; }
+
+/* ── Sync bar ── */
+#syncBar {
+  background: var(--s1); border-bottom: 1px solid var(--border);
+  padding: 4px 16px; display: flex; align-items: center; gap: 12px;
+  font-family: var(--mono); font-size: 10px; color: var(--dim2); flex-wrap: wrap;
+}
+.sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); display: inline-block; margin-right: 6px; transition: background .4s; }
+.sdot.ok      { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.sdot.syncing { background: var(--amber); animation: pulse 1s infinite; }
+.sdot.error   { background: var(--red); }
+.sdot.local   { background: var(--blue); }
+#techBadge { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.tchip { background: var(--aglow); border: 1px solid rgba(240,165,0,.3); border-radius: 20px; padding: 3px 10px; color: var(--amber); font-size: 10px; font-weight: 600; cursor: pointer; transition: all .18s; }
+.tchip:hover { background: rgba(240,165,0,.25); }
+
+/* ── Main ── */
+main { max-width: 1120px; margin: 0 auto; padding: 20px 16px; }
+
+/* ── Stat cards ── */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px,1fr)); gap: 10px; margin-bottom: 18px; }
+.sc {
+  background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 16px; position: relative; overflow: hidden;
+  transition: border-color .2s, transform .15s;
+}
+.sc:hover { transform: translateY(-1px); }
+.sc::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.sc.ca::before { background: linear-gradient(90deg,var(--amber),var(--amber2)); box-shadow: 0 0 14px var(--amber); }
+.sc.cr::before { background: var(--red);   box-shadow: 0 0 14px var(--red); }
+.sc.cg::before { background: var(--green); box-shadow: 0 0 14px var(--green); }
+.sc.cb::before { background: var(--blue);  box-shadow: 0 0 14px var(--blue); }
+.sc-label { font-family: var(--mono); font-size: 9px; color: var(--dim2); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+.sc-val { font-family: var(--head); font-size: 36px; font-weight: 900; line-height: 1; }
+.sc.ca .sc-val { color: var(--amber); }
+.sc.cr .sc-val { color: var(--red);   }
+.sc.cg .sc-val { color: var(--green); }
+.sc.cb .sc-val { color: var(--blue);  }
+
+/* ── Panel ── */
+.panel { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+.ph { padding: 11px 16px; background: var(--s2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.pt { font-family: var(--head); font-weight: 700; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; }
+.pb { padding: 16px; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer;
+  font-family: var(--head); font-weight: 700; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+  transition: all .18s; white-space: nowrap;
+}
+.ba { background: var(--amber);  color: #000; }
+.ba:hover { background: var(--amber2); box-shadow: 0 0 22px rgba(240,165,0,.45); transform: translateY(-1px); }
+.br { background: var(--red);   color: #fff; }
+.br:hover { box-shadow: 0 0 22px rgba(224,60,60,.45); transform: translateY(-1px); }
+.bg { background: var(--green); color: #000; }
+.bg:hover { box-shadow: 0 0 22px rgba(40,201,122,.45); transform: translateY(-1px); }
+.bb { background: var(--blue);  color: #fff; }
+.bb:hover { box-shadow: 0 0 22px rgba(61,155,233,.45); transform: translateY(-1px); }
+.bgh { background: transparent; border: 1px solid var(--border2); color: var(--dim2); }
+.bgh:hover { border-color: var(--amber); color: var(--amber); }
+.bsm { padding: 5px 10px; font-size: 11px; }
+
+/* ── Table ── */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+.tbl td { padding: 10px 12px; border-bottom: 1px solid rgba(31,45,66,.6); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: rgba(240,165,0,.025); }
+
+/* ── Badges ── */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.bok  { background: var(--gglow); color: var(--green); border: 1px solid rgba(40,201,122,.3); }
+.bout { background: var(--rglow); color: var(--red);   border: 1px solid rgba(224,60,60,.3); }
+.blow { background: var(--aglow); color: var(--amber); border: 1px solid rgba(240,165,0,.3); }
+.bd { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.bd.pulse { animation: pulse 1.4s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+/* ── Forms ── */
+.fg { display: flex; flex-direction: column; gap: 5px; }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 12px; }
+label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim2); }
+input, select, textarea {
+  background: var(--bg); border: 1px solid var(--border2); border-radius: 5px;
+  color: var(--text); font-family: var(--mono); font-size: 12px; padding: 8px 11px;
+  transition: border-color .18s; width: 100%;
+}
+input:focus, select:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 2px var(--aglow); }
+select option { background: var(--s2); }
+
+/* ── Tech pick grid ── */
+.tpg { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); gap: 7px; margin-top: 6px; }
+.tpb {
+  background: var(--s2); border: 1px solid var(--border2); border-radius: 6px;
+  padding: 9px 6px; cursor: pointer; text-align: center; transition: all .18s;
+  font-family: var(--head); font-size: 12px; font-weight: 600; color: var(--dim2);
+}
+.tpb:hover { border-color: var(--amber); color: var(--text); }
+.tpb.sel { background: var(--aglow); border-color: var(--amber); color: var(--amber); }
+.tav { font-size: 22px; margin-bottom: 3px; }
+
+/* ── Tabs ── */
+.tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.tab { background: none; border: none; color: var(--dim2); font-family: var(--head); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 9px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .18s; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+/* ── Modal ── */
+.mover { position: fixed; inset: 0; background: rgba(0,0,0,.82); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 14px; animation: fin .18s; }
+@keyframes fin { from{opacity:0} to{opacity:1} }
+.modal { background: var(--s1); border: 1px solid var(--border2); border-radius: 10px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; animation: sup .2s; }
+.modal.wide { max-width: 680px; }
+@keyframes sup { from{transform:translateY(18px);opacity:0} to{transform:none;opacity:1} }
+.mh { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--s2); }
+.mt { font-family: var(--head); font-weight: 700; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; }
+.mb { padding: 18px; }
+.mf { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.xb { background: none; border: none; color: var(--dim2); font-size: 18px; cursor: pointer; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+.xb:hover { color: var(--red); background: var(--rglow); }
+
+/* ── Scanner ── */
+.scan-box { background: var(--bg); border: 2px dashed var(--border2); border-radius: 8px; padding: 22px; text-align: center; cursor: pointer; transition: all .18s; margin-bottom: 12px; }
+.scan-box:hover { border-color: var(--amber); background: var(--aglow2); }
+#qr-reader { border-radius: 8px; overflow: hidden; }
+#qr-reader video { border-radius: 8px; }
+
+/* ── QR label print grid ── */
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 12px; }
+.qr-item { background: #fff; border-radius: 6px; padding: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.qr-item-lbl { color: #000; font-family: monospace; font-size: 9px; font-weight: 700; }
+.qr-item-sub { color: #555; font-family: monospace; font-size: 8px; }
+
+/* ── Toast ── */
+#toasts { position: fixed; top: 64px; right: 14px; z-index: 400; display: flex; flex-direction: column; gap: 6px; }
+.toast { background: var(--s2); border: 1px solid var(--border2); border-radius: 6px; padding: 10px 14px; font-size: 13px; font-family: var(--head); font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.4); animation: tin .25s, tout .3s 2.7s forwards; max-width: 320px; }
+@keyframes tin  { from{transform:translateX(80px);opacity:0} to{transform:none;opacity:1} }
+@keyframes tout { to{opacity:0;transform:translateX(20px)} }
+.toast.success { border-left: 3px solid var(--green); }
+.toast.error   { border-left: 3px solid var(--red); }
+.toast.info    { border-left: 3px solid var(--amber); }
+
+/* ── Who banner ── */
+.who-banner { background: linear-gradient(135deg,var(--aglow),transparent); border: 1px solid rgba(240,165,0,.25); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
+
+/* ── Tech cards ── */
+.tcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 10px; margin-bottom: 14px; }
+.tcard { background: var(--s2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; align-items: center; gap: 12px; transition: border-color .18s; }
+.tcard:hover { border-color: var(--border2); }
+
+/* ── Util ── */
+.row  { display: flex; align-items: center; }
+.jbet { justify-content: space-between; }
+.gap6 { gap: 6px; } .gap8 { gap: 8px; } .gap10 { gap: 10px; }
+.mb10 { margin-bottom: 10px; } .mb12 { margin-bottom: 12px; } .mb14 { margin-bottom: 14px; } .mb16 { margin-bottom: 16px; }
+.mono { font-family: var(--mono); }
+.dim  { color: var(--dim2); font-family: var(--mono); font-size: 11px; }
+.ca   { color: var(--amber); }
+.cr   { color: var(--red); }
+.cg   { color: var(--green); }
+.fw7  { font-weight: 700; }
+.fw9  { font-weight: 900; }
+.tu   { text-transform: uppercase; }
+.ls2  { letter-spacing: 2px; }
+
+/* ── Firebase config notice ── */
+#configNotice { background: var(--bglow); border: 1px solid rgba(61,155,233,.3); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; font-size: 13px; }
+
+/* ── Print styles ── */
+@media print {
+  body > *:not(#printArea) { display: none !important; }
+  #printArea { display: block !important; position: static; background: #fff; padding: 16px; }
+  .qr-item { border: 1px solid #ccc; break-inside: avoid; }
+  .qr-grid { gap: 8px; }
+}
+#printArea { display: none; }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .stats { grid-template-columns: repeat(2,1fr); }
+  .nb .nl { display: none; }
+  #syncBar .stime { display: none; }
+  main { padding: 14px 12px; }
+}
+@media (max-width: 480px) {
+  .nb .ic { margin-right: 0; }
+}
+</style>
+</head>
+<body>
+
+<div id="toasts"></div>
+
+<!-- Print area (hidden until print) -->
+<div id="printArea"></div>
+
+<header>
+  <div class="logo">
+    <span class="logo-bulb">💡</span>
+    <div>
+      <div class="logo-text">Stage Light</div>
+      <div class="logo-sub">Tracker</div>
+    </div>
+  </div>
+  <nav>
+    <button class="nb active" onclick="go('dashboard')" id="nav-dashboard"><span class="ic">📊</span><span class="nl">Dashboard</span></button>
+    <button class="nb" onclick="go('fixtures')"   id="nav-fixtures"  ><span class="ic">🎭</span><span class="nl">Fixtures</span></button>
+    <button class="nb" onclick="go('inventory')"  id="nav-inventory" ><span class="ic">📦</span><span class="nl">Inventory</span></button>
+    <button class="nb" onclick="go('history')"    id="nav-history"   ><span class="ic">📋</span><span class="nl">History</span></button>
+    <button class="nb" onclick="go('scan')"       id="nav-scan"      ><span class="ic">📷</span><span class="nl">Scan</span></button>
+    <button class="nb" onclick="go('crew')"       id="nav-crew"      ><span class="ic">👷</span><span class="nl">Crew</span></button>
+  </nav>
+</header>
+
+<div id="syncBar">
+  <span><span class="sdot" id="sdot"></span><span id="stxt">Initializing…</span></span>
+  <span class="stime" id="stime"></span>
+  <div id="techBadge">
+    <span class="dim">Logged in as:</span>
+    <span class="tchip" id="techChip" onclick="openM('whoAmI')">— Select —</span>
+  </div>
+</div>
+
+<main>
+
+<!-- ── DASHBOARD ── -->
+<div id="pg-dashboard">
+  <div id="cfgNotice" style="display:none" class="mb14">
+    <div id="configNotice">
+      <strong class="ca">⚙️ Firebase not configured</strong> — running in local-only mode.
+      Data is saved on this device only. Follow the <strong>SETUP GUIDE</strong> to enable real-time sync across all devices.
+    </div>
+  </div>
+  <div id="whoBanner" style="display:none" class="who-banner mb16">
+    <span style="font-size:34px" id="bannerAv">👤</span>
+    <div>
+      <div class="dim mb10" style="letter-spacing:1px">ACTIVE TECHNICIAN</div>
+      <div style="font-size:20px;font-weight:900;font-family:var(--head)" id="bannerName">—</div>
+      <div class="dim" id="bannerRole">—</div>
+    </div>
+    <button class="btn bgh bsm" style="margin-left:auto" onclick="openM('whoAmI')">Switch</button>
+  </div>
+  <div class="stats" id="statsRow"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="panel"><div class="ph"><span class="pt">🔴 Active Outages</span></div><div class="pb" id="activeOut"></div></div>
+    <div class="panel"><div class="ph"><span class="pt">📦 Low Stock</span></div><div class="pb" id="lowStock"></div></div>
+  </div>
+  <div class="panel"><div class="ph"><span class="pt">⚡ Recent Activity</span></div><div class="pb" id="recentAct"></div></div>
+</div>
+
+<!-- ── FIXTURES ── -->
+<div id="pg-fixtures" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Stage Fixtures</h2>
+    <button class="btn ba" onclick="openM('addFixture')">+ Add Fixture</button>
+  </div>
+  <div class="panel"><div class="pb" style="padding:0">
+    <table class="tbl"><thead><tr>
+      <th>ID</th><th>Name / Location</th><th>Bulb Type</th><th>Status</th><th>Last Outage</th><th>Outages</th><th>Actions</th>
+    </tr></thead><tbody id="fixtTbl"></tbody></table>
+  </div></div>
+</div>
+
+<!-- ── INVENTORY ── -->
+<div id="pg-inventory" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Bulb Inventory</h2>
+    <div class="row gap8">
+      <button class="btn bgh" onclick="printLabels()">🖨️ Print Labels</button>
+      <button class="btn ba"  onclick="openM('receiveBulbs')">+ Receive Batch</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="invTab('stock',this)">Current Stock</button>
+    <button class="tab" onclick="invTab('orders',this)">Order History</button>
+    <button class="tab" onclick="invTab('usage',this)">Usage Log</button>
+  </div>
+  <div id="it-stock"><div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+    <thead><tr><th>Bulb Type</th><th>In Stock</th><th>Threshold</th><th>Received</th><th>Used</th><th>Status</th></tr></thead>
+    <tbody id="stockTbl"></tbody>
+  </table></div></div></div>
+  <div id="it-orders" style="display:none"><div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+    <thead><tr><th>Date</th><th>Bulb Type</th><th>Qty</th><th>Supplier</th><th>Received By</th><th>Notes</th></tr></thead>
+    <tbody id="ordersTbl"></tbody>
+  </table></div></div></div>
+  <div id="it-usage" style="display:none"><div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+    <thead><tr><th>Date</th><th>Bulb Type</th><th>Qty</th><th>Fixture</th><th>Technician</th></tr></thead>
+    <tbody id="usageTbl"></tbody>
+  </table></div></div></div>
+</div>
+
+<!-- ── HISTORY ── -->
+<div id="pg-history" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Outage History</h2>
+  </div>
+  <div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+    <thead><tr><th>Date / Time</th><th>Fixture</th><th>Bulb Type</th><th>Reported By</th><th>Resolved By</th><th>Status</th><th>Down Time</th></tr></thead>
+    <tbody id="histTbl"></tbody>
+  </table></div></div>
+</div>
+
+<!-- ── SCAN ── -->
+<div id="pg-scan" style="display:none">
+  <div style="max-width:460px;margin:0 auto">
+    <div class="panel">
+      <div class="ph"><span class="pt">📷 Scan QR / Barcode</span></div>
+      <div class="pb">
+        <div id="noTechWarn" style="display:none;background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:6px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--red)">
+          ⚠️ Select your technician first.
+          <button class="btn br bsm" style="margin-top:8px;display:block" onclick="openM('whoAmI')">Select Technician</button>
+        </div>
+
+        <!-- Camera scanner -->
+        <div id="cameraSection">
+          <button class="btn bb" style="width:100%;justify-content:center;margin-bottom:10px" onclick="toggleCamera()" id="camBtn">📷 Start Camera Scanner</button>
+          <div id="qr-reader" style="display:none;margin-bottom:12px"></div>
+          <div id="scanResult" style="display:none;background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:6px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--green)"></div>
+        </div>
+
+        <p class="dim" style="text-align:center;margin:12px 0">— or enter ID manually —</p>
+
+        <div class="fg mb12">
+          <label>Fixture ID</label>
+          <input type="text" id="manualId" placeholder="e.g. FX-001" oninput="this.value=this.value.toUpperCase()" autocomplete="off">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <button class="btn br" onclick="scanAction('outage')">🔴 Report Outage</button>
+          <button class="btn bg" onclick="scanAction('replace')">✅ Mark Replaced</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="btn bgh" onclick="scanAction('scanIn')">📥 Bulb Scan IN</button>
+          <button class="btn bgh" onclick="go('inventory')">📤 View Inventory</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CREW ── -->
+<div id="pg-crew" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Crew / Technicians</h2>
+    <button class="btn ba" onclick="openM('addTech')">+ Add Technician</button>
+  </div>
+  <div class="tcards" id="crewCards"></div>
+  <div class="panel">
+    <div class="ph"><span class="pt">📊 Activity by Technician</span></div>
+    <div class="pb" style="padding:0"><table class="tbl">
+      <thead><tr><th>Technician</th><th>Outages Reported</th><th>Bulbs Replaced</th><th>Last Active</th></tr></thead>
+      <tbody id="crewStats"></tbody>
+    </table></div>
+  </div>
+</div>
+
+</main>
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- Who Am I -->
+<div id="m-whoAmI" class="mover" style="display:none" onclick="mOut(event,'whoAmI')">
+  <div class="modal">
+    <div class="mh"><span class="mt">👷 Who Are You?</span><button class="xb" onclick="closeM('whoAmI')">✕</button></div>
+    <div class="mb">
+      <p class="dim mb12">Select your name. Saved on this device.</p>
+      <div class="tpg" id="whoGrid"></div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <button class="btn bgh bsm" onclick="closeM('whoAmI');go('crew')">+ Add a new technician</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Technician -->
+<div id="m-addTech" class="mover" style="display:none" onclick="mOut(event,'addTech')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Add Technician</span><button class="xb" onclick="closeM('addTech')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg"><label>Full Name *</label><input id="tn" placeholder="Jane Smith"></div>
+        <div class="fg"><label>Role / Title</label><input id="tr" placeholder="Head Technician"></div>
+        <div class="fg"><label>Avatar Emoji</label><input id="ta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addTech')">Cancel</button>
+      <button class="btn ba" onclick="addTech()">Add to Crew</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Fixture -->
+<div id="m-addFixture" class="mover" style="display:none" onclick="mOut(event,'addFixture')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Add Fixture</span><button class="xb" onclick="closeM('addFixture')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg"><label>Fixture ID *</label><input id="fid" placeholder="FX-005" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="fg"><label>Name / Description</label><input id="fna" placeholder="Front Wash Left"></div>
+        <div class="fg"><label>Location / Position</label><input id="flo" placeholder="Stage Left, Truss A"></div>
+        <div class="fg"><label>Bulb Type *</label><input id="fbu" placeholder="PAR64 1000W"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addFixture')">Cancel</button>
+      <button class="btn ba" onclick="addFixture()">Add Fixture</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report Outage -->
+<div id="m-reportOutage" class="mover" style="display:none" onclick="mOut(event,'reportOutage')">
+  <div class="modal">
+    <div class="mh"><span class="mt" id="outTitle">🔴 Report Outage</span><button class="xb" onclick="closeM('reportOutage')">✕</button></div>
+    <div class="mb">
+      <div id="outInfo" style="background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:6px;padding:12px;margin-bottom:14px"></div>
+      <div class="fg mb12">
+        <label>Reporting Technician *</label>
+        <div class="tpg" id="outTechG"></div>
+      </div>
+      <div class="fg"><label>Notes</label><input id="onotes" placeholder="Optional notes"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('reportOutage')">Cancel</button>
+      <button class="btn br" onclick="submitOutage()">Report Outage</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mark Replaced -->
+<div id="m-markReplaced" class="mover" style="display:none" onclick="mOut(event,'markReplaced')">
+  <div class="modal">
+    <div class="mh"><span class="mt">✅ Mark Replaced</span><button class="xb" onclick="closeM('markReplaced')">✕</button></div>
+    <div class="mb">
+      <div id="repInfo" style="background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:6px;padding:12px;margin-bottom:14px"></div>
+      <div class="fg mb12">
+        <label>Replacing Technician *</label>
+        <div class="tpg" id="repTechG"></div>
+      </div>
+      <div class="fg mb10"><label>Notes</label><input id="rnotes" placeholder="Optional notes"></div>
+      <p style="font-size:12px;color:var(--amber)">⚠️ Deducts 1 bulb from inventory for this fixture's bulb type.</p>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('markReplaced')">Cancel</button>
+      <button class="btn bg" onclick="submitReplaced()">Confirm Replaced</button>
+    </div>
+  </div>
+</div>
+
+<!-- Receive Bulbs -->
+<div id="m-receiveBulbs" class="mover" style="display:none" onclick="mOut(event,'receiveBulbs')">
+  <div class="modal">
+    <div class="mh"><span class="mt">📦 Receive Bulb Batch</span><button class="xb" onclick="closeM('receiveBulbs')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid mb12">
+        <div class="fg"><label>Bulb Type *</label><input id="btype" placeholder="PAR64 1000W"></div>
+        <div class="fg"><label>Quantity *</label><input id="bqty" type="number" placeholder="12" min="1"></div>
+        <div class="fg"><label>Supplier</label><input id="bsup" placeholder="Supplier name"></div>
+        <div class="fg"><label>Low Stock Threshold</label><input id="bthr" type="number" placeholder="3" min="1"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes / Order #</label><input id="bnotes" placeholder="PO number, etc."></div>
+      </div>
+      <div class="fg">
+        <label>Received By</label>
+        <div class="tpg" id="recvTechG"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('receiveBulbs')">Cancel</button>
+      <button class="btn ba" onclick="receiveBulbs()">Add to Inventory</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════
+const LS_KEY   = 'slt_db_v4';
+const TECH_KEY = 'slt_tech_id';
+
+let db = { fixtures:[], outages:[], inventory:[], orders:[], usageLog:[], technicians:[] };
+let _techId  = null;
+let _selTech = {};   // modal key -> techId
+let _curFix  = null;
+let _curPage = 'dashboard';
+let _camScanner = null;
+let _camRunning = false;
+
+// ── Local persistence ──
+function lsave() { try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch(e){} }
+function lload() {
+  try {
+    const s = localStorage.getItem(LS_KEY);
+    if (s) { const p = JSON.parse(s); db = Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[]}, p); }
+  } catch(e) {}
+}
+
+// ── Remote data handler (called by Firebase listener) ──
+window._onRemoteData = function(remote) {
+  // Merge — remote wins for inventory/orders/usageLog (simple overwrite),
+  // outages/fixtures merged by ID so local-only additions are kept
+  if (remote.technicians) db.technicians = remote.technicians;
+  if (remote.inventory)   db.inventory   = remote.inventory;
+  if (remote.orders)      db.orders      = remote.orders;
+  if (remote.usageLog)    db.usageLog    = remote.usageLog;
+
+  if (remote.fixtures) {
+    remote.fixtures.forEach(rf => {
+      const lf = db.fixtures.find(x=>x.id===rf.id);
+      if (!lf) db.fixtures.push(rf);
+      else Object.assign(lf, rf);
+    });
+  }
+  if (remote.outages) {
+    remote.outages.forEach(ro => {
+      const lo = db.outages.find(x=>x.id===ro.id);
+      if (!lo) db.outages.push(ro);
+      else Object.assign(lo, ro);
+    });
+  }
+  lsave();
+  refreshPage();
+};
+
+// ── Save to both local and Firebase ──
+async function save() {
+  lsave();
+  if (window._syncMode === 'firebase') {
+    setSyncState('syncing','Saving…');
+    const ok = await window._saveToFirebase(db);
+    if (ok) { setSyncState('ok','Saved ✓'); updSyncTime(); }
+    else     { setSyncState('error','Save failed'); toast('Cloud save failed','error'); }
+  }
+}
+
+// ── Seed demo data ──
+function seed() {
+  if (db.technicians.length || db.fixtures.length) return;
+  db.technicians = [
+    {id:'t1',name:'Alex Johnson',role:'Head Technician',avatar:'👷'},
+    {id:'t2',name:'Sam Rivera',  role:'Lighting Tech',  avatar:'💡'},
+    {id:'t3',name:'Morgan Lee',  role:'Stage Manager',  avatar:'🎭'},
+  ];
+  db.fixtures = [
+    {id:'FX-001',name:'Front Wash Left', location:'FOH Truss A',bulbType:'PAR64 1000W',status:'ok', outageCount:3},
+    {id:'FX-002',name:'Front Wash Right',location:'FOH Truss A',bulbType:'PAR64 1000W',status:'out',outageCount:5},
+    {id:'FX-003',name:'Back Light Centre',location:'Rear Truss', bulbType:'Fresnel 650W',status:'ok', outageCount:1},
+    {id:'FX-004',name:'Spot 1',          location:'Booth',       bulbType:'HMI 1200W',  status:'ok', outageCount:0},
+  ];
+  db.inventory = [
+    {bulbType:'PAR64 1000W',inStock:8,threshold:3,totalReceived:20,totalUsed:12},
+    {bulbType:'Fresnel 650W',inStock:2,threshold:3,totalReceived:10,totalUsed:8},
+    {bulbType:'HMI 1200W',  inStock:4,threshold:2,totalReceived:6, totalUsed:2},
+  ];
+  const now = Date.now();
+  db.outages = [
+    {id:'OUT-001',fixtureId:'FX-002',fixtureName:'Front Wash Right',bulbType:'PAR64 1000W',reportedBy:'Alex Johnson',techId:'t1',notes:'Flickered then died',timestamp:now-86400000*2,resolved:false},
+    {id:'OUT-002',fixtureId:'FX-001',fixtureName:'Front Wash Left', bulbType:'PAR64 1000W',reportedBy:'Sam Rivera',  techId:'t2',notes:'',timestamp:now-86400000*10,resolved:true,resolvedAt:now-86400000*9,resolvedBy:'Morgan Lee',resolvedTechId:'t3'},
+  ];
+  db.orders = [
+    {date:now-86400000*30,bulbType:'PAR64 1000W',qty:12,supplier:'Stage Supplies Co',notes:'PO-2024-001',tech:'Alex Johnson'},
+    {date:now-86400000*60,bulbType:'Fresnel 650W',qty:10,supplier:'Light World',notes:'',tech:'Sam Rivera'},
+  ];
+  db.usageLog = [
+    {date:now-86400000*9,bulbType:'PAR64 1000W',qty:1,fixture:'FX-001',tech:'Morgan Lee', techId:'t3'},
+    {date:now-86400000*5,bulbType:'Fresnel 650W',qty:1,fixture:'FX-003',tech:'Sam Rivera',techId:'t2'},
+  ];
+  save();
+}
+
+// ══════════════════════════════════════════════════
+// SYNC UI
+// ══════════════════════════════════════════════════
+function setSyncState(state, msg) {
+  const dot = document.getElementById('sdot');
+  const txt = document.getElementById('stxt');
+  dot.className = 'sdot ' + state;
+  txt.textContent = msg;
+}
+function updSyncTime() {
+  document.getElementById('stime').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+}
+window.addEventListener('syncStatus', e => {
+  const {state, msg} = e.detail;
+  setSyncState(state, msg);
+  if (state === 'ok') updSyncTime();
+  if (state === 'local') {
+    document.getElementById('cfgNotice').style.display = '';
+  }
+});
+
+// ══════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════
+function go(page) {
+  stopCamera();
+  ['dashboard','fixtures','inventory','history','scan','crew'].forEach(p => {
+    document.getElementById('pg-'+p).style.display = p===page ? '' : 'none';
+    document.getElementById('nav-'+p)?.classList.toggle('active', p===page);
+  });
+  _curPage = page;
+  const renders = { dashboard:renderDash, fixtures:renderFix, inventory:renderInv, history:renderHist, crew:renderCrew };
+  renders[page]?.();
+  if (page==='scan') {
+    const w = document.getElementById('noTechWarn');
+    if (w) w.style.display = getCurTech() ? 'none' : '';
+  }
+}
+function refreshPage() { go(_curPage); }
+
+// ══════════════════════════════════════════════════
+// RENDER — DASHBOARD
+// ══════════════════════════════════════════════════
+function renderDash() {
+  const actOuts = db.outages.filter(o=>!o.resolved);
+  const lows    = db.inventory.filter(i=>i.inStock<=i.threshold);
+  const total   = db.inventory.reduce((s,i)=>s+i.inStock,0);
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="sc ca"><div class="sc-label">Fixtures</div><div class="sc-val">${db.fixtures.length}</div></div>
+    <div class="sc cr"><div class="sc-label">Active Outages</div><div class="sc-val">${actOuts.length}</div></div>
+    <div class="sc cg"><div class="sc-label">Bulbs In Stock</div><div class="sc-val">${total}</div></div>
+    <div class="sc cb"><div class="sc-label">Low Stock Types</div><div class="sc-val">${lows.length}</div></div>`;
+
+  document.getElementById('activeOut').innerHTML = !actOuts.length
+    ? '<p class="cg" style="font-family:var(--mono);font-size:12px">✅ All fixtures operational</p>'
+    : actOuts.map(o=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div class="fw7" style="font-size:14px">${o.fixtureName}</div>
+          <div class="dim">${o.fixtureId} · ${ago(o.timestamp)} · by ${o.reportedBy}</div>
+        </div>
+        <button class="btn bg bsm" onclick="openRepModal('${o.fixtureId}')">Replace</button>
+      </div>`).join('');
+
+  document.getElementById('lowStock').innerHTML = !lows.length
+    ? '<p class="cg" style="font-family:var(--mono);font-size:12px">✅ Stock levels OK</p>'
+    : lows.map(i=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div class="fw7" style="font-size:14px">${i.bulbType}</div>
+          <div class="dim">${i.inStock} left · threshold ${i.threshold}</div>
+        </div>
+        <span class="badge blow"><span class="bd pulse"></span>LOW</span>
+      </div>`).join('');
+
+  const recent = [...db.outages].sort((a,b)=>b.timestamp-a.timestamp).slice(0,8);
+  document.getElementById('recentAct').innerHTML = !recent.length
+    ? '<p class="dim">No activity yet.</p>'
+    : recent.map(o=>`<div class="row gap10" style="padding:9px 0;border-bottom:1px solid rgba(31,45,66,.6)">
+        <span style="font-size:17px">${o.resolved?'✅':'🔴'}</span>
+        <div>
+          <div style="font-size:13px">${o.resolved?'<span class="cg">Resolved</span>':'<span class="cr">Outage</span>'}: <strong>${o.fixtureName}</strong></div>
+          <div class="dim">${fmtD(o.timestamp)} · ${o.reportedBy}</div>
+        </div>
+      </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════
+// RENDER — FIXTURES
+// ══════════════════════════════════════════════════
+function renderFix() {
+  const lastOut = {};
+  [...db.outages].sort((a,b)=>b.timestamp-a.timestamp).forEach(o=>{ if(!lastOut[o.fixtureId]) lastOut[o.fixtureId]=o.timestamp; });
+  document.getElementById('fixtTbl').innerHTML = !db.fixtures.length
+    ? '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:28px">No fixtures added yet</td></tr>'
+    : db.fixtures.map(f=>`<tr>
+        <td><span class="mono ca">${f.id}</span></td>
+        <td><div class="fw7">${f.name}</div><div class="dim">${f.location}</div></td>
+        <td class="mono" style="font-size:11px">${f.bulbType}</td>
+        <td>${f.status==='ok'
+          ? '<span class="badge bok"><span class="bd"></span>OK</span>'
+          : '<span class="badge bout"><span class="bd pulse"></span>OUT</span>'}</td>
+        <td class="dim">${lastOut[f.id]?ago(lastOut[f.id]):'Never'}</td>
+        <td style="text-align:center"><strong>${db.outages.filter(o=>o.fixtureId===f.id).length}</strong></td>
+        <td><div class="row gap6">
+          <button class="btn br bsm" onclick="openOutModal('${f.id}')">🔴 Outage</button>
+          ${f.status==='out'?`<button class="btn bg bsm" onclick="openRepModal('${f.id}')">✅ Replaced</button>`:''}
+        </div></td>
+      </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════
+// RENDER — INVENTORY
+// ══════════════════════════════════════════════════
+function renderInv() {
+  document.getElementById('stockTbl').innerHTML = !db.inventory.length
+    ? '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:28px">No inventory yet</td></tr>'
+    : db.inventory.map(i=>{const low=i.inStock<=i.threshold;return`<tr>
+        <td><strong>${i.bulbType}</strong></td>
+        <td><strong style="font-size:18px;color:${low?'var(--red)':'var(--green)'}">${i.inStock}</strong></td>
+        <td>${i.threshold}</td><td>${i.totalReceived}</td><td>${i.totalUsed}</td>
+        <td>${low?'<span class="badge blow"><span class="bd pulse"></span>LOW</span>':'<span class="badge bok"><span class="bd"></span>OK</span>'}</td>
+      </tr>`;}).join('');
+
+  document.getElementById('ordersTbl').innerHTML = !db.orders.length
+    ? '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:28px">No orders yet</td></tr>'
+    : [...db.orders].sort((a,b)=>b.date-a.date).map(o=>`<tr>
+        <td class="dim">${fmtD(o.date)}</td><td>${o.bulbType}</td><td><strong>${o.qty}</strong></td>
+        <td>${o.supplier||'—'}</td><td>${o.tech||'—'}</td><td class="dim">${o.notes||'—'}</td>
+      </tr>`).join('');
+
+  document.getElementById('usageTbl').innerHTML = !db.usageLog.length
+    ? '<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:28px">No usage logged yet</td></tr>'
+    : [...db.usageLog].sort((a,b)=>b.date-a.date).map(u=>`<tr>
+        <td class="dim">${fmtD(u.date)}</td><td>${u.bulbType}</td><td><strong>${u.qty}</strong></td>
+        <td class="mono">${u.fixture}</td><td>${u.tech||'—'}</td>
+      </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════
+// RENDER — HISTORY
+// ══════════════════════════════════════════════════
+function renderHist() {
+  const sorted = [...db.outages].sort((a,b)=>b.timestamp-a.timestamp);
+  document.getElementById('histTbl').innerHTML = !sorted.length
+    ? '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:28px">No outages recorded yet</td></tr>'
+    : sorted.map(o=>`<tr>
+        <td class="dim mono" style="font-size:10px">${fmtD(o.timestamp)}</td>
+        <td><div class="fw7">${o.fixtureName}</div><div class="dim mono">${o.fixtureId}</div></td>
+        <td class="dim">${o.bulbType}</td>
+        <td>${o.reportedBy||'—'}</td>
+        <td>${o.resolvedBy||'—'}</td>
+        <td>${o.resolved?'<span class="badge bok">✅ Resolved</span>':'<span class="badge bout">Pending</span>'}</td>
+        <td class="dim">${o.resolved ? fmtDur(o.resolvedAt-o.timestamp) : '<span class="cr">Ongoing</span>'}</td>
+      </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════
+// RENDER — CREW
+// ══════════════════════════════════════════════════
+function renderCrew() {
+  document.getElementById('crewCards').innerHTML = !db.technicians.length
+    ? '<p class="dim">No technicians added yet.</p>'
+    : db.technicians.map(t=>`<div class="tcard">
+        <div style="font-size:28px">${t.avatar||'👤'}</div>
+        <div>
+          <div class="fw7" style="font-size:14px">${t.name}</div>
+          <div class="dim">${t.role||'Technician'}</div>
+        </div>
+        <button class="btn bgh bsm" style="margin-left:auto" onclick="removeTech('${t.id}')">✕</button>
+      </div>`).join('');
+
+  document.getElementById('crewStats').innerHTML = !db.technicians.length ? ''
+    : db.technicians.map(t=>{
+        const rep = db.outages.filter(o=>o.techId===t.id).length;
+        const rpl = db.usageLog.filter(u=>u.techId===t.id).length;
+        const times = [...db.outages.filter(o=>o.techId===t.id).map(o=>o.timestamp),
+                       ...db.usageLog.filter(u=>u.techId===t.id).map(u=>u.date)].sort((a,b)=>b-a);
+        return `<tr>
+          <td><div class="row gap8"><span style="font-size:20px">${t.avatar||'👤'}</span><div><div class="fw7">${t.name}</div><div class="dim">${t.role||''}</div></div></div></td>
+          <td>${rep}</td><td>${rpl}</td><td class="dim">${times.length?ago(times[0]):'Never'}</td>
+        </tr>`;
+      }).join('');
+}
+
+// ══════════════════════════════════════════════════
+// TECHNICIAN HELPERS
+// ══════════════════════════════════════════════════
+function getCurTech() { return _techId ? db.technicians.find(t=>t.id===_techId)||null : null; }
+
+function loadTech() {
+  try { _techId = localStorage.getItem(TECH_KEY)||null; } catch(e){}
+  updTechUI();
+}
+
+function setTech(id) {
+  _techId = id;
+  try { localStorage.setItem(TECH_KEY, id); } catch(e){}
+  updTechUI();
+  closeM('whoAmI');
+  const t = db.technicians.find(x=>x.id===id);
+  if (t) toast('Welcome, '+t.name+'! 👋','success');
+  renderDash();
+}
+
+function updTechUI() {
+  const t = getCurTech();
+  document.getElementById('techChip').textContent = t ? t.avatar+' '+t.name : '— Select —';
+  const banner = document.getElementById('whoBanner');
+  if (t) {
+    banner.style.display = '';
+    document.getElementById('bannerAv').textContent   = t.avatar||'👤';
+    document.getElementById('bannerName').textContent = t.name;
+    document.getElementById('bannerRole').textContent = t.role||'Technician';
+  } else { banner.style.display = 'none'; }
+}
+
+function buildTechGrid(containerId, key) {
+  const el = document.getElementById(containerId); if (!el) return;
+  if (!_selTech[key] && _techId) _selTech[key] = _techId;
+  const sel = _selTech[key];
+  if (!db.technicians.length) {
+    el.innerHTML = '<p class="dim">No technicians. <a href="#" class="ca" onclick="closeAllM();go(\'crew\')">Add crew →</a></p>';
+    return;
+  }
+  el.innerHTML = db.technicians.map(t=>`
+    <div class="tpb ${t.id===sel?'sel':''}" onclick="pickTech('${key}','${t.id}','${containerId}')">
+      <div class="tav">${t.avatar||'👤'}</div>
+      <div>${t.name.split(' ')[0]}</div>
+    </div>`).join('');
+}
+function pickTech(key, id, cid) { _selTech[key]=id; buildTechGrid(cid,key); }
+function getTech(key) { const id=_selTech[key]; return id?db.technicians.find(t=>t.id===id)||null:null; }
+
+// ══════════════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════════════
+function openM(id) {
+  document.getElementById('m-'+id).style.display='flex';
+  if (id==='whoAmI')    buildWhoGrid();
+  if (id==='reportOutage') buildTechGrid('outTechG','outage');
+  if (id==='markReplaced') buildTechGrid('repTechG','replace');
+  if (id==='receiveBulbs') buildTechGrid('recvTechG','recv');
+}
+function closeM(id) { document.getElementById('m-'+id).style.display='none'; }
+function mOut(e,id) { if(e.target===document.getElementById('m-'+id)) closeM(id); }
+function closeAllM() { ['whoAmI','addTech','addFixture','reportOutage','markReplaced','receiveBulbs'].forEach(closeM); }
+
+function buildWhoGrid() {
+  const el = document.getElementById('whoGrid');
+  if (!db.technicians.length) { el.innerHTML='<p class="dim">No technicians yet. Go to Crew page to add some.</p>'; return; }
+  el.innerHTML = db.technicians.map(t=>`
+    <div class="tpb ${t.id===_techId?'sel':''}" onclick="setTech('${t.id}')">
+      <div class="tav">${t.avatar||'👤'}</div>
+      <div>${t.name}</div>
+    </div>`).join('');
+}
+
+function addTech() {
+  const name = document.getElementById('tn').value.trim();
+  const role = document.getElementById('tr').value.trim();
+  const av   = document.getElementById('ta').value.trim()||'👤';
+  if (!name) { toast('Name required','error'); return; }
+  db.technicians.push({id:'t'+Date.now(), name, role, avatar:av});
+  save(); closeM('addTech'); renderCrew();
+  document.getElementById('tn').value=''; document.getElementById('tr').value=''; document.getElementById('ta').value='';
+  toast(name+' added to crew','success');
+}
+
+function removeTech(id) {
+  if (!confirm('Remove this technician?')) return;
+  db.technicians = db.technicians.filter(t=>t.id!==id);
+  if (_techId===id) { _techId=null; try{localStorage.removeItem(TECH_KEY);}catch(e){} updTechUI(); }
+  save(); renderCrew();
+}
+
+function openOutModal(fid) {
+  const f = db.fixtures.find(x=>x.id===fid); if (!f) return;
+  _curFix = fid; _selTech['outage'] = _techId||null;
+  document.getElementById('outTitle').textContent = '🔴 Report Outage — '+f.id;
+  document.getElementById('outInfo').innerHTML = `<div class="fw7" style="font-size:14px;margin-bottom:3px">${f.name}</div><div class="dim">${f.location} · ${f.bulbType}</div>`;
+  document.getElementById('onotes').value='';
+  openM('reportOutage');
+}
+
+function openRepModal(fid) {
+  const f = db.fixtures.find(x=>x.id===fid); if (!f) return;
+  _curFix = fid; _selTech['replace'] = _techId||null;
+  document.getElementById('repInfo').innerHTML = `<div class="fw7" style="font-size:14px;margin-bottom:3px">${f.name}</div><div class="dim">${f.location} · ${f.bulbType}</div>`;
+  document.getElementById('rnotes').value='';
+  openM('markReplaced');
+}
+
+function addFixture() {
+  const id  = document.getElementById('fid').value.trim().toUpperCase();
+  const nam = document.getElementById('fna').value.trim();
+  const loc = document.getElementById('flo').value.trim();
+  const bul = document.getElementById('fbu').value.trim();
+  if (!id||!bul) { toast('Fixture ID and Bulb Type required','error'); return; }
+  if (db.fixtures.find(f=>f.id===id)) { toast('Fixture ID already exists','error'); return; }
+  db.fixtures.push({id,name:nam||id,location:loc,bulbType:bul,status:'ok',outageCount:0});
+  save(); closeM('addFixture'); renderFix();
+  toast('Fixture '+id+' added','success');
+}
+
+function submitOutage() {
+  const f = db.fixtures.find(x=>x.id===_curFix); if (!f) return;
+  const t = getTech('outage');
+  if (!t) { toast('Select a technician first','error'); return; }
+  db.outages.push({
+    id:'OUT-'+Date.now(), fixtureId:f.id, fixtureName:f.name, bulbType:f.bulbType,
+    reportedBy:t.name, techId:t.id, notes:document.getElementById('onotes').value.trim(),
+    timestamp:Date.now(), resolved:false
+  });
+  f.status='out'; f.outageCount=(f.outageCount||0)+1;
+  save(); closeM('reportOutage'); toast('Outage reported for '+f.id,'error'); refreshPage();
+}
+
+function submitReplaced() {
+  const f = db.fixtures.find(x=>x.id===_curFix); if (!f) return;
+  const t = getTech('replace');
+  if (!t) { toast('Select a technician first','error'); return; }
+  const out = [...db.outages].filter(o=>o.fixtureId===f.id&&!o.resolved).sort((a,b)=>b.timestamp-a.timestamp)[0];
+  if (out) { out.resolved=true; out.resolvedAt=Date.now(); out.resolvedBy=t.name; out.resolvedTechId=t.id; }
+  f.status = 'ok';
+  const inv = db.inventory.find(i=>i.bulbType===f.bulbType);
+  if (inv && inv.inStock>0) { inv.inStock--; inv.totalUsed++; }
+  db.usageLog.push({date:Date.now(),bulbType:f.bulbType,qty:1,fixture:f.id,tech:t.name,techId:t.id});
+  save(); closeM('markReplaced'); toast('Fixture '+f.id+' replaced — 1 bulb deducted','success'); refreshPage();
+}
+
+function receiveBulbs() {
+  const type = document.getElementById('btype').value.trim();
+  const qty  = parseInt(document.getElementById('bqty').value)||0;
+  const sup  = document.getElementById('bsup').value.trim();
+  const thr  = parseInt(document.getElementById('bthr').value)||3;
+  const nts  = document.getElementById('bnotes').value.trim();
+  if (!type||qty<1) { toast('Bulb type and quantity required','error'); return; }
+  const t = getTech('recv');
+  let inv = db.inventory.find(i=>i.bulbType===type);
+  if (inv) { inv.inStock+=qty; inv.totalReceived+=qty; inv.threshold=thr; }
+  else db.inventory.push({bulbType:type,inStock:qty,threshold:thr,totalReceived:qty,totalUsed:0});
+  db.orders.push({date:Date.now(),bulbType:type,qty,supplier:sup,notes:nts,tech:t?t.name:'Unknown'});
+  save(); closeM('receiveBulbs'); renderInv(); toast(qty+' × '+type+' added to inventory','success');
+}
+
+// ══════════════════════════════════════════════════
+// CAMERA QR SCANNER
+// ══════════════════════════════════════════════════
+function toggleCamera() {
+  if (_camRunning) { stopCamera(); return; }
+  startCamera();
+}
+
+function startCamera() {
+  const readerEl = document.getElementById('qr-reader');
+  readerEl.style.display = '';
+  document.getElementById('camBtn').textContent = '⏹ Stop Camera';
+  _camScanner = new Html5Qrcode('qr-reader');
+  _camRunning = true;
+  _camScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 240, height: 240 } },
+    (decodedText) => {
+      handleScannedCode(decodedText);
+    },
+    () => {}
+  ).catch(err => {
+    toast('Camera error: '+err,'error');
+    stopCamera();
+  });
+}
+
+function stopCamera() {
+  if (_camScanner && _camRunning) {
+    _camScanner.stop().catch(()=>{});
+    _camRunning = false;
+    _camScanner = null;
+  }
+  const el = document.getElementById('qr-reader');
+  if (el) { el.style.display='none'; el.innerHTML=''; }
+  const btn = document.getElementById('camBtn');
+  if (btn) btn.textContent = '📷 Start Camera Scanner';
+}
+
+function handleScannedCode(code) {
+  document.getElementById('manualId').value = code.toUpperCase();
+  const res = document.getElementById('scanResult');
+  res.style.display = '';
+  res.textContent = '✅ Scanned: '+code;
+  stopCamera();
+  // Auto-lookup
+  const f = db.fixtures.find(x=>x.id===code.toUpperCase());
+  if (f) {
+    toast('Found fixture: '+f.name,'info');
+    if (f.status==='out') openRepModal(f.id);
+    else openOutModal(f.id);
+  }
+}
+
+function scanAction(action) {
+  const id = document.getElementById('manualId').value.trim().toUpperCase();
+  if (!id) { toast('Enter or scan a Fixture ID first','error'); return; }
+  if (action==='outage'||action==='replace') {
+    const f = db.fixtures.find(x=>x.id===id);
+    if (!f) { toast('Fixture "'+id+'" not found','error'); return; }
+    if (action==='outage') openOutModal(f.id);
+    else openRepModal(f.id);
+  } else if (action==='scanIn') { openM('receiveBulbs'); }
+}
+
+// ══════════════════════════════════════════════════
+// PRINT LABELS — uses real window.print()
+// ══════════════════════════════════════════════════
+function printLabels() {
+  const type   = prompt('Label type:\n1 = Fixture Labels\n2 = Bulb Labels', '1');
+  if (!type) return;
+  const prefix = (prompt('Prefix (e.g. FX or BLB-A):', type==='1'?'FX':'BLB-A')||'LBL').toUpperCase();
+  const qty    = Math.min(parseInt(prompt('How many labels?','6')||'6'), 100);
+
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = `<div style="font-family:monospace;padding:10px">
+    <h2 style="font-size:14px;margin-bottom:12px;color:#000">Stage Light Tracker — ${type==='1'?'Fixture':'Bulb'} Labels</h2>
+    <div class="qr-grid" id="pqg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px"></div>
+  </div>`;
+
+  const grid = document.getElementById('pqg');
+  for (let i=1; i<=qty; i++) {
+    const code = prefix+'-'+String(i).padStart(3,'0');
+    const div = document.createElement('div');
+    div.className = 'qr-item';
+    div.style.cssText = 'background:#fff;border:1px solid #ccc;border-radius:4px;padding:8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;break-inside:avoid';
+    const qd = document.createElement('div'); qd.id='plq'+i; div.appendChild(qd);
+    const lb = document.createElement('div');
+    lb.style.cssText = 'font-family:monospace;font-size:9px;font-weight:700;color:#000;margin-top:4px';
+    lb.textContent = code; div.appendChild(lb);
+    const sb = document.createElement('div');
+    sb.style.cssText = 'font-family:monospace;font-size:8px;color:#555';
+    sb.textContent = type==='1'?'FIXTURE':'BULB'; div.appendChild(sb);
+    grid.appendChild(div);
+    try { new QRCode(qd, {text:code,width:90,height:90,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M}); } catch(e){}
+  }
+
+  setTimeout(() => { window.print(); }, 600);
+}
+
+// ══════════════════════════════════════════════════
+// INVENTORY TABS
+// ══════════════════════════════════════════════════
+function invTab(tab, btn) {
+  ['stock','orders','usage'].forEach(t => document.getElementById('it-'+t).style.display = t===tab?'':'none');
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════
+function fmtD(ts) { return new Date(ts).toLocaleString('en-CA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function ago(ts)  { const s=Math.floor((Date.now()-ts)/1000); if(s<60)return'just now'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
+function fmtDur(ms){ const m=Math.round(ms/60000); if(m<60)return m+' min'; return Math.floor(m/60)+'h '+m%60+'m'; }
+function toast(msg, type='info') {
+  const c=document.getElementById('toasts');
+  const el=document.createElement('div'); el.className='toast '+type;
+  el.innerHTML = (type==='success'?'✅':type==='error'?'🔴':'💡') + ' ' + msg;
+  c.appendChild(el); setTimeout(()=>el.remove(),3000);
+}
+
+// ══════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════
+lload();
+seed();
+loadTech();
+go('dashboard');
+</script>
+</body>
+</html>
