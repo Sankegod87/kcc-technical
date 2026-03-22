@@ -257,7 +257,10 @@ textarea{resize:vertical;min-height:70px;}
       <div style="font-size:20px;font-weight:900;font-family:var(--head)" id="bannerName">—</div>
       <div class="dim" id="bannerRole">—</div>
     </div>
-    <button class="btn bgh bsm" style="margin-left:auto" onclick="openM('whoAmI')">Switch</button>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn bgh bsm" onclick="openM('changeMyPw')">🔑 Change Password</button>
+      <button class="btn bgh bsm" onclick="openM('whoAmI')">Switch</button>
+    </div>
   </div>
   <div class="stats" id="statsRow"></div>
   <div class="grid2 mb14">
@@ -321,7 +324,7 @@ textarea{resize:vertical;min-height:70px;}
     <tbody id="ordersTbl"></tbody>
   </table></div></div></div>
   <div id="it-usage" style="display:none"><div class="panel"><div class="pb" style="padding:0"><table class="tbl">
-    <thead><tr><th>Date</th><th>Bulb Type</th><th>Qty</th><th>Fixture</th><th>Technician</th></tr></thead>
+    <thead><tr><th>Date</th><th>Bulb Type</th><th>Qty</th><th>Fixture</th><th>Technician</th><th>Bulb ID</th><th>Condition</th></tr></thead>
     <tbody id="usageTbl"></tbody>
   </table></div></div></div>
 </div>
@@ -456,12 +459,35 @@ textarea{resize:vertical;min-height:70px;}
 
 <div id="m-whoAmI" class="mover" style="display:none" onclick="mOut(event,'whoAmI')">
   <div class="modal">
-    <div class="mh"><span class="mt">👷 Who Are You?</span><button class="xb" onclick="closeM('whoAmI')">✕</button></div>
+    <div class="mh"><span class="mt">👷 Log In</span><button class="xb" onclick="closeM('whoAmI')">✕</button></div>
     <div class="mb">
-      <p class="dim mb12">Select your name. Saved on this device.</p>
-      <div class="tpg" id="whoGrid"></div>
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <button class="btn bgh bsm" onclick="closeM('whoAmI');go('crew')">+ Add a new technician</button>
+      <!-- Step 1: pick name -->
+      <div id="whoStep1">
+        <p class="dim mb12">Select your name to log in.</p>
+        <div class="tpg" id="whoGrid"></div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <button class="btn bgh bsm" onclick="closeM('whoAmI');go('crew')">+ Add a new technician</button>
+        </div>
+      </div>
+      <!-- Step 2: enter password -->
+      <div id="whoStep2" style="display:none">
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:36px" id="whoLoginAv">👤</div>
+          <div style="font-size:18px;font-weight:900;margin-top:6px" id="whoLoginName">—</div>
+          <div class="dim" id="whoLoginRole">—</div>
+        </div>
+        <div class="fg mb12">
+          <label>Password</label>
+          <input type="password" id="whoPassword" placeholder="Enter your password" onkeydown="if(event.key==='Enter')submitLogin()">
+        </div>
+        <div id="whoLoginErr" style="display:none;color:var(--red);font-size:12px;font-family:var(--mono);margin-bottom:10px">❌ Incorrect password</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="btn bgh" onclick="whoBack()">← Back</button>
+          <button class="btn ba" onclick="submitLogin()">Log In</button>
+        </div>
+        <div style="margin-top:12px;text-align:center">
+          <button class="btn bgh bsm" onclick="whoForgot()" style="font-size:11px">Forgot password?</button>
+        </div>
       </div>
     </div>
   </div>
@@ -476,6 +502,8 @@ textarea{resize:vertical;min-height:70px;}
         <div class="fg"><label>Role / Title</label><input id="tr" placeholder="Head Technician"></div>
         <div class="fg"><label>Avatar Emoji</label><input id="ta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
         <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="tem" type="email" placeholder="jane@example.com"></div>
+        <div class="fg"><label>Password *</label><input id="tpw" type="password" placeholder="Set a password"></div>
+        <div class="fg"><label>Confirm Password *</label><input id="tpw2" type="password" placeholder="Confirm password"></div>
       </div>
     </div>
     <div class="mf">
@@ -495,11 +523,28 @@ textarea{resize:vertical;min-height:70px;}
         <div class="fg"><label>Role / Title</label><input id="etr" placeholder="Head Technician"></div>
         <div class="fg"><label>Avatar Emoji</label><input id="eta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
         <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="etem" type="email" placeholder="jane@example.com"></div>
+        <div class="fg" style="grid-column:1/-1"><div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:4px"><div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:10px">🔑 Change Password</div><div class="fgrid"><div class="fg"><label>New Password (leave blank to keep current)</label><input id="etpw" type="password" placeholder="New password"></div><div class="fg"><label>Confirm New Password</label><input id="etpw2" type="password" placeholder="Confirm new password"></div></div></div></div>
       </div>
     </div>
     <div class="mf">
       <button class="btn bgh" onclick="closeM('editTech')">Cancel</button>
       <button class="btn ba" onclick="saveTechEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-changeMyPw" class="mover" style="display:none" onclick="mOut(event,'changeMyPw')">
+  <div class="modal">
+    <div class="mh"><span class="mt">🔑 Change My Password</span><button class="xb" onclick="closeM('changeMyPw')">✕</button></div>
+    <div class="mb">
+      <div class="fg mb12"><label>Current Password</label><input type="password" id="cmpCur" placeholder="Your current password"></div>
+      <div class="fg mb12"><label>New Password</label><input type="password" id="cmpNew" placeholder="New password"></div>
+      <div class="fg"><label>Confirm New Password</label><input type="password" id="cmpNew2" placeholder="Confirm new password"></div>
+      <div id="cmpErr" style="display:none;color:var(--red);font-size:12px;font-family:var(--mono);margin-top:10px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('changeMyPw')">Cancel</button>
+      <button class="btn ba" onclick="changeMyPassword()">Update Password</button>
     </div>
   </div>
 </div>
@@ -526,6 +571,33 @@ textarea{resize:vertical;min-height:70px;}
     <div class="mf">
       <button class="btn bgh" onclick="closeM('addFixture')">Cancel</button>
       <button class="btn ba" onclick="addFixture()">Add Fixture</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-editFixture" class="mover" style="display:none" onclick="mOut(event,'editFixture')">
+  <div class="modal">
+    <div class="mh"><span class="mt">✏️ Edit Fixture</span><button class="xb" onclick="closeM('editFixture')">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="efix-id">
+      <div class="fgrid">
+        <div class="fg"><label>Fixture ID</label><input id="efid" disabled style="opacity:.5"></div>
+        <div class="fg"><label>Name / Description</label><input id="efna" placeholder="Front Wash Left"></div>
+        <div class="fg"><label>Location / Position</label><input id="eflo" placeholder="Stage Left, Truss A"></div>
+        <div class="fg"><label>Bulb Type</label><input id="efbu" placeholder="PAR64 1000W"></div>
+        <div class="fg"><label>Category</label>
+          <select id="efcat">
+            <option value="wash">Wash</option><option value="spot">Spot</option><option value="par">PAR</option>
+            <option value="fresnel">Fresnel</option><option value="led">LED</option><option value="follow">Follow Spot</option><option value="other">Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>Maintenance interval (days)</label><input id="efmaint" type="number" placeholder="90" min="1"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="efnotes" placeholder="Any notes about this fixture…"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('editFixture')">Cancel</button>
+      <button class="btn ba" onclick="saveFixtureEdit()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -558,6 +630,16 @@ textarea{resize:vertical;min-height:70px;}
     <div class="mb">
       <div id="repInfo" style="background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:6px;padding:12px;margin-bottom:14px"></div>
       <div class="fg mb12"><label>Replacing Technician *</label><div class="tpg" id="repTechG"></div></div>
+      <div class="fgrid mb10">
+        <div class="fg"><label>Bulb ID / Serial (optional)</label><input id="rbulbid" placeholder="e.g. BLB-A-003 or serial no."></div>
+        <div class="fg"><label>Bulb Condition</label>
+          <select id="rbulbcond">
+            <option value="new">✅ New bulb from stock</option>
+            <option value="reused">♻️ Reused / previously used</option>
+            <option value="blown">💀 Already blown (test/confirm)</option>
+          </select>
+        </div>
+      </div>
       <div class="fg mb10"><label>Notes</label><input id="rnotes" placeholder="Optional notes"></div>
       <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--aglow);border:1px solid rgba(240,165,0,.3);border-radius:6px;margin-top:4px">
         <input type="checkbox" id="rdeduct" checked style="width:18px;height:18px;cursor:pointer;accent-color:var(--amber)">
@@ -722,6 +804,7 @@ function renderFix(){
           <button class="btn br bsm" onclick="openOutModal('${f.id}')">🔴</button>
           ${f.status==='out'?`<button class="btn bg bsm" onclick="openRepModal('${f.id}')">✅</button>`:''}
           <button class="btn bgh bsm" onclick="viewFixture('${f.id}')">👁</button>
+          <button class="btn bgh bsm" onclick="editFixture('${f.id}')">✏️</button>
           <button class="btn bgh bsm" onclick="markMaintDone('${f.id}')">🔧</button>
           <button class="btn bgh bsm" onclick="requirePin(()=>deleteFixture('${f.id}'))">🗑️</button>
         </div></td>
@@ -757,6 +840,7 @@ function viewFixture(id){
     <div class="mf" style="border:none;padding:14px 0 0 0">
       <button class="btn br" onclick="closeM('viewFixture');openOutModal('${f.id}')">🔴 Report Outage</button>
       ${f.status==='out'?`<button class="btn bg" onclick="closeM('viewFixture');openRepModal('${f.id}')">✅ Mark Replaced</button>`:''}
+      <button class="btn ba" onclick="closeM('viewFixture');editFixture('${f.id}')">✏️ Edit Fixture</button>
       <button class="btn bgh" onclick="markMaintDone('${f.id}');closeM('viewFixture')">🔧 Mark Maintained</button>
     </div>`;
   openM('viewFixture');
@@ -797,10 +881,15 @@ function renderInv(){
       </tr>`).join('');
   document.getElementById('usageTbl').innerHTML=!db.usageLog.length
     ?'<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:28px">No usage logged yet</td></tr>'
-    :[...db.usageLog].sort((a,b)=>b.date-a.date).map(u=>`<tr>
+    :[...db.usageLog].sort((a,b)=>b.date-a.date).map(u=>{
+      const condIcon=u.bulbCondition==='blown'?'💀 Blown':u.bulbCondition==='reused'?'♻️ Reused':'✅ New';
+      const condCol=u.bulbCondition==='blown'?'var(--red)':u.bulbCondition==='reused'?'var(--amber)':'var(--green)';
+      return`<tr>
         <td class="dim">${fmtD(u.date)}</td><td>${u.bulbType}</td><td><strong>${u.qty}</strong></td>
         <td class="mono">${u.fixture}</td><td>${u.tech||'—'}</td>
-      </tr>`).join('');
+        <td class="mono" style="font-size:11px">${u.bulbId||'—'}</td>
+        <td style="color:${condCol};font-size:12px;font-weight:600">${u.bulbCondition?condIcon:'—'}</td>
+      </tr>`;}).join('');
 }
 function deleteInvRow(t){
   if(!confirm('Remove "'+t+'" from inventory?'))return;
@@ -877,9 +966,11 @@ function renderCrew(){
           <div class="fw7" style="font-size:14px">${t.name}</div>
           <div class="dim">${t.role||'Technician'}</div>
           <div class="dim" style="color:${t.email?'var(--blue)':'var(--red)'}">${t.email||'No email set'}</div>
+          <div class="dim" style="color:${t.passwordHash?'var(--green)':'var(--red)'}">${t.passwordHash?'🔒 Password set':'⚠️ No password'}</div>
         </div>
         <div class="row gap6">
           <button class="btn bgh bsm" onclick="editTech('${t.id}')">✏️</button>
+          <button class="btn bgh bsm" onclick="adminResetPassword('${t.id}')" title="Admin: reset password">🔑</button>
           <button class="btn bgh bsm" onclick="requirePin(()=>removeTech('${t.id}'))">✕</button>
         </div>
       </div>`).join('');
@@ -995,28 +1086,75 @@ function getTech(key){const id=_selTech[key];return id?db.technicians.find(t=>t.
 // ── Modals ──
 function openM(id){
   document.getElementById('m-'+id).style.display='flex';
-  if(id==='whoAmI')buildWhoGrid();
+  if(id==='whoAmI'){document.getElementById('whoStep1').style.display='';document.getElementById('whoStep2').style.display='none';_whoSelectedId=null;buildWhoGrid();}
   if(id==='reportOutage')buildTechGrid('outTechG','outage');
   if(id==='markReplaced')buildTechGrid('repTechG','replace');
   if(id==='receiveBulbs')buildTechGrid('recvTechG','recv');
 }
 function closeM(id){document.getElementById('m-'+id).style.display='none';}
 function mOut(e,id){if(e.target===document.getElementById('m-'+id))closeM(id);}
-function closeAllM(){['whoAmI','addTech','editTech','addFixture','viewFixture','reportOutage','markReplaced','receiveBulbs'].forEach(closeM);}
+function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw'].forEach(closeM);}
 function buildWhoGrid(){
   const el=document.getElementById('whoGrid');
   if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians yet.</p>';return;}
-  el.innerHTML=db.technicians.map(t=>`<div class="tpb ${t.id===_techId?'sel':''}" onclick="setTech('${t.id}')"><div class="tav">${t.avatar||'👤'}</div><div>${t.name}</div></div>`).join('');
+  el.innerHTML=db.technicians.map(t=>`<div class="tpb ${t.id===_techId?'sel':''}" onclick="whoSelectTech('${t.id}')"><div class="tav">${t.avatar||'👤'}</div><div>${t.name.split(' ')[0]}</div></div>`).join('');
+}
+let _whoSelectedId=null;
+function whoSelectTech(id){
+  const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  // If technician has no password set, log in directly
+  if(!t.passwordHash){setTech(id);return;}
+  _whoSelectedId=id;
+  document.getElementById('whoStep1').style.display='none';
+  document.getElementById('whoStep2').style.display='';
+  document.getElementById('whoLoginAv').textContent=t.avatar||'👤';
+  document.getElementById('whoLoginName').textContent=t.name;
+  document.getElementById('whoLoginRole').textContent=t.role||'Technician';
+  document.getElementById('whoPassword').value='';
+  document.getElementById('whoLoginErr').style.display='none';
+  setTimeout(()=>document.getElementById('whoPassword').focus(),100);
+}
+function whoBack(){
+  document.getElementById('whoStep1').style.display='';
+  document.getElementById('whoStep2').style.display='none';
+  _whoSelectedId=null;
+}
+function submitLogin(){
+  const t=db.technicians.find(x=>x.id===_whoSelectedId);if(!t)return;
+  const pw=document.getElementById('whoPassword').value;
+  const hash=simpleHash(pw);
+  if(hash!==t.passwordHash){
+    document.getElementById('whoLoginErr').style.display='';
+    document.getElementById('whoPassword').value='';
+    document.getElementById('whoPassword').focus();
+    return;
+  }
+  setTech(t.id);
+  whoBack();
+}
+function whoForgot(){
+  closeM('whoAmI');
+  toast('Ask the admin to reset your password on the Crew page','info');
+}
+// Simple hash — not cryptographic but sufficient for this use case
+function simpleHash(str){
+  let hash=0;
+  for(let i=0;i<str.length;i++){hash=((hash<<5)-hash)+str.charCodeAt(i);hash|=0;}
+  return hash.toString(36);
 }
 function addTech(){
   const name=document.getElementById('tn').value.trim();
   const role=document.getElementById('tr').value.trim();
   const av=document.getElementById('ta').value.trim()||'👤';
   const email=document.getElementById('tem').value.trim();
+  const pw=document.getElementById('tpw').value;
+  const pw2=document.getElementById('tpw2').value;
   if(!name){toast('Name required','error');return;}
-  db.technicians.push({id:'t'+Date.now(),name,role,avatar:av,email});
+  if(!pw){toast('Password is required','error');return;}
+  if(pw!==pw2){toast('Passwords do not match','error');return;}
+  db.technicians.push({id:'t'+Date.now(),name,role,avatar:av,email,passwordHash:simpleHash(pw)});
   save();closeM('addTech');renderCrew();
-  ['tn','tr','ta','tem'].forEach(id=>document.getElementById(id).value='');
+  ['tn','tr','ta','tem','tpw','tpw2'].forEach(id=>document.getElementById(id).value='');
   toast(name+' added to crew','success');
 }
 function editTech(id){
@@ -1035,7 +1173,42 @@ function saveTechEdit(){
   t.role=document.getElementById('etr').value.trim();
   t.avatar=document.getElementById('eta').value.trim()||'👤';
   t.email=document.getElementById('etem').value.trim();
+  const newPw=document.getElementById('etpw').value;
+  const newPw2=document.getElementById('etpw2').value;
+  if(newPw){
+    if(newPw!==newPw2){toast('Passwords do not match','error');return;}
+    t.passwordHash=simpleHash(newPw);
+    toast('Password updated for '+t.name,'success');
+  }
+  ['etpw','etpw2'].forEach(id=>document.getElementById(id).value='');
   save();closeM('editTech');renderCrew();updTechUI();toast('Technician updated','success');
+}
+function changeMyPassword(){
+  const t=getCurTech();if(!t){toast('Not logged in','error');return;}
+  const cur=document.getElementById('cmpCur').value;
+  const nw=document.getElementById('cmpNew').value;
+  const nw2=document.getElementById('cmpNew2').value;
+  const errEl=document.getElementById('cmpErr');
+  errEl.style.display='none';
+  if(t.passwordHash&&simpleHash(cur)!==t.passwordHash){errEl.textContent='❌ Current password is incorrect';errEl.style.display='';return;}
+  if(!nw){errEl.textContent='❌ New password cannot be empty';errEl.style.display='';return;}
+  if(nw!==nw2){errEl.textContent='❌ Passwords do not match';errEl.style.display='';return;}
+  t.passwordHash=simpleHash(nw);
+  save();closeM('changeMyPw');
+  ['cmpCur','cmpNew','cmpNew2'].forEach(id=>document.getElementById(id).value='');
+  toast('Password updated successfully!','success');
+}
+
+function adminResetPassword(id){
+  const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  requirePin(()=>{
+    const newPw=prompt('Set new password for '+t.name+':');
+    if(!newPw){toast('Cancelled','info');return;}
+    const confirm=prompt('Confirm new password:');
+    if(newPw!==confirm){toast('Passwords do not match','error');return;}
+    t.passwordHash=simpleHash(newPw);
+    save();renderCrew();toast('Password reset for '+t.name,'success');
+  });
 }
 function removeTech(id){
   if(!confirm('Remove this technician?'))return;
@@ -1043,6 +1216,30 @@ function removeTech(id){
   if(_techId===id){_techId=null;try{localStorage.removeItem(TECH_KEY);}catch(e){}updTechUI();}
   save();renderCrew();
 }
+function editFixture(id){
+  const f=db.fixtures.find(x=>x.id===id);if(!f)return;
+  document.getElementById('efix-id').value=f.id;
+  document.getElementById('efid').value=f.id;
+  document.getElementById('efna').value=f.name||'';
+  document.getElementById('eflo').value=f.location||'';
+  document.getElementById('efbu').value=f.bulbType||'';
+  document.getElementById('efcat').value=f.category||'other';
+  document.getElementById('efmaint').value=f.maintInterval||'';
+  document.getElementById('efnotes').value=f.notes||'';
+  openM('editFixture');
+}
+function saveFixtureEdit(){
+  const id=document.getElementById('efix-id').value;
+  const f=db.fixtures.find(x=>x.id===id);if(!f)return;
+  f.name=document.getElementById('efna').value.trim()||f.name;
+  f.location=document.getElementById('eflo').value.trim();
+  f.bulbType=document.getElementById('efbu').value.trim()||f.bulbType;
+  f.category=document.getElementById('efcat').value;
+  f.maintInterval=parseInt(document.getElementById('efmaint').value)||null;
+  f.notes=document.getElementById('efnotes').value.trim();
+  save();closeM('editFixture');renderFix();toast('Fixture '+f.id+' updated','success');
+}
+
 function addFixture(){
   const id=document.getElementById('fid').value.trim().toUpperCase();
   const nam=document.getElementById('fna').value.trim();
@@ -1069,6 +1266,8 @@ function openRepModal(fid){
   _curFix=fid;_selTech['replace']=_techId||null;
   document.getElementById('repInfo').innerHTML=`<div class="fw7" style="font-size:14px;margin-bottom:3px">${f.name}</div><div class="dim">${f.location} · ${f.bulbType}</div>`;
   document.getElementById('rnotes').value='';
+  document.getElementById('rbulbid').value='';
+  document.getElementById('rbulbcond').value='new';
   openM('markReplaced');
 }
 function submitOutage(){
@@ -1091,7 +1290,11 @@ function submitReplaced(){
   const inv=db.inventory.find(i=>i.bulbType===f.bulbType);
   if(deduct){
     if(inv&&inv.inStock>0){inv.inStock--;inv.totalUsed++;}
-    db.usageLog.push({date:Date.now(),bulbType:f.bulbType,qty:1,fixture:f.id,tech:t.name,techId:t.id});
+    const bulbId=document.getElementById('rbulbid').value.trim();
+    const bulbCond=document.getElementById('rbulbcond').value;
+    db.usageLog.push({date:Date.now(),bulbType:f.bulbType,qty:1,fixture:f.id,tech:t.name,techId:t.id,bulbId,bulbCondition:bulbCond});
+    if(bulbCond==='blown') toast('⚠️ Blown bulb logged — fixture may not be fixed!','error');
+    if(bulbCond==='reused') toast('♻️ Reused bulb logged','info');
     if(inv&&inv.inStock<=inv.threshold){
       sendLowStockAlerts(f.bulbType,inv.inStock,inv.threshold,t.name);
       sendNotif('📦 Low Stock: '+f.bulbType,inv.inStock+' remaining (threshold: '+inv.threshold+')');
