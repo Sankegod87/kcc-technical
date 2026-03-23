@@ -1,0 +1,3214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Stage Light Tracker</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f0a500">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SL Tracker">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
+<!-- Firebase v10 -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+// ═══════════════════════════════════════════════════
+// 🔧 PASTE YOUR FIREBASE CONFIG HERE
+// ═══════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyCWuthng40k55iBrQAccYE4zCg012Pt2fA",
+  authDomain:        "light-tracker-d708f.firebaseapp.com",
+  projectId:         "light-tracker-d708f",
+  storageBucket:     "light-tracker-d708f.firebasestorage.app",
+  messagingSenderId: "268758980349",
+  appId:             "1:268758980349:web:111d497335e8bbefb65094"
+};
+// ═══════════════════════════════════════════════════
+const DB_DOC = "stage-light-tracker/main";
+let app, fsdb;
+let _firebaseReady = false;
+function initFirebase() {
+  try {
+    if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+      window._syncMode = "local";
+      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "local", msg: "Local mode — no Firebase config" } }));
+      return;
+    }
+    app = initializeApp(firebaseConfig);
+    fsdb = getFirestore(app);
+    window._syncMode = "firebase";
+    window._fbDoc = () => doc(fsdb, DB_DOC);
+    window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "syncing", msg: "Connecting…" } }));
+    onSnapshot(doc(fsdb, DB_DOC), (snap) => {
+      if (snap.exists()) {
+        const remote = snap.data();
+        if (remote && remote.payload) {
+          try { window._onRemoteData(JSON.parse(remote.payload)); } catch(e) {}
+        }
+      }
+      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "ok", msg: "Live sync ✓" } }));
+    }, (err) => {
+      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "error", msg: "Sync error: " + err.code } }));
+    });
+    _firebaseReady = true;
+  } catch(e) {
+    window._syncMode = "local";
+    window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "error", msg: "Firebase init failed" } }));
+  }
+}
+window._saveToFirebase = async (data) => {
+  if (!_firebaseReady || !window._fbDoc) return false;
+  try { await setDoc(window._fbDoc(), { payload: JSON.stringify(data), updatedAt: serverTimestamp() }); return true; }
+  catch(e) { return false; }
+};
+initFirebase();
+</script>
+
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init("LQHE0BV7ztF4iXf_v");</script>
+<!-- QR Scanner -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<!-- QR Generator -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:#080b10;--s1:#0e1219;--s2:#151b26;--s3:#1c2433;--border:#1f2d42;--border2:#2a3d55;
+  --amber:#f0a500;--amber2:#ffc23e;--aglow:rgba(240,165,0,.14);--aglow2:rgba(240,165,0,.06);
+  --red:#e03c3c;--rglow:rgba(224,60,60,.13);--green:#28c97a;--gglow:rgba(40,201,122,.12);
+  --blue:#3d9be9;--bglow:rgba(61,155,233,.12);--purple:#a855f7;--pglow:rgba(168,85,247,.12);
+  --text:#bfcbde;--dim:#4e637e;--dim2:#7a8fa8;
+  --mono:'IBM Plex Mono',monospace;--head:'Barlow Condensed',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--head);font-size:15px;min-height:100vh;overflow-x:hidden;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.35;}
+header{position:sticky;top:0;z-index:100;background:rgba(8,11,16,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);height:54px;display:flex;align-items:center;padding:0 16px;gap:14px;}
+.logo{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.logo-bulb{font-size:20px;filter:drop-shadow(0 0 10px var(--amber));animation:flicker 8s infinite;}
+@keyframes flicker{0%,95%,100%{opacity:1}96%,98%{opacity:.6}97%,99%{opacity:.9}}
+.logo-text{font-family:var(--head);font-weight:900;font-size:18px;letter-spacing:3px;text-transform:uppercase;color:var(--amber);line-height:1;}
+.logo-sub{font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:3px;text-transform:uppercase;}
+nav{margin-left:auto;display:flex;gap:2px;flex-wrap:wrap;}
+.nb{background:none;border:none;color:var(--dim2);font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 8px;border-radius:5px;cursor:pointer;transition:all .18s;white-space:nowrap;}
+.nb:hover{color:var(--text);background:var(--s2);}.nb.active{color:var(--amber);background:var(--aglow);}
+#syncBar{background:var(--s1);border-bottom:1px solid var(--border);padding:4px 16px;display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;color:var(--dim2);flex-wrap:wrap;}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--dim);display:inline-block;margin-right:6px;}
+.sdot.ok{background:var(--green);box-shadow:0 0 8px var(--green);}.sdot.syncing{background:var(--amber);animation:pulse 1s infinite;}.sdot.error{background:var(--red);}.sdot.local{background:var(--blue);}
+#techBadge{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.tchip{background:var(--aglow);border:1px solid rgba(240,165,0,.3);border-radius:20px;padding:3px 10px;color:var(--amber);font-size:10px;font-weight:600;cursor:pointer;}
+main{max-width:1200px;margin:0 auto;padding:20px 16px;}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;}
+.sc{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s;}
+.sc:hover{transform:translateY(-1px);}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.sc.ca::before{background:linear-gradient(90deg,var(--amber),var(--amber2));box-shadow:0 0 14px var(--amber);}
+.sc.cr::before{background:var(--red);box-shadow:0 0 14px var(--red);}
+.sc.cg::before{background:var(--green);box-shadow:0 0 14px var(--green);}
+.sc.cb::before{background:var(--blue);box-shadow:0 0 14px var(--blue);}
+.sc.cp::before{background:var(--purple);box-shadow:0 0 14px var(--purple);}
+.sc-label{font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.sc-val{font-family:var(--head);font-size:34px;font-weight:900;line-height:1;}
+.sc.ca .sc-val{color:var(--amber);}.sc.cr .sc-val{color:var(--red);}.sc.cg .sc-val{color:var(--green);}.sc.cb .sc-val{color:var(--blue);}.sc.cp .sc-val{color:var(--purple);}
+.panel{background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;}
+.ph{padding:11px 16px;background:var(--s2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.pt{font-family:var(--head);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;}
+.pb{padding:16px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:6px;border:none;cursor:pointer;font-family:var(--head);font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;transition:all .18s;white-space:nowrap;}
+.ba{background:var(--amber);color:#000;}.ba:hover{background:var(--amber2);box-shadow:0 0 22px rgba(240,165,0,.45);transform:translateY(-1px);}
+.br{background:var(--red);color:#fff;}.br:hover{box-shadow:0 0 22px rgba(224,60,60,.45);transform:translateY(-1px);}
+.bg{background:var(--green);color:#000;}.bg:hover{box-shadow:0 0 22px rgba(40,201,122,.45);transform:translateY(-1px);}
+.bb{background:var(--blue);color:#fff;}.bb:hover{box-shadow:0 0 22px rgba(61,155,233,.45);transform:translateY(-1px);}
+.bp{background:var(--purple);color:#fff;}.bp:hover{box-shadow:0 0 22px rgba(168,85,247,.45);transform:translateY(-1px);}
+.bgh{background:transparent;border:1px solid var(--border2);color:var(--dim2);}.bgh:hover{border-color:var(--amber);color:var(--amber);}
+.bsm{padding:5px 10px;font-size:11px;}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl th{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);}
+.tbl td{padding:10px 12px;border-bottom:1px solid rgba(31,45,66,.6);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}.tbl tr:hover td{background:rgba(240,165,0,.025);}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.bok{background:var(--gglow);color:var(--green);border:1px solid rgba(40,201,122,.3);}
+.bout{background:var(--rglow);color:var(--red);border:1px solid rgba(224,60,60,.3);}
+.blow{background:var(--aglow);color:var(--amber);border:1px solid rgba(240,165,0,.3);}
+.bblue{background:var(--bglow);color:var(--blue);border:1px solid rgba(61,155,233,.3);}
+.bd{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.bd.pulse{animation:pulse 1.4s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);}
+input,select,textarea{background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 11px;transition:border-color .18s;width:100%;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 2px var(--aglow);}
+select option{background:var(--s2);}
+textarea{resize:vertical;min-height:70px;}
+.tpg{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:7px;margin-top:6px;}
+.tpb{background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:9px 6px;cursor:pointer;text-align:center;transition:all .18s;font-family:var(--head);font-size:12px;font-weight:600;color:var(--dim2);}
+.tpb:hover{border-color:var(--amber);color:var(--text);}.tpb.sel{background:var(--aglow);border-color:var(--amber);color:var(--amber);}
+.tav{font-size:22px;margin-bottom:3px;}
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap;}
+.tab{background:none;border:none;color:var(--dim2);font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:9px 12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .18s;}
+.tab:hover{color:var(--text);}.tab.active{color:var(--amber);border-bottom-color:var(--amber);}
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:14px;animation:fin .18s;}
+@keyframes fin{from{opacity:0}to{opacity:1}}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:10px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;animation:sup .2s;}
+.modal.wide{max-width:720px;}
+@keyframes sup{from{transform:translateY(18px);opacity:0}to{transform:none;opacity:1}}
+.mh{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--s2);}
+.mt{font-family:var(--head);font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;}
+.mb{padding:18px;}.mf{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+.xb{background:none;border:none;color:var(--dim2);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:4px;}
+.xb:hover{color:var(--red);}
+#qr-reader{border-radius:8px;overflow:hidden;}
+.qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;}
+.qr-item{background:#fff;border-radius:6px;padding:10px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;}
+#toasts{position:fixed;top:64px;right:14px;z-index:400;display:flex;flex-direction:column;gap:6px;}
+.toast{background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;font-size:13px;font-family:var(--head);font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 6px 24px rgba(0,0,0,.4);animation:tin .25s,tout .3s 2.7s forwards;max-width:340px;}
+@keyframes tin{from{transform:translateX(80px);opacity:0}to{transform:none;opacity:1}}
+@keyframes tout{to{opacity:0;transform:translateX(20px)}}
+.toast.success{border-left:3px solid var(--green);}.toast.error{border-left:3px solid var(--red);}.toast.info{border-left:3px solid var(--amber);}
+.who-banner{background:linear-gradient(135deg,var(--aglow),transparent);border:1px solid rgba(240,165,0,.25);border-radius:8px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;}
+.tcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px;}
+.tcard{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;align-items:flex-start;gap:12px;}
+.note-box{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-top:8px;font-size:12px;font-family:var(--mono);color:var(--dim2);font-style:italic;}
+.maint-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;background:var(--pglow);color:var(--purple);border:1px solid rgba(168,85,247,.3);}
+.chart-wrap{position:relative;height:220px;margin-top:8px;}
+.pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:flex;align-items:center;justify-content:center;}
+.pin-box{background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:32px;text-align:center;min-width:280px;}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin:20px 0;}
+.pin-dot{width:14px;height:14px;border-radius:50%;background:var(--border2);transition:background .2s;}
+.pin-dot.filled{background:var(--amber);}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px;}
+.pin-key{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:14px;font-size:20px;font-weight:700;font-family:var(--head);cursor:pointer;transition:all .18s;color:var(--text);}
+.pin-key:hover{background:var(--s3);border-color:var(--amber);color:var(--amber);}
+.row{display:flex;align-items:center;}.jbet{justify-content:space-between;}
+.gap6{gap:6px;}.gap8{gap:8px;}.gap10{gap:10px;}.gap12{gap:12px;}
+.mb8{margin-bottom:8px;}.mb10{margin-bottom:10px;}.mb12{margin-bottom:12px;}.mb14{margin-bottom:14px;}.mb16{margin-bottom:16px;}
+.mono{font-family:var(--mono);}.dim{color:var(--dim2);font-family:var(--mono);font-size:11px;}
+.ca{color:var(--amber);}.cr{color:var(--red);}.cg{color:var(--green);}.cb{color:var(--blue);}.cp{color:var(--purple);}
+.fw7{font-weight:700;}.fw9{font-weight:900;}.tu{text-transform:uppercase;}.ls2{letter-spacing:2px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+/* Hide less important table columns on mobile */
+@media(max-width:600px){
+  .mhide { display:none; }
+}
+@media print{body>*:not(#printArea){display:none !important;}#printArea{display:block !important;position:static;background:#fff;padding:16px;}.qr-item{border:1px solid #ccc;break-inside:avoid;}}
+#printArea{display:none;}
+/* ═══════════════════════════════
+   MOBILE — comprehensive overhaul
+   ═══════════════════════════════ */
+@media(max-width:768px){
+  /* Hide top nav on mobile — replaced by bottom nav */
+  header nav { display:none; }
+  header { height:50px; padding:0 14px; }
+  .logo-text { font-size:15px; }
+
+  /* Bottom navigation bar */
+  #bottomNav {
+    display:flex !important;
+    position:fixed; bottom:0; left:0; right:0; z-index:120;
+    background:rgba(8,11,16,.97);
+    border-top:1px solid var(--border);
+    backdrop-filter:blur(12px);
+    padding:6px 0 env(safe-area-inset-bottom,6px);
+  }
+  .bnn {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; background:none; border:none; color:var(--dim2); cursor:pointer;
+    font-family:var(--head); font-size:9px; font-weight:700; letter-spacing:.5px;
+    text-transform:uppercase; padding:4px 2px; transition:color .15s;
+    min-width:0;
+  }
+  .bnn .bni { font-size:18px; line-height:1; }
+  .bnn.active { color:var(--amber); }
+  .bnn span { display:block; }
+
+  /* FAB — move up above bottom nav */
+  #fabScan { bottom:74px !important; right:16px !important; width:50px !important; height:50px !important; font-size:22px !important; }
+
+  /* Sync bar — condensed */
+  #syncBar { padding:3px 12px; font-size:9px; }
+  #techBadge { margin-left:0; }
+
+  /* Main — add bottom padding for nav bar */
+  main { padding:12px 10px 100px; }
+
+  /* Grids collapse to single column */
+  .grid2, .grid3 { grid-template-columns:1fr; }
+  .stats { grid-template-columns:repeat(2,1fr); gap:8px; }
+  .sc-val { font-size:28px; }
+
+  /* Tables — horizontal scroll with touch */
+  .panel > div, .panel { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .tbl { min-width:480px; font-size:12px; }
+  .tbl th, .tbl td { padding:8px 10px; }
+
+  /* Modals — full screen on mobile */
+  .mover { padding:0; align-items:flex-end; }
+  .modal {
+    max-width:100% !important; width:100%;
+    max-height:92vh; border-radius:16px 16px 0 0;
+    animation:slideUp .25s ease-out;
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:none} }
+  .mb { padding:14px; }
+  .mh { padding:12px 14px; }
+  .mf { padding:10px 14px; }
+
+  /* Forms */
+  .fgrid { grid-template-columns:1fr; }
+  .fgrid .fg[style*="grid-column:1/-1"] { grid-column:1 !important; }
+
+  /* Tech picker — bigger tap targets */
+  .tpg { grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); }
+  .tpb { padding:10px 6px; }
+  .tav { font-size:24px; }
+
+  /* Crew cards */
+  .tcards { grid-template-columns:1fr; }
+
+  /* Tabs — scroll horizontally */
+  .tabs { overflow-x:auto; -webkit-overflow-scrolling:touch; flex-wrap:nowrap; }
+  .tab { white-space:nowrap; padding:9px 10px; font-size:11px; }
+
+  /* Buttons — full width where stacked */
+  .mf { flex-direction:row; }
+  .mf .btn { flex:1; justify-content:center; }
+
+  /* PIN box */
+  .pin-box { padding:20px; min-width:0; width:100%; max-width:320px; }
+  .pin-key { padding:12px; font-size:18px; }
+
+  /* Fixture/history page action buttons — wrap */
+  .row.gap6 { flex-wrap:wrap; gap:4px; }
+
+  /* Stats on dashboard — 2 col */
+  #statsRow { grid-template-columns:repeat(2,1fr); }
+
+  /* Scan page — full width */
+  #pg-scan > div { max-width:100% !important; }
+
+  /* Toasts — full width */
+  #toasts { left:10px; right:10px; }
+  .toast { max-width:100%; }
+}
+
+/* Very small phones */
+@media(max-width:360px){
+  .stats, #statsRow { grid-template-columns:repeat(2,1fr); }
+  .bnn .bni { font-size:16px; }
+  .bnn { font-size:8px; }
+}
+
+/* Desktop — hide bottom nav */
+@media(min-width:769px){
+  #bottomNav { display:none !important; }
+}
+/* Login screen */
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes lsSlideUp { from{transform:translateY(30px);opacity:0} to{transform:none;opacity:1} }
+#loginScreen > div > div:last-of-type { animation: lsSlideUp .4s ease-out; }
+.ls-user-btn {
+  background:var(--s2); border:1px solid var(--border2); border-radius:8px;
+  padding:12px 8px; cursor:pointer; text-align:center;
+  font-family:var(--head); font-size:13px; font-weight:700; color:var(--dim2);
+  transition:all .18s; display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.ls-user-btn:hover { border-color:var(--amber); color:var(--amber); background:var(--aglow); transform:translateY(-2px); }
+.ls-user-btn .ls-av { font-size:28px; }
+.ls-role-tag { font-size:9px; font-family:var(--mono); letter-spacing:1px; padding:1px 6px; border-radius:10px; margin-top:2px; }
+
+/* Schedule hover */
+#schedGrid [onclick]:hover {
+  border-color: var(--amber) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(240,165,0,.12);
+}
+</style>
+</head>
+<body>
+<div id="toasts"></div>
+<div id="printArea"></div>
+
+<!-- ═══════════════════════════════════════
+     HOME SCREEN (shown after login)
+     ═══════════════════════════════════════ -->
+<div id="homeScreen" style="
+  position:fixed;inset:0;z-index:900;
+  background:var(--bg);
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+">
+  <!-- Noise overlay -->
+  <div style="position:absolute;inset:0;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.35"></div>
+
+  <div style="position:relative;width:100%;max-width:480px">
+
+    <!-- Greeting -->
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:40px;margin-bottom:10px" id="hs-avatar">👤</div>
+      <div style="font-family:var(--head);font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:4px">Welcome back</div>
+      <div style="font-family:var(--head);font-size:28px;font-weight:900;color:var(--text)" id="hs-name">—</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:4px" id="hs-role">—</div>
+    </div>
+
+    <!-- Two big choice cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+
+      <!-- Lights -->
+      <div onclick="hsGo('dashboard')" style="
+        background:var(--s1);border:1px solid var(--border2);border-radius:14px;
+        padding:28px 16px;text-align:center;cursor:pointer;
+        transition:all .2s;
+      " onmouseover="this.style.borderColor='var(--amber)';this.style.background='var(--aglow)';this.style.transform='translateY(-3px)'"
+         onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--s1)';this.style.transform='none'">
+        <div style="font-size:48px;margin-bottom:12px;filter:drop-shadow(0 0 12px var(--amber))">💡</div>
+        <div style="font-family:var(--head);font-size:18px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--amber)">Lights</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:6px;line-height:1.5">Fixtures · Outages<br>Inventory · Scan</div>
+      </div>
+
+      <!-- Schedule -->
+      <div onclick="hsGo('schedule')" style="
+        background:var(--s1);border:1px solid var(--border2);border-radius:14px;
+        padding:28px 16px;text-align:center;cursor:pointer;
+        transition:all .2s;
+      " onmouseover="this.style.borderColor='var(--blue)';this.style.background='var(--bglow)';this.style.transform='translateY(-3px)'"
+         onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--s1)';this.style.transform='none'">
+        <div style="font-size:48px;margin-bottom:12px;filter:drop-shadow(0 0 12px var(--blue))">📅</div>
+        <div style="font-family:var(--head);font-size:18px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--blue)">Schedule</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:6px;line-height:1.5">Sunday roster<br>Station assignments</div>
+      </div>
+
+    </div>
+
+    <!-- This Sunday preview (if scheduled) -->
+    <div id="hs-sunday" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:8px">THIS SUNDAY</div>
+      <div id="hs-sunday-content"></div>
+    </div>
+
+    <!-- Sign out link -->
+    <div style="text-align:center">
+      <button onclick="lsLogout()" style="background:none;border:none;color:var(--dim2);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline">Sign out</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     FULL SCREEN LOGIN
+     ═══════════════════════════════════════ -->
+<div id="loginScreen" style="
+  position:fixed;inset:0;z-index:1000;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  animation:fadeIn .3s;
+">
+  <!-- Noise overlay -->
+  <div style="position:absolute;inset:0;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.35"></div>
+
+  <div style="width:100%;max-width:420px;position:relative">
+
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:36px">
+      <div style="font-size:52px;filter:drop-shadow(0 0 20px var(--amber));animation:flicker 8s infinite;margin-bottom:12px">💡</div>
+      <div style="font-family:var(--head);font-weight:900;font-size:32px;letter-spacing:4px;text-transform:uppercase;color:var(--amber);line-height:1">Stage Light</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);letter-spacing:4px;text-transform:uppercase;margin-top:4px">Tracker</div>
+    </div>
+
+    <!-- Login card -->
+    <div style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;overflow:hidden">
+
+      <!-- Step 1 — pick user -->
+      <div id="ls-step1">
+        <div style="padding:20px 20px 0;font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:12px">Select your name</div>
+        <div id="ls-userGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;padding:0 20px 20px"></div>
+        <div style="padding:0 20px 20px;border-top:1px solid var(--border);padding-top:14px;margin-top:4px" id="ls-noUsers" style="display:none">
+          <p style="font-family:var(--mono);font-size:12px;color:var(--dim2);margin-bottom:12px">No crew members yet. The app needs at least one technician added first.</p>
+        </div>
+      </div>
+
+      <!-- Step 2 — enter password -->
+      <div id="ls-step2" style="display:none;padding:24px">
+        <button onclick="lsBack()" style="background:none;border:none;color:var(--dim2);cursor:pointer;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px;margin-bottom:20px;padding:0">← Back</button>
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:44px" id="ls-avatar">👤</div>
+          <div style="font-family:var(--head);font-size:22px;font-weight:900;margin-top:8px" id="ls-name">—</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:2px" id="ls-role">—</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);display:block;margin-bottom:6px">Password</label>
+          <input type="password" id="ls-pw" placeholder="Enter your password"
+            style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:14px;padding:12px 14px"
+            onkeydown="if(event.key==='Enter')lsSubmit()">
+        </div>
+        <div id="ls-err" style="display:none;color:var(--red);font-family:var(--mono);font-size:11px;margin-bottom:10px">❌ Incorrect password. Try again.</div>
+        <button onclick="lsSubmit()" style="width:100%;background:var(--amber);color:#000;border:none;border-radius:6px;padding:13px;font-family:var(--head);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .18s" onmouseover="this.style.background='var(--amber2)'" onmouseout="this.style.background='var(--amber)'">
+          Log In
+        </button>
+        <div style="text-align:center;margin-top:12px">
+          <button onclick="lsForgot()" style="background:none;border:none;color:var(--dim2);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline">Forgot password?</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Version tag -->
+    <div style="text-align:center;margin-top:16px;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px">
+      Stage Light Tracker · <span id="ls-syncStatus">Connecting…</span>
+    </div>
+  </div>
+</div>
+
+<!-- Floating Scan Button (visible on all pages) -->
+<button id="fabScan" onclick="openGlobalScanner()" style="
+  position:fixed;bottom:24px;right:24px;z-index:150;
+  width:60px;height:60px;border-radius:50%;border:none;
+  background:var(--amber);color:#000;font-size:26px;
+  cursor:pointer;box-shadow:0 4px 20px rgba(240,165,0,.5);
+  transition:all .2s;display:flex;align-items:center;justify-content:center;
+" title="Scan QR / Barcode">📷</button>
+
+<!-- Global Scanner Modal -->
+<div id="m-globalScan" class="mover" style="display:none" onclick="mOut(event,'globalScan')">
+  <div class="modal">
+    <div class="mh"><span class="mt">📷 Scan QR / Barcode</span><button class="xb" onclick="closeGlobalScanner()">✕</button></div>
+    <div class="mb">
+      <div id="gs-reader" style="margin-bottom:12px;border-radius:8px;overflow:hidden"></div>
+      <div id="gs-result" style="display:none;background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:6px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--green)"></div>
+      <p class="dim" style="text-align:center;margin:10px 0">— or enter code manually —</p>
+      <div class="fg mb12">
+        <label>QR / Barcode Value</label>
+        <input type="text" id="gsManual" placeholder="e.g. FX-001 or BLB-A-003" oninput="this.value=this.value.toUpperCase()" autocomplete="off" onkeydown="if(event.key==='Enter')gsSubmit()">
+      </div>
+      <div id="gsActions" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PIN overlay -->
+<div id="pinOverlay" class="pin-overlay" style="display:none">
+  <div class="pin-box">
+    <div style="font-size:28px;margin-bottom:8px">🔒</div>
+    <div style="font-family:var(--head);font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px" id="pinLabel">Admin PIN</div>
+    <div class="dim" id="pinSub">Enter 4-digit PIN</div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-pad">
+      <div class="pin-key" onclick="pinKey('1')">1</div><div class="pin-key" onclick="pinKey('2')">2</div><div class="pin-key" onclick="pinKey('3')">3</div>
+      <div class="pin-key" onclick="pinKey('4')">4</div><div class="pin-key" onclick="pinKey('5')">5</div><div class="pin-key" onclick="pinKey('6')">6</div>
+      <div class="pin-key" onclick="pinKey('7')">7</div><div class="pin-key" onclick="pinKey('8')">8</div><div class="pin-key" onclick="pinKey('9')">9</div>
+      <div class="pin-key" onclick="pinKey('C')" style="color:var(--red)">✕</div><div class="pin-key" onclick="pinKey('0')">0</div><div class="pin-key" onclick="pinKey('ok')" style="color:var(--green)">✓</div>
+    </div>
+    <button class="btn bgh bsm" style="margin-top:14px;width:100%;justify-content:center" onclick="cancelPin()">Cancel</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <span class="logo-bulb">💡</span>
+    <div><div class="logo-text">Stage Light</div><div class="logo-sub">Tracker</div></div>
+  </div>
+  <nav>
+    <button class="nb active" onclick="go('dashboard')" id="nav-dashboard"><span>📊</span><span class="nl"> Dashboard</span></button>
+    <button class="nb" onclick="go('fixtures')"  id="nav-fixtures" ><span>🎭</span><span class="nl"> Fixtures</span></button>
+    <button class="nb" onclick="go('inventory')" id="nav-inventory"><span>📦</span><span class="nl"> Inventory</span></button>
+    <button class="nb" onclick="go('history')"   id="nav-history"  ><span>📋</span><span class="nl"> History</span></button>
+    <button class="nb" onclick="go('stats')"     id="nav-stats"    ><span>📈</span><span class="nl"> Stats</span></button>
+    <button class="nb" onclick="go('scan')"      id="nav-scan"     ><span>📷</span><span class="nl"> Scan</span></button>
+    <button class="nb" onclick="go('crew')"      id="nav-crew"     ><span>👷</span><span class="nl"> Crew</span></button>
+    <button class="nb" onclick="go('schedule')"  id="nav-schedule" ><span>📅</span><span class="nl"> Schedule</span></button>
+    <button class="nb" onclick="go('settings')"  id="nav-settings" ><span>⚙️</span><span class="nl"> Settings</span></button>
+  </nav>
+</header>
+
+<!-- Mobile Bottom Navigation -->
+<div id="bottomNav" style="display:none">
+  <button class="bnn active" onclick="go('dashboard')" id="bnn-dashboard"><span class="bni">📊</span><span>Dash</span></button>
+  <button class="bnn" onclick="go('fixtures')"  id="bnn-fixtures" ><span class="bni">🎭</span><span>Fixtures</span></button>
+  <button class="bnn" onclick="go('inventory')" id="bnn-inventory"><span class="bni">📦</span><span>Stock</span></button>
+  <button class="bnn" onclick="go('schedule')"  id="bnn-schedule" ><span class="bni">📅</span><span>Schedule</span></button>
+  <button class="bnn" onclick="showMobileMenu()" id="bnn-more"    ><span class="bni">☰</span><span>More</span></button>
+</div>
+
+<!-- Mobile More Menu -->
+<div id="mobileMoreMenu" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:130;background:var(--s1);border-top:1px solid var(--border2);border-radius:16px 16px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 70px)">
+  <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim2);text-transform:uppercase;margin-bottom:12px">More Pages</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('scan');hideMobileMenu()">📷 Scan</button>
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('history');hideMobileMenu()">📋 History</button>
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('stats');hideMobileMenu()">📈 Stats</button>
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('crew');hideMobileMenu()">👷 Crew</button>
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('settings');hideMobileMenu()">⚙️ Settings</button>
+  </div>
+  <button class="btn bgh" style="width:100%;justify-content:center;margin-top:10px" onclick="hideMobileMenu()">✕ Close</button>
+</div>
+<div id="mobileMoreOverlay" onclick="hideMobileMenu()" style="display:none;position:fixed;inset:0;z-index:125;background:rgba(0,0,0,.5)"></div>
+
+<div id="syncBar">
+  <span><span class="sdot" id="sdot"></span><span id="stxt">Initializing…</span></span>
+  <span id="stime"></span>
+  <div id="techBadge">
+    <span class="dim">Logged in as:</span>
+    <span class="tchip" id="techChip">— Not logged in —</span>
+    <button id="logoutBtn" onclick="lsLogout()" style="display:none;background:none;border:1px solid var(--border2);border-radius:20px;padding:3px 10px;color:var(--dim2);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--mono)" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--dim2)';this.style.borderColor='var(--border2)'">Sign Out</button>
+  </div>
+</div>
+
+<main>
+
+<!-- ── DASHBOARD ── -->
+<div id="pg-dashboard">
+  <div id="whoBanner" style="display:none" class="who-banner mb16">
+    <span style="font-size:34px" id="bannerAv">👤</span>
+    <div>
+      <div class="dim mb8" style="letter-spacing:1px">ACTIVE TECHNICIAN</div>
+      <div style="font-size:20px;font-weight:900;font-family:var(--head)" id="bannerName">—</div>
+      <div class="dim" id="bannerRole">—</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn bgh bsm" onclick="openM('changeMyPw')">🔑 Change Password</button>
+      <button class="btn bgh bsm" onclick="lsLogout()" style="border-color:var(--red);color:var(--red)">⏏️ Sign Out</button>
+    </div>
+  </div>
+  <div class="stats" id="statsRow"></div>
+  <div class="grid2 mb14">
+    <div class="panel"><div class="ph"><span class="pt">🔴 Active Outages</span></div><div class="pb" id="activeOut"></div></div>
+    <div class="panel"><div class="ph"><span class="pt">📦 Low Stock</span></div><div class="pb" id="lowStock"></div></div>
+  </div>
+  <div class="grid2 mb14">
+    <div class="panel"><div class="ph"><span class="pt">🔧 Maintenance Due</span></div><div class="pb" id="maintDue"></div></div>
+    <div class="panel"><div class="ph"><span class="pt">⚡ Recent Activity</span></div><div class="pb" id="recentAct"></div></div>
+  </div>
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+    <button class="btn bgh bsm" onclick="exportCSV()">⬇️ Export CSV</button>
+    <button class="btn bgh bsm" data-perm="master" onclick="requirePin(resetAllData)" style="border-color:var(--red);color:var(--red)">⚠️ Reset All Data</button>
+  </div>
+</div>
+
+<!-- ── FIXTURES ── -->
+<div id="pg-fixtures" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Stage Fixtures</h2>
+    <div class="row gap8">
+      <select id="fixFilter" onchange="renderFix()" style="width:auto;padding:6px 10px;font-size:11px">
+        <option value="all">All Fixtures</option>
+        <option value="out">Out Only</option>
+        <option value="ok">OK Only</option>
+        <option value="maint">Maintenance Due</option>
+      </select>
+      <button class="btn ba" data-perm="admin" onclick="openM('addFixture')">+ Add Fixture</button>
+    </div>
+  </div>
+  <div class="panel"><div class="pb" style="padding:0">
+    <table class="tbl"><thead><tr>
+      <th>ID</th><th>Name / Location</th><th class="mhide">Bulb Type</th><th class="mhide">Category</th><th>Status</th><th>Current Bulb</th><th class="mhide">Last Outage</th><th class="mhide">Outages</th><th>Actions</th>
+    </tr></thead><tbody id="fixtTbl"></tbody></table>
+  </div></div>
+</div>
+
+<!-- ── INVENTORY ── -->
+<div id="pg-inventory" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Bulb Inventory</h2>
+    <div class="row gap8">
+      <button class="btn bgh" onclick="printLabels()">🖨️ Print Labels</button>
+      <button class="btn bgh" onclick="exportCSV('inventory')">⬇️ Export</button>
+      <button class="btn br bsm" data-perm="master" onclick="requirePin(clearAllInventory)">🗑️ Clear All</button>
+      <button class="btn ba" data-perm="admin" onclick="openM('receiveBulbs')">+ Receive Batch</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="invTab('stock',this)">Current Stock</button>
+    <button class="tab" onclick="invTab('orders',this)">Order History</button>
+    <button class="tab" onclick="invTab('usage',this)">Usage Log</button>
+    <button class="tab" onclick="invTab('used',this)">♻️ Used Bulbs</button>
+    <button class="tab" onclick="invTab('registry',this)">🏷️ Bulb Registry</button>
+  </div>
+  <div id="it-stock"><div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+    <thead><tr><th>Bulb Type</th><th>In Stock</th><th>Threshold</th><th>Received</th><th>Used</th><th>Avg Life</th><th>Status</th><th></th></tr></thead>
+    <tbody id="stockTbl"></tbody>
+  </table></div></div></div>
+  <div id="it-orders" style="display:none"><div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+    <thead><tr><th>Date</th><th>Bulb Type</th><th>Qty</th><th>Supplier</th><th>Received By</th><th>Notes</th></tr></thead>
+    <tbody id="ordersTbl"></tbody>
+  </table></div></div></div>
+  <div id="it-usage" style="display:none"><div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+    <thead><tr><th>Date</th><th>Bulb Type</th><th>Qty</th><th>Fixture</th><th>Technician</th><th>Bulb ID</th><th>Condition</th></tr></thead>
+    <tbody id="usageTbl"></tbody>
+  </table></div></div></div>
+  <div id="it-registry" style="display:none">
+    <div class="row jbet mb12">
+      <p class="dim">Every individual bulb label generated — full install/pull history per label.</p>
+      <div class="row gap8">
+        <select id="regFilter" onchange="renderBulbRegistry()" style="font-size:11px;padding:5px 8px;width:auto">
+          <option value="all">All Bulbs</option>
+          <option value="in_stock">In Stock</option>
+          <option value="installed">Installed</option>
+          <option value="pulled">Pulled</option>
+          <option value="disposed">Disposed</option>
+        </select>
+        <button class="btn bgh bsm" data-perm="master" onclick="requirePin(clearBulbRegistry)" style="border-color:var(--red);color:var(--red)">🗑️ Clear Registry</button>
+      </div>
+    </div>
+    <div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+      <thead><tr><th>Bulb ID</th><th>Type</th><th>Status</th><th>Current Location</th><th>Installs</th><th>Created</th><th>Last Event</th></tr></thead>
+      <tbody id="regTbl"></tbody>
+    </table></div></div>
+  </div>
+
+  <div id="it-used" style="display:none">
+    <div class="row jbet mb12">
+      <p class="dim">Bulbs pulled from fixtures — available for reuse or disposal.</p>
+      <button class="btn ba bsm" onclick="openAddUsedBulbModal()">+ Add Used Bulb</button>
+    </div>
+    <div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+      <thead><tr><th>Bulb ID</th><th>Type</th><th>Pulled From</th><th>Date Pulled</th><th>Condition</th><th>Status</th><th>History</th><th></th></tr></thead>
+      <tbody id="usedBulbsTbl"></tbody>
+    </table></div></div>
+  </div>
+</div>
+
+<!-- ── HISTORY ── -->
+<div id="pg-history" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Outage History</h2>
+    <button class="btn bgh" onclick="exportCSV('history')">⬇️ Export CSV</button>
+  </div>
+  <div class="panel"><div class="pb" style="padding:0"><table class="tbl">
+    <thead><tr><th>Date / Time</th><th>Fixture</th><th>Bulb Type</th><th>Reported By</th><th>Resolved By</th><th>Status</th><th>Down Time</th></tr></thead>
+    <tbody id="histTbl"></tbody>
+  </table></div></div>
+</div>
+
+<!-- ── STATS ── -->
+<div id="pg-stats" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Analytics & Stats</h2>
+    <button class="btn bgh" onclick="exportCSV('stats')">⬇️ Export Report</button>
+  </div>
+  <div class="grid2 mb14">
+    <div class="panel"><div class="ph"><span class="pt">📉 Outages Per Month</span></div><div class="pb"><div class="chart-wrap"><canvas id="chartMonthly"></canvas></div></div></div>
+    <div class="panel"><div class="ph"><span class="pt">🏆 Most Problematic Fixtures</span></div><div class="pb"><div class="chart-wrap"><canvas id="chartFixtures"></canvas></div></div></div>
+  </div>
+  <div class="grid2 mb14">
+    <div class="panel"><div class="ph"><span class="pt">👷 Replacements by Technician</span></div><div class="pb"><div class="chart-wrap"><canvas id="chartTech"></canvas></div></div></div>
+    <div class="panel"><div class="ph"><span class="pt">💡 Bulb Usage by Type</span></div><div class="pb"><div class="chart-wrap"><canvas id="chartBulbs"></canvas></div></div></div>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="pt">📊 Key Metrics</span></div>
+    <div class="pb" id="keyMetrics"></div>
+  </div>
+</div>
+
+<!-- ── SCAN ── -->
+<div id="pg-scan" style="display:none">
+  <div style="max-width:460px;margin:0 auto">
+    <div class="panel">
+      <div class="ph"><span class="pt">📷 Scan QR / Barcode</span></div>
+      <div class="pb">
+        <div id="noTechWarn" style="display:none;background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:6px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--red)">
+          ⚠️ Select your technician first.
+          <button class="btn br bsm" style="margin-top:8px;display:block" onclick="openM('whoAmI')">Select Technician</button>
+        </div>
+        <button class="btn bb" style="width:100%;justify-content:center;margin-bottom:10px" onclick="toggleCamera()" id="camBtn">📷 Start Camera Scanner</button>
+        <div id="qr-reader" style="display:none;margin-bottom:12px"></div>
+        <div id="scanResult" style="display:none;background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:6px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--green)"></div>
+        <p class="dim" style="text-align:center;margin:12px 0">— or enter ID manually —</p>
+        <div class="fg mb12"><label>Fixture ID</label><input type="text" id="manualId" placeholder="e.g. FX-001" oninput="this.value=this.value.toUpperCase()" autocomplete="off"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <button class="btn br" onclick="scanAction('outage')">🔴 Report Outage</button>
+          <button class="btn bg" onclick="scanAction('replace')">✅ Mark Replaced</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="btn bgh" onclick="scanAction('scanIn')">📥 Bulb Scan IN</button>
+          <button class="btn bgh" onclick="go('inventory')">📤 View Inventory</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CREW ── -->
+<div id="pg-crew" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Crew / Technicians</h2>
+    <button class="btn ba" data-perm="admin" onclick="openM('addTech')">+ Add Technician</button>
+  </div>
+  <div class="tcards" id="crewCards"></div>
+  <div class="panel">
+    <div class="ph"><span class="pt">📊 Activity by Technician</span></div>
+    <div class="pb" style="padding:0"><table class="tbl">
+      <thead><tr><th>Technician</th><th>Outages Reported</th><th>Bulbs Replaced</th><th>Avg Response Time</th><th>Last Active</th></tr></thead>
+      <tbody id="crewStats"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ── SCHEDULE ── -->
+<div id="pg-schedule" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Sunday Schedule</h2>
+      <div class="dim" style="margin-top:4px">Team assignments for every Sunday this year</div>
+    </div>
+    <div class="row gap8">
+      <select id="schedYear" onchange="renderSchedule()" style="width:auto;padding:6px 10px;font-size:11px"></select>
+      <button data-perm="admin" class="btn bb bsm" onclick="manualSendScheduleEmail()" title="Send schedule email to assigned crew for the upcoming Sunday">📧 Send This Week</button>
+    </div>
+  </div>
+
+  <!-- No scheduler warning -->
+  <div id="schedNoPerms" style="display:none;background:var(--bglow);border:1px solid rgba(61,155,233,.3);border-radius:8px;padding:14px;margin-bottom:14px;font-size:13px">
+    👁️ <strong>View only</strong> — only crew members with scheduler permission can edit the schedule.
+  </div>
+
+  <!-- Schedule grid -->
+  <div id="schedGrid"></div>
+</div>
+
+<!-- ── SETTINGS ── -->
+<div id="pg-settings" style="display:none">
+  <div class="row jbet mb14">
+    <h2 class="fw9 tu ls2" style="font-size:14px">Settings</h2>
+  </div>
+  <div class="grid2">
+    <div class="panel">
+      <div class="ph"><span class="pt">🔒 Admin PIN</span></div>
+      <div class="pb">
+        <p class="dim mb12">Protect Reset and Delete actions with a 4-digit PIN. Leave blank to disable PIN protection.</p>
+        <div class="fg mb12"><label>Current PIN (4 digits)</label><input type="password" id="currentPin" placeholder="Enter current PIN or leave blank" maxlength="4"></div>
+        <div class="fg mb12"><label>New PIN (4 digits, leave blank to remove)</label><input type="password" id="newPin" placeholder="New 4-digit PIN" maxlength="4"></div>
+        <button class="btn ba" data-perm="admin" onclick="savePin()">Save PIN</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="pt">🔔 Push Notifications</span></div>
+      <div class="pb">
+        <p class="dim mb12">Get browser notifications when a fixture goes out or stock runs low — even when the app isn't open.</p>
+        <div id="notifStatus" class="mb12"></div>
+        <button class="btn bb" onclick="requestNotifPermission()">Enable Notifications</button>
+      </div>
+    </div>
+
+    <div class="panel" id="claimMasterPanel">
+      <div class="ph"><span class="pt">👑 Claim Master Admin</span></div>
+      <div class="pb">
+        <p class="dim mb12">No master admin has been set yet. The person who claims this role will have full control over the system — including resetting data and deleting fixtures.</p>
+        <p class="dim mb12">Once claimed, this can only be transferred by the current master admin.</p>
+        <button class="btn ba" onclick="claimMasterAdmin()">👑 Claim Master Admin</button>
+      </div>
+    </div>
+    <div class="panel" data-perm="master">
+      <div class="ph"><span class="pt">👑 Role Management</span></div>
+      <div class="pb">
+        <p class="dim mb12">Assign admin roles to crew members. Only the master admin can change roles.</p>
+        <div id="roleMgmtList"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="pt">🔧 Maintenance Defaults</span></div>
+      <div class="pb">
+        <p class="dim mb12">Default interval to flag fixtures for maintenance check.</p>
+        <div class="fg mb12"><label>Check interval (days)</label><input type="number" id="maintInterval" placeholder="90" min="1"></div>
+        <button class="btn ba" onclick="saveMaintSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- ══════════ MODALS ══════════ -->
+
+<div id="m-editSchedule" class="mover" style="display:none" onclick="mOut(event,'editSchedule')">
+  <div class="modal wide">
+    <div class="mh"><span class="mt" id="schedModalTitle">📅 Edit Sunday Schedule</span><button class="xb" onclick="closeM('editSchedule')">✕</button></div>
+    <div class="mb">
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:16px">
+        <div class="dim" style="margin-bottom:4px;letter-spacing:1px">DATE</div>
+        <div style="font-size:18px;font-weight:900" id="schedModalDate">—</div>
+      </div>
+
+      <!-- Crew assignment grid -->
+      <div class="fg mb14">
+        <label>Crew Working This Sunday</label>
+        <div id="schedCrewGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px"></div>
+      </div>
+
+      <!-- Notes -->
+      <div class="fg mb14">
+        <label>Notes / Special Instructions</label>
+        <textarea id="schedNotes" placeholder="e.g. Full production, extra hands needed..." style="min-height:60px"></textarea>
+      </div>
+
+      <!-- Emails auto-send every Thursday -->
+      <div style="padding:10px 12px;background:var(--bglow);border:1px solid rgba(61,155,233,.3);border-radius:6px;font-size:12px;color:var(--blue)">📧 Schedule emails automatically send every <strong>Thursday</strong> for the upcoming Sunday.</div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('editSchedule')">Cancel</button>
+      <button class="btn ba" onclick="saveScheduleEntry()">Save Schedule</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-whoAmI" class="mover" style="display:none" onclick="mOut(event,'whoAmI')">
+  <div class="modal">
+    <div class="mh"><span class="mt">👷 Log In</span><button class="xb" onclick="closeM('whoAmI')">✕</button></div>
+    <div class="mb">
+      <!-- Step 1: pick name -->
+      <div id="whoStep1">
+        <p class="dim mb12">Select your name to log in.</p>
+        <div class="tpg" id="whoGrid"></div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <button class="btn bgh bsm" onclick="closeM('whoAmI');go('crew')">+ Add a new technician</button>
+        </div>
+      </div>
+      <!-- Step 2: enter password -->
+      <div id="whoStep2" style="display:none">
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:36px" id="whoLoginAv">👤</div>
+          <div style="font-size:18px;font-weight:900;margin-top:6px" id="whoLoginName">—</div>
+          <div class="dim" id="whoLoginRole">—</div>
+        </div>
+        <div class="fg mb12">
+          <label>Password</label>
+          <input type="password" id="whoPassword" placeholder="Enter your password" onkeydown="if(event.key==='Enter')submitLogin()">
+        </div>
+        <div id="whoLoginErr" style="display:none;color:var(--red);font-size:12px;font-family:var(--mono);margin-bottom:10px">❌ Incorrect password</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="btn bgh" onclick="whoBack()">← Back</button>
+          <button class="btn ba" onclick="submitLogin()">Log In</button>
+        </div>
+        <div style="margin-top:12px;text-align:center">
+          <button class="btn bgh bsm" onclick="whoForgot()" style="font-size:11px">Forgot password?</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="m-addTech" class="mover" style="display:none" onclick="mOut(event,'addTech')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Add Technician</span><button class="xb" onclick="closeM('addTech')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg"><label>Full Name *</label><input id="tn" placeholder="Jane Smith"></div>
+        <div class="fg"><label>Role / Title</label><input id="tr" placeholder="Head Technician"></div>
+        <div class="fg"><label>Permission Level</label>
+          <select id="tuserrole">
+            <option value="user">👤 Regular User — report outages, replacements, receive bulbs</option>
+            <option value="admin">🔑 User Admin — manage crew, fixtures, inventory, schedule</option>
+          </select>
+        </div>
+        <div class="fg"><label>Avatar Emoji</label><input id="ta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="tem" type="email" placeholder="jane@example.com"></div>
+        <div class="fg"><label>Password *</label><input id="tpw" type="password" placeholder="Set a password"></div>
+        <div class="fg"><label>Confirm Password *</label><input id="tpw2" type="password" placeholder="Confirm password"></div>
+        <div class="fg" style="grid-column:1/-1"><div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px"><input type="checkbox" id="tcanschedule" style="width:16px;height:16px;accent-color:var(--amber)"><div><div style="font-size:13px;font-weight:700;color:var(--amber)">Can edit schedule</div><div class="dim">Allow this technician to create and edit Sunday schedules</div></div></div></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addTech')">Cancel</button>
+      <button class="btn ba" onclick="addTech()">Add to Crew</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-editTech" class="mover" style="display:none" onclick="mOut(event,'editTech')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Edit Technician</span><button class="xb" onclick="closeM('editTech')">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="etech-id">
+      <div class="fgrid">
+        <div class="fg"><label>Full Name *</label><input id="etn" placeholder="Jane Smith"></div>
+        <div class="fg"><label>Role / Title</label><input id="etr" placeholder="Head Technician"></div>
+        <div class="fg"><label>Permission Level</label>
+          <select id="etuserrole">
+            <option value="user">👤 Regular User — report outages, replacements, receive bulbs</option>
+            <option value="admin">🔑 User Admin — manage crew, fixtures, inventory, schedule</option>
+          </select>
+        </div>
+        <div class="fg"><label>Avatar Emoji</label><input id="eta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="etem" type="email" placeholder="jane@example.com"></div>
+        <div class="fg" style="grid-column:1/-1"><div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:10px"><input type="checkbox" id="etcanschedule" style="width:16px;height:16px;accent-color:var(--amber)"><div><div style="font-size:13px;font-weight:700;color:var(--amber)">Can edit schedule</div><div class="dim">Allow this technician to create and edit Sunday schedules</div></div></div></div>
+        <div class="fg" style="grid-column:1/-1"><div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:4px"><div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:10px">🔑 Change Password</div><div class="fgrid"><div class="fg"><label>New Password (leave blank to keep current)</label><input id="etpw" type="password" placeholder="New password"></div><div class="fg"><label>Confirm New Password</label><input id="etpw2" type="password" placeholder="Confirm new password"></div></div></div></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('editTech')">Cancel</button>
+      <button class="btn ba" onclick="saveTechEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-changeMyPw" class="mover" style="display:none" onclick="mOut(event,'changeMyPw')">
+  <div class="modal">
+    <div class="mh"><span class="mt">🔑 Change My Password</span><button class="xb" onclick="closeM('changeMyPw')">✕</button></div>
+    <div class="mb">
+      <div class="fg mb12"><label>Current Password</label><input type="password" id="cmpCur" placeholder="Your current password"></div>
+      <div class="fg mb12"><label>New Password</label><input type="password" id="cmpNew" placeholder="New password"></div>
+      <div class="fg"><label>Confirm New Password</label><input type="password" id="cmpNew2" placeholder="Confirm new password"></div>
+      <div id="cmpErr" style="display:none;color:var(--red);font-size:12px;font-family:var(--mono);margin-top:10px"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('changeMyPw')">Cancel</button>
+      <button class="btn ba" onclick="changeMyPassword()">Update Password</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-addFixture" class="mover" style="display:none" onclick="mOut(event,'addFixture')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Add Fixture</span><button class="xb" onclick="closeM('addFixture')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg"><label>Fixture ID *</label><input id="fid" placeholder="FX-005" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="fg"><label>Name / Description</label><input id="fna" placeholder="Front Wash Left"></div>
+        <div class="fg"><label>Location / Position</label><input id="flo" placeholder="Stage Left, Truss A"></div>
+        <div class="fg"><label>Bulb Type *</label><input id="fbu" placeholder="PAR64 1000W"></div>
+        <div class="fg"><label>Category</label>
+          <select id="fcat">
+            <option value="wash">Wash</option><option value="spot">Spot</option><option value="par">PAR</option>
+            <option value="fresnel">Fresnel</option><option value="led">LED</option><option value="follow">Follow Spot</option><option value="other">Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>Maintenance interval (days)</label><input id="fmaint" type="number" placeholder="90" min="1"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="fnotes" placeholder="Any notes about this fixture…"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addFixture')">Cancel</button>
+      <button class="btn ba" onclick="addFixture()">Add Fixture</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-editFixture" class="mover" style="display:none" onclick="mOut(event,'editFixture')">
+  <div class="modal">
+    <div class="mh"><span class="mt">✏️ Edit Fixture</span><button class="xb" onclick="closeM('editFixture')">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="efix-id">
+      <div class="fgrid">
+        <div class="fg"><label>Fixture ID</label><input id="efid" disabled style="opacity:.5"></div>
+        <div class="fg"><label>Name / Description</label><input id="efna" placeholder="Front Wash Left"></div>
+        <div class="fg"><label>Location / Position</label><input id="eflo" placeholder="Stage Left, Truss A"></div>
+        <div class="fg"><label>Bulb Type</label><input id="efbu" placeholder="PAR64 1000W"></div>
+        <div class="fg"><label>Category</label>
+          <select id="efcat">
+            <option value="wash">Wash</option><option value="spot">Spot</option><option value="par">PAR</option>
+            <option value="fresnel">Fresnel</option><option value="led">LED</option><option value="follow">Follow Spot</option><option value="other">Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>Maintenance interval (days)</label><input id="efmaint" type="number" placeholder="90" min="1"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="efnotes" placeholder="Any notes about this fixture…"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('editFixture')">Cancel</button>
+      <button class="btn ba" onclick="saveFixtureEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-viewFixture" class="mover" style="display:none" onclick="mOut(event,'viewFixture')">
+  <div class="modal wide">
+    <div class="mh"><span class="mt" id="vfTitle">Fixture Detail</span><button class="xb" onclick="closeM('viewFixture')">✕</button></div>
+    <div class="mb" id="vfBody"></div>
+  </div>
+</div>
+
+<div id="m-reportOutage" class="mover" style="display:none" onclick="mOut(event,'reportOutage')">
+  <div class="modal">
+    <div class="mh"><span class="mt" id="outTitle">🔴 Report Outage</span><button class="xb" onclick="closeM('reportOutage')">✕</button></div>
+    <div class="mb">
+      <div id="outInfo" style="background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:6px;padding:12px;margin-bottom:14px"></div>
+      <div class="fg mb12"><label>Reporting Technician *</label><div class="tpg" id="outTechG"></div></div>
+      <div class="fg"><label>Notes</label><input id="onotes" placeholder="Optional notes"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('reportOutage')">Cancel</button>
+      <button class="btn br" onclick="submitOutage()">Report Outage</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-markReplaced" class="mover" style="display:none" onclick="mOut(event,'markReplaced')">
+  <div class="modal">
+    <div class="mh"><span class="mt">✅ Mark Replaced</span><button class="xb" onclick="closeM('markReplaced')">✕</button></div>
+    <div class="mb">
+
+      <!-- Fixture info -->
+      <div id="repInfo" style="background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:6px;padding:12px;margin-bottom:14px"></div>
+
+      <!-- Technician -->
+      <div class="fg mb14"><label>Replacing Technician *</label><div class="tpg" id="repTechG"></div></div>
+
+      <!-- SCAN BULB PACKAGE -->
+      <div style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;color:var(--amber)">📦 Scan Bulb Package</div>
+        <p class="dim mb10">Scan the label on the bulb package you are installing. The app will verify it matches this fixture and deduct it from stock.</p>
+
+        <!-- Scanner area -->
+        <div id="repScannerWrap" style="display:none;margin-bottom:10px;border-radius:6px;overflow:hidden">
+          <div id="rep-qr-reader"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:flex-end;margin-bottom:10px">
+          <div class="fg">
+            <label>Bulb Label / ID</label>
+            <input id="rbulbid" placeholder="Scan or type e.g. BLB-A-003" oninput="onBulbIdInput(this.value)">
+          </div>
+          <button class="btn bb" id="repCamBtn" onclick="toggleRepCamera()" style="white-space:nowrap;min-height:44px">📷 Scan</button>
+        </div>
+
+        <!-- Match result banner -->
+        <div id="repMatchBanner" style="display:none;border-radius:6px;padding:10px 12px;font-size:13px;font-weight:600;margin-bottom:10px"></div>
+
+        <!-- Bulb condition (auto-set after scan, can be overridden) -->
+        <div class="fg">
+          <label>Bulb Condition</label>
+          <select id="rbulbcond" onchange="onConditionChange(this.value)">
+            <option value="new">✅ New</option>
+            <option value="blown">💀 Blown</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="fg mb12"><label>Notes</label><input id="rnotes" placeholder="Optional notes"></div>
+
+      <!-- Deduct checkbox -->
+      <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--aglow);border:1px solid rgba(240,165,0,.3);border-radius:6px">
+        <input type="checkbox" id="rdeduct" checked style="width:18px;height:18px;cursor:pointer;accent-color:var(--amber)">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--amber)">Deduct 1 bulb from inventory</div>
+          <div class="dim">Uncheck if no bulb was used (e.g. tripped breaker, false alarm)</div>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeRepModal()">Cancel</button>
+      <button class="btn bg" onclick="submitReplaced()">✅ Confirm Replaced</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-addUsedBulb" class="mover" style="display:none" onclick="mOut(event,'addUsedBulb')">
+  <div class="modal">
+    <div class="mh"><span class="mt">♻️ Add Used Bulb</span><button class="xb" onclick="closeM('addUsedBulb')">✕</button></div>
+    <div class="mb">
+      <p class="dim mb12">Manually log a bulb that has been pulled from a fixture and is now on the shelf.</p>
+      <div id="aub-scanner-wrap" style="display:none;margin-bottom:10px;border-radius:6px;overflow:hidden"><div id="aub-qr-reader"></div></div>
+      <div class="fgrid">
+        <div class="fg"><label>Bulb ID / Label <button class="btn bgh bsm" style="padding:2px 8px;font-size:10px;margin-left:4px" onclick="toggleAubCamera()">📷 Scan</button></label>
+          <input id="aub-id" placeholder="e.g. BLB-A-003" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="fg"><label>Bulb Type *</label>
+          <input id="aub-type" placeholder="e.g. PAR64 1000W" list="aub-type-list">
+          <datalist id="aub-type-list"></datalist>
+        </div>
+        <div class="fg"><label>Pulled From Fixture</label>
+          <input id="aub-fixture" placeholder="e.g. FX-001" oninput="this.value=this.value.toUpperCase()" list="aub-fix-list">
+          <datalist id="aub-fix-list"></datalist>
+        </div>
+        <div class="fg"><label>Condition</label>
+          <select id="aub-cond">
+            <option value="new">✅ New</option>
+            <option value="blown">💀 Blown</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><input id="aub-notes" placeholder="Optional notes"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addUsedBulb')">Cancel</button>
+      <button class="btn ba" onclick="addUsedBulb()">Add to Used List</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-editInv" class="mover" style="display:none" onclick="mOut(event,'editInv')">
+  <div class="modal">
+    <div class="mh"><span class="mt">✏️ Edit Bulb Stock</span><button class="xb" onclick="closeM('editInv')">✕</button></div>
+    <div class="mb">
+      <div class="fg mb12">
+        <label>Bulb Type</label>
+        <input id="ei-type" disabled style="opacity:.6">
+      </div>
+      <div class="grid2">
+        <div class="fg">
+          <label>Current Stock</label>
+          <input id="ei-stock" type="number" min="0" placeholder="0">
+        </div>
+        <div class="fg">
+          <label>Low Stock Threshold</label>
+          <input id="ei-threshold" type="number" min="0" placeholder="3">
+        </div>
+        <div class="fg">
+          <label>Total Received</label>
+          <input id="ei-received" type="number" min="0" placeholder="0">
+        </div>
+        <div class="fg">
+          <label>Total Used</label>
+          <input id="ei-used" type="number" min="0" placeholder="0">
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('editInv')">Cancel</button>
+      <button class="btn ba" onclick="saveInvEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-receiveBulbs" class="mover" style="display:none" onclick="mOut(event,'receiveBulbs')">
+  <div class="modal">
+    <div class="mh"><span class="mt">📦 Receive Bulb Batch</span><button class="xb" onclick="closeM('receiveBulbs')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid mb12">
+        <div class="fg"><label>Bulb Type * <button class="btn bgh bsm" style="padding:2px 8px;font-size:10px;margin-left:6px" onclick="scanIntoField('btype')">📷 Scan</button></label><input id="btype" placeholder="PAR64 1000W or scan label"></div>
+        <div class="fg"><label>Quantity *</label><input id="bqty" type="number" placeholder="12" min="1"></div>
+        <div class="fg"><label>Supplier</label><input id="bsup" placeholder="Supplier name"></div>
+        <div class="fg"><label>Low Stock Threshold</label><input id="bthr" type="number" placeholder="3" min="1"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes / Order #</label><input id="bnotes" placeholder="PO number, etc."></div>
+      </div>
+      <div class="fg"><label>Received By</label><div class="tpg" id="recvTechG"></div></div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('receiveBulbs')">Cancel</button>
+      <button class="btn ba" onclick="receiveBulbs()">Add to Inventory</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LS_KEY   = 'slt_db_v6';
+const TECH_KEY = 'slt_tech_id';
+const PIN_KEY  = 'slt_pin';
+const EJSID      = 'service_pjzebxk';
+const EJTPL      = 'template_ebt36uu';  // Alerts (low stock + outage)
+const EJTPL_SCHED = 'template_ondy8ll'; // Schedule notifications
+
+let db = { fixtures:[], outages:[], inventory:[], orders:[], usageLog:[], technicians:[], settings:{} };
+let _techId=null, _selTech={}, _curFix=null, _curPage='dashboard';
+let _camScanner=null, _camRunning=false;
+let _pinCallback=null, _pinEntry='';
+let _charts={};
+
+// ── Storage ──
+function lsave(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
+function lload(){
+  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{}},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};}}catch(e){}
+}
+window._onRemoteData=function(r){
+  db.technicians=r.technicians||[];db.fixtures=r.fixtures||[];db.outages=r.outages||[];
+  db.inventory=r.inventory||[];db.orders=r.orders||[];db.usageLog=r.usageLog||[];
+  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};lsave();refreshPage();checkScheduleEmails();
+};
+async function save(){
+  lsave();
+  if(window._syncMode==='firebase'){
+    setSyncState('syncing','Saving…');
+    const ok=await window._saveToFirebase(db);
+    if(ok){setSyncState('ok','Saved ✓');updSyncTime();}
+    else{setSyncState('error','Save failed');toast('Cloud save failed','error');}
+  }
+}
+
+// ── Sync UI ──
+function setSyncState(s,m){document.getElementById('sdot').className='sdot '+s;document.getElementById('stxt').textContent=m;}
+function updSyncTime(){document.getElementById('stime').textContent='Last sync: '+new Date().toLocaleTimeString();}
+window.addEventListener('syncStatus',e=>{const{state,msg}=e.detail;setSyncState(state,msg);if(state==='ok')updSyncTime();});
+
+// ══════════════════════════════════════════════════
+// LOGIN SCREEN
+// ══════════════════════════════════════════════════
+let _lsSelectedId = null;
+
+function showLoginScreen(){
+  const screen = document.getElementById('loginScreen');
+  screen.style.display = 'flex';
+  lsBack(); // reset to step 1
+  buildLsGrid();
+}
+
+function hideLoginScreen(){
+  const screen = document.getElementById('loginScreen');
+  screen.style.animation = 'none';
+  screen.style.opacity = '0';
+  screen.style.transition = 'opacity .25s';
+  setTimeout(()=>{ screen.style.display='none'; screen.style.opacity=''; screen.style.transition=''; },250);
+}
+
+function buildLsGrid(){
+  const grid = document.getElementById('ls-userGrid');
+  const noUsers = document.getElementById('ls-noUsers');
+  if(!db.technicians.length){
+    grid.innerHTML = '';
+    if(noUsers) noUsers.style.display = '';
+    return;
+  }
+  if(noUsers) noUsers.style.display = 'none';
+  grid.innerHTML = db.technicians.map(t=>{
+    const roleColor = t.userRole==='master'?'var(--amber)':t.userRole==='admin'?'var(--blue)':'var(--dim2)';
+    const roleLabel = t.userRole==='master'?'👑 Master':t.userRole==='admin'?'🔑 Admin':'👤 User';
+    return `<div class="ls-user-btn" onclick="lsSelectUser('${t.id}')">
+      <div class="ls-av">${t.avatar||'👤'}</div>
+      <div>${t.name.split(' ')[0]}</div>
+      <div class="ls-role-tag" style="background:rgba(0,0,0,.3);color:${roleColor}">${roleLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function lsSelectUser(id){
+  const t = db.technicians.find(x=>x.id===id);
+  if(!t) return;
+  // If no password set, log in directly
+  if(!t.passwordHash){
+    lsLogin(id);
+    return;
+  }
+  _lsSelectedId = id;
+  document.getElementById('ls-step1').style.display = 'none';
+  document.getElementById('ls-step2').style.display = '';
+  document.getElementById('ls-avatar').textContent = t.avatar||'👤';
+  document.getElementById('ls-name').textContent = t.name;
+  const roleLabel = t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User';
+  document.getElementById('ls-role').textContent = (t.role||'Technician')+' · '+roleLabel;
+  document.getElementById('ls-pw').value = '';
+  document.getElementById('ls-err').style.display = 'none';
+  setTimeout(()=>document.getElementById('ls-pw').focus(), 100);
+}
+
+function lsBack(){
+  _lsSelectedId = null;
+  document.getElementById('ls-step1').style.display = '';
+  document.getElementById('ls-step2').style.display = 'none';
+}
+
+function lsSubmit(){
+  const t = db.technicians.find(x=>x.id===_lsSelectedId);
+  if(!t) return;
+  const pw = document.getElementById('ls-pw').value;
+  if(simpleHash(pw) !== t.passwordHash){
+    document.getElementById('ls-err').style.display = '';
+    document.getElementById('ls-pw').value = '';
+    document.getElementById('ls-pw').focus();
+    // Shake animation
+    const card = document.getElementById('ls-step2');
+    card.style.animation = 'none';
+    card.style.transform = 'translateX(-8px)';
+    setTimeout(()=>{ card.style.transition='transform .1s'; card.style.transform='translateX(8px)'; },80);
+    setTimeout(()=>{ card.style.transform='translateX(-4px)'; },160);
+    setTimeout(()=>{ card.style.transform='translateX(0)'; card.style.transition=''; },240);
+    return;
+  }
+  lsLogin(t.id);
+}
+
+function lsLogin(id){
+  _techId = id;
+  try{ localStorage.setItem(TECH_KEY, id); }catch(e){}
+  updTechUI();
+  applyPermissions();
+  hideLoginScreen();
+  const t = db.technicians.find(x=>x.id===id);
+  renderDash(); // pre-render behind home screen
+  showHomeScreen();
+  // Check master admin claim
+  setTimeout(()=>{
+    const hasMaster=db.technicians.some(t=>t.userRole==='master');
+    if(!hasMaster&&getCurTech()) toast('💡 No master admin set — go to Settings','info');
+  },1200);
+}
+
+// ── Home Screen ──
+function showHomeScreen(){
+  const t = getCurTech();
+  if(!t){ showLoginScreen(); return; }
+
+  // Populate greeting
+  document.getElementById('hs-avatar').textContent = t.avatar||'👤';
+  document.getElementById('hs-name').textContent = t.name;
+  const roleLabel = t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User';
+  document.getElementById('hs-role').textContent = (t.role||'Crew')+' · '+roleLabel;
+
+  // Show this Sunday's schedule if it exists
+  const now = new Date();
+  const daysUntilSun = (7 - now.getDay()) % 7 || 7;
+  const sun = new Date(now); sun.setDate(now.getDate() + daysUntilSun);
+  const key = schedKey(sun);
+  const entry = db.schedules[key];
+  const sundayEl = document.getElementById('hs-sunday');
+  const sundayContent = document.getElementById('hs-sunday-content');
+
+  if(entry && entry.crew && entry.crew.length){
+    sundayEl.style.display = '';
+    const myEntry = entry.crew.includes(t.id);
+    const myRole = entry.roles?.[t.id];
+    const dateStr = sun.toLocaleDateString('en-CA',{month:'long',day:'numeric'});
+    const stationIcon = {
+      'Camera Station':'📷','Streaming Station':'🖥️',
+      'Presentation Station':'📊','Lighting Station':'💡','Sound Mixing':'🎚️'
+    };
+    sundayContent.innerHTML =
+      '<div style="font-size:13px;font-weight:700;margin-bottom:6px">'+dateStr+'</div>' +
+      (myEntry
+        ? '<div style="color:var(--green);font-size:13px;margin-bottom:8px">✅ You are scheduled · <strong>'+(stationIcon[myRole]||'')+(myRole||'')+'</strong></div>'
+        : '<div style="color:var(--dim2);font-size:12px;margin-bottom:8px">You are not on the roster this week</div>') +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+      entry.crew.map(id=>{
+        const cr=db.technicians.find(x=>x.id===id);
+        if(!cr) return '';
+        const role=entry.roles?.[id]||'';
+        return '<div style="background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;font-family:var(--mono)">'+(cr.avatar||'👤')+' '+cr.name.split(' ')[0]+(role?' · '+(stationIcon[role]||role):'')+'</div>';
+      }).join('') + '</div>';
+  } else {
+    sundayEl.style.display = 'none';
+  }
+
+  document.getElementById('homeScreen').style.display = 'flex';
+  document.getElementById('homeScreen').style.animation = 'fadeIn .25s';
+}
+
+function hideHomeScreen(){
+  const el = document.getElementById('homeScreen');
+  el.style.opacity = '0';
+  el.style.transition = 'opacity .2s';
+  setTimeout(()=>{ el.style.display='none'; el.style.opacity=''; el.style.transition=''; },200);
+}
+
+function hsGo(page){
+  hideHomeScreen();
+  go(page);
+}
+
+function lsForgot(){
+  alert('Ask your Master Admin or User Admin to reset your password on the Crew page.');
+}
+
+function lsLogout(){
+  _techId = null;
+  try{ localStorage.removeItem(TECH_KEY); }catch(e){}
+  updTechUI();
+  applyPermissions();
+  // Hide home screen if visible
+  const hs=document.getElementById('homeScreen');
+  if(hs) hs.style.display='none';
+  buildLsGrid();
+  showLoginScreen();
+}
+
+// Update login screen sync status
+window.addEventListener('syncStatus', e=>{
+  const el = document.getElementById('ls-syncStatus');
+  if(el) el.textContent = e.detail.msg;
+  // Rebuild grid when Firebase loads data (technicians might have arrived)
+  if(e.detail.state==='ok') buildLsGrid();
+});
+
+// ══════════════════════════════════════════════════
+// PERMISSION SYSTEM
+// 👑 master  — full access, only 1
+// 🔑 admin   — manage crew/fixtures/inventory/schedule
+// 👤 user    — report outages, replacements, receive bulbs
+// ══════════════════════════════════════════════════
+function curRole(){
+  const t=getCurTech();
+  if(!t) return 'user';
+  return t.userRole||'user';
+}
+function isMaster(){ return curRole()==='master'; }
+function isAdmin(){  return curRole()==='admin' || isMaster(); }
+function isUser(){   return true; } // everyone can do basic actions
+
+// Show/hide elements based on role
+function applyPermissions(){
+  const master = isMaster();
+  const admin  = isAdmin();
+  // Master-only buttons
+  document.querySelectorAll('[data-perm="master"]').forEach(el=>{
+    el.style.display = master ? '' : 'none';
+  });
+  // Admin+ buttons
+  document.querySelectorAll('[data-perm="admin"]').forEach(el=>{
+    el.style.display = admin ? '' : 'none';
+  });
+}
+
+// ── Navigation ──
+function go(page){
+  stopCamera();stopGsScanner&&stopGsScanner();
+  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule'].forEach(p=>{
+    document.getElementById('pg-'+p).style.display=p===page?'':'none';
+    document.getElementById('nav-'+p)?.classList.toggle('active',p===page);
+  });
+  _curPage=page;
+  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule})[page]?.();
+  applyPermissions();
+  if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
+  ['dashboard','fixtures','inventory','schedule'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
+  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan'].includes(page)?' active':'');
+}
+function refreshPage(){go(_curPage);}
+function showMobileMenu(){
+  document.getElementById('mobileMoreMenu').style.display='';
+  document.getElementById('mobileMoreOverlay').style.display='';
+}
+function hideMobileMenu(){
+  document.getElementById('mobileMoreMenu').style.display='none';
+  document.getElementById('mobileMoreOverlay').style.display='none';
+}
+
+// ── Dashboard ──
+function renderDash(){
+  const actOuts=db.outages.filter(o=>!o.resolved);
+  const lows=db.inventory.filter(i=>i.inStock<=i.threshold);
+  const total=db.inventory.reduce((s,i)=>s+i.inStock,0);
+  const maintDue=getMaintDue();
+  document.getElementById('statsRow').innerHTML=`
+    <div class="sc ca"><div class="sc-label">Fixtures</div><div class="sc-val">${db.fixtures.length}</div></div>
+    <div class="sc cr"><div class="sc-label">Active Outages</div><div class="sc-val">${actOuts.length}</div></div>
+    <div class="sc cg"><div class="sc-label">Bulbs In Stock</div><div class="sc-val">${total}</div></div>
+    <div class="sc cb"><div class="sc-label">Low Stock Types</div><div class="sc-val">${lows.length}</div></div>
+    <div class="sc cp"><div class="sc-label">Maintenance Due</div><div class="sc-val">${maintDue.length}</div></div>
+    <div class="sc cb"><div class="sc-label">Used Bulbs Available</div><div class="sc-val">${db.usedBulbs.filter(b=>b.status==='available').length}</div></div>`;
+  document.getElementById('activeOut').innerHTML=!actOuts.length
+    ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ All fixtures operational</p>'
+    :actOuts.map(o=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div><div class="fw7" style="font-size:14px">${o.fixtureName}</div><div class="dim">${o.fixtureId} · ${ago(o.timestamp)} · by ${o.reportedBy}</div></div>
+        <button class="btn bg bsm" onclick="openRepModal('${o.fixtureId}')">Replace</button>
+      </div>`).join('');
+  document.getElementById('lowStock').innerHTML=!lows.length
+    ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ Stock levels OK</p>'
+    :lows.map(i=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div><div class="fw7" style="font-size:14px">${i.bulbType}</div><div class="dim">${i.inStock} left · threshold ${i.threshold}</div></div>
+        <span class="badge blow"><span class="bd pulse"></span>LOW</span>
+      </div>`).join('');
+  document.getElementById('maintDue').innerHTML=!maintDue.length
+    ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ No maintenance due</p>'
+    :maintDue.slice(0,5).map(f=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div><div class="fw7" style="font-size:14px">${f.name}</div><div class="dim">${f.id} · due ${f.dueStr}</div></div>
+        <span class="maint-badge">DUE</span>
+      </div>`).join('');
+  const recent=[...db.outages].sort((a,b)=>b.timestamp-a.timestamp).slice(0,6);
+  document.getElementById('recentAct').innerHTML=!recent.length
+    ?'<p class="dim">No activity yet.</p>'
+    :recent.map(o=>`<div class="row gap10" style="padding:9px 0;border-bottom:1px solid rgba(31,45,66,.6)">
+        <span style="font-size:17px">${o.resolved?'✅':'🔴'}</span>
+        <div><div style="font-size:13px">${o.resolved?'<span class="cg">Resolved</span>':'<span class="cr">Outage</span>'}: <strong>${o.fixtureName}</strong></div>
+        <div class="dim">${fmtD(o.timestamp)} · ${o.reportedBy}</div></div>
+      </div>`).join('');
+}
+
+// ── Maintenance ──
+function getMaintDue(){
+  const interval=(db.settings.maintInterval||90)*86400000;
+  const now=Date.now();
+  return db.fixtures.filter(f=>{
+    const lastMaint=f.lastMaint||f.addedAt||0;
+    const due=lastMaint+interval;
+    return due<=now;
+  }).map(f=>{
+    const interval2=(db.settings.maintInterval||90)*86400000;
+    const due=(f.lastMaint||f.addedAt||0)+interval2;
+    return{...f,dueStr:due<now?'overdue':ago(due)};
+  });
+}
+
+// ── Fixtures ──
+function renderFix(){
+  const filter=document.getElementById('fixFilter')?.value||'all';
+  const maintDueIds=new Set(getMaintDue().map(f=>f.id));
+  let fixtures=[...db.fixtures];
+  if(filter==='out') fixtures=fixtures.filter(f=>f.status==='out');
+  if(filter==='ok')  fixtures=fixtures.filter(f=>f.status==='ok');
+  if(filter==='maint') fixtures=fixtures.filter(f=>maintDueIds.has(f.id));
+  const lastOut={};
+  [...db.outages].sort((a,b)=>b.timestamp-a.timestamp).forEach(o=>{if(!lastOut[o.fixtureId])lastOut[o.fixtureId]=o.timestamp;});
+  document.getElementById('fixtTbl').innerHTML=!fixtures.length
+    ?'<tr><td colspan="8" style="text-align:center;color:var(--dim);padding:28px">No fixtures — click "+ Add Fixture"</td></tr>'
+    :fixtures.map(f=>`<tr>
+        <td><span class="mono ca" style="cursor:pointer" onclick="viewFixture('${f.id}')">${f.id}</span></td>
+        <td><div class="fw7" style="cursor:pointer" onclick="viewFixture('${f.id}')">${f.name}</div><div class="dim">${f.location}</div></td>
+        <td class="mono" style="font-size:11px">${f.bulbType}</td>
+        <td><span class="badge bblue">${f.category||'other'}</span></td>
+        <td>${f.status==='ok'?'<span class="badge bok"><span class="bd"></span>OK</span>':'<span class="badge bout"><span class="bd pulse"></span>OUT</span>'}
+            ${maintDueIds.has(f.id)?'<span class="maint-badge" style="margin-left:4px">MAINT</span>':''}</td>
+        <td>${(()=>{
+          const reg=db.bulbRegistry.find(b=>b.installedIn===f.id&&b.status==='installed');
+          if(!reg&&f.currentBulbId){const r2=db.bulbRegistry.find(b=>b.bulbId===f.currentBulbId);
+            if(r2)return`<span class="mono ca" style="font-size:11px">${r2.bulbId}</span><div class="dim" style="font-size:10px">${r2.status==='installed'?'💡 In service':r2.status}</div>`;}
+          if(!reg)return'<span class="dim" style="font-size:11px">—</span>';
+          return`<span class="mono ca" style="font-size:11px">${reg.bulbId}</span><div class="dim" style="font-size:10px">💡 Since ${ago(reg.installedAt)}</div>`;
+        })()}</td>
+        <td class="dim">${lastOut[f.id]?ago(lastOut[f.id]):'Never'}</td>
+        <td style="text-align:center"><strong>${db.outages.filter(o=>o.fixtureId===f.id).length}</strong></td>
+        <td><div class="row gap6">
+          <button class="btn br bsm" onclick="openOutModal('${f.id}')">🔴</button>
+          ${f.status==='out'?`<button class="btn bg bsm" onclick="openRepModal('${f.id}')">✅</button>`:''}
+          <button class="btn bgh bsm" onclick="viewFixture('${f.id}')">👁</button>
+          <button class="btn bgh bsm" data-perm="admin" onclick="editFixture('${f.id}')">✏️</button>
+          <button class="btn bgh bsm" onclick="markMaintDone('${f.id}')">🔧</button>
+          <button class="btn bgh bsm" data-perm="master" onclick="requirePin(()=>deleteFixture('${f.id}'))">🗑️</button>
+        </div></td>
+      </tr>`).join('');
+}
+function viewFixture(id){
+  const f=db.fixtures.find(x=>x.id===id);if(!f)return;
+  const outs=[...db.outages].filter(o=>o.fixtureId===id).sort((a,b)=>b.timestamp-a.timestamp);
+  const avgDown=outs.filter(o=>o.resolved).reduce((s,o,_,a)=>s+(o.resolvedAt-o.timestamp)/a.length,0);
+  document.getElementById('vfTitle').textContent='💡 '+f.name+' ('+f.id+')';
+  document.getElementById('vfBody').innerHTML=`
+    <div class="grid2 mb14">
+      <div><div class="dim mb8">LOCATION</div><div class="fw7">${f.location||'—'}</div></div>
+      <div><div class="dim mb8">BULB TYPE REQUIRED</div><div class="fw7">${f.bulbType}</div></div>
+      <div><div class="dim mb8">CATEGORY</div><span class="badge bblue">${f.category||'other'}</span></div>
+      <div><div class="dim mb8">STATUS</div>${f.status==='ok'?'<span class="badge bok"><span class="bd"></span>OK</span>':'<span class="badge bout"><span class="bd pulse"></span>OUT</span>'}</div>
+      <div><div class="dim mb8">TOTAL OUTAGES</div><div class="fw7" style="font-size:24px;color:var(--red)">${outs.length}</div></div>
+      <div><div class="dim mb8">AVG DOWNTIME</div><div class="fw7">${avgDown?fmtDur(avgDown):'—'}</div></div>
+    </div>
+    ${(()=>{
+      const reg=db.bulbRegistry.find(b=>b.installedIn===id&&b.status==='installed');
+      if(!reg)return'<div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px"><div class="dim" style="letter-spacing:1px;margin-bottom:6px">CURRENT BULB</div><div class="dim">No bulb scan on record — install a bulb and scan it to track it here.</div></div>';
+      const installs=reg.history.filter(h=>h.event==='installed').length;
+      const typeMatch=reg.bulbType.toUpperCase()===f.bulbType.toUpperCase();
+      const bg=typeMatch?'var(--gglow)':'var(--aglow)';
+      const bdr=typeMatch?'rgba(40,201,122,.3)':'rgba(240,165,0,.3)';
+      const typeTag=typeMatch?'<span style="color:var(--green);font-size:11px">✓</span>':'<span style="color:var(--amber);font-size:11px">⚠️ mismatch</span>';
+      return '<div style="background:'+bg+';border:1px solid '+bdr+';border-radius:6px;padding:12px;margin-bottom:14px">'
+        +'<div class="dim" style="letter-spacing:1px;margin-bottom:8px">CURRENT BULB INSTALLED</div>'
+        +'<div class="row gap8" style="flex-wrap:wrap">'
+        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">BULB ID</div><div class="mono fw7" style="color:var(--amber)">'+reg.bulbId+'</div></div>'
+        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">TYPE</div><div class="fw7">'+reg.bulbType+' '+typeTag+'</div></div>'
+        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">INSTALLED</div><div class="fw7">'+ago(reg.installedAt)+'</div></div>'
+        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">BY</div><div class="fw7">'+(reg.installedBy||'—')+'</div></div>'
+        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">TIMES INSTALLED</div><div class="fw7">'+installs+'</div></div>'
+        +'</div></div>';
+    })()}
+    ${f.notes?`<div class="note-box mb14">📝 ${f.notes}</div>`:''}
+    <div class="ph" style="border-radius:6px 6px 0 0;margin-bottom:0"><span class="pt">Outage History</span></div>
+    <div style="border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">
+      <table class="tbl">
+        <thead><tr><th>Date</th><th>Reported By</th><th>Notes</th><th>Status</th><th>Down Time</th></tr></thead>
+        <tbody>${!outs.length?'<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:20px">No outages</td></tr>':outs.map(o=>`<tr>
+          <td class="dim mono" style="font-size:10px">${fmtD(o.timestamp)}</td>
+          <td>${o.reportedBy}</td><td class="dim">${o.notes||'—'}</td>
+          <td>${o.resolved?'<span class="badge bok">Resolved</span>':'<span class="badge bout">Pending</span>'}</td>
+          <td class="dim">${o.resolved?fmtDur(o.resolvedAt-o.timestamp):'<span class="cr">Ongoing</span>'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="mf" style="border:none;padding:14px 0 0 0">
+      <button class="btn br" onclick="closeM('viewFixture');openOutModal('${f.id}')">🔴 Report Outage</button>
+      ${f.status==='out'?`<button class="btn bg" onclick="closeM('viewFixture');openRepModal('${f.id}')">✅ Mark Replaced</button>`:''}
+      <button class="btn ba" onclick="closeM('viewFixture');editFixture('${f.id}')">✏️ Edit Fixture</button>
+      <button class="btn bgh" onclick="markMaintDone('${f.id}');closeM('viewFixture')">🔧 Mark Maintained</button>
+    </div>`;
+  openM('viewFixture');
+}
+function markMaintDone(id){
+  const f=db.fixtures.find(x=>x.id===id);if(!f)return;
+  f.lastMaint=Date.now();save();renderFix();toast('Maintenance logged for '+f.id,'success');
+}
+function deleteFixture(id){
+  if(!isMaster()){toast('Master admin only','error');return;}
+  const f=db.fixtures.find(x=>x.id===id);if(!f)return;
+  if(!confirm('Delete fixture "'+f.name+'"?\n\nThis also removes its outage history.'))return;
+  db.fixtures=db.fixtures.filter(x=>x.id!==id);
+  db.outages=db.outages.filter(o=>o.fixtureId!==id);
+  save();renderFix();toast('Fixture '+id+' deleted','info');
+}
+
+// ── Inventory ──
+function renderInv(){
+  document.getElementById('stockTbl').innerHTML=!db.inventory.length
+    ?'<tr><td colspan="8" style="text-align:center;color:var(--dim);padding:28px">No inventory yet</td></tr>'
+    :db.inventory.map(i=>{
+      const low=i.inStock<=i.threshold;
+      const uses=db.usageLog.filter(u=>u.bulbType===i.bulbType);
+      const avgLife=uses.length>=2?'~'+Math.round(uses.reduce((s,u,_,a)=>s+1/a.length,0)*30)+'d':'—';
+      return`<tr>
+        <td><strong>${i.bulbType}</strong></td>
+        <td><strong style="font-size:18px;color:${low?'var(--red)':'var(--green)'}">${i.inStock}</strong></td>
+        <td>${i.threshold}</td><td>${i.totalReceived}</td><td>${i.totalUsed}</td>
+        <td class="dim">${avgLife}</td>
+        <td>${low?'<span class="badge blow"><span class="bd pulse"></span>LOW</span>':'<span class="badge bok"><span class="bd"></span>OK</span>'}</td>
+        <td><div class="row gap6">
+          <button class="btn bgh bsm" data-perm="admin" onclick="openEditInv('${i.bulbType.replace(/'/g,"\\'")}')">✏️</button>
+          <button class="btn bgh bsm" data-perm="master" onclick="requirePin(()=>deleteInvRow('${i.bulbType.replace(/'/g,"\\'")}'))">🗑️</button>
+        </div></td>
+      </tr>`;}).join('');
+  document.getElementById('ordersTbl').innerHTML=!db.orders.length
+    ?'<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:28px">No orders yet</td></tr>'
+    :[...db.orders].sort((a,b)=>b.date-a.date).map(o=>`<tr>
+        <td class="dim">${fmtD(o.date)}</td><td>${o.bulbType}</td><td><strong>${o.qty}</strong></td>
+        <td>${o.supplier||'—'}</td><td>${o.tech||'—'}</td><td class="dim">${o.notes||'—'}</td>
+      </tr>`).join('');
+  document.getElementById('usageTbl').innerHTML=!db.usageLog.length
+    ?'<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:28px">No usage logged yet</td></tr>'
+    :[...db.usageLog].sort((a,b)=>b.date-a.date).map(u=>{
+      const condIcon=u.bulbCondition==='blown'?'💀 Blown':'✅ New';
+      const mismatchTag=u.mismatch?'<span style="color:var(--amber);font-size:10px;display:block">⚠️ type mismatch</span>':'';
+      const condCol=u.bulbCondition==='blown'?'var(--red)':'var(--green)';
+      return`<tr>
+        <td class="dim">${fmtD(u.date)}</td><td>${u.bulbType}</td><td><strong>${u.qty}</strong></td>
+        <td class="mono">${u.fixture}</td><td>${u.tech||'—'}</td>
+        <td class="mono" style="font-size:11px">${u.bulbId||'—'}</td>
+        <td style="color:${condCol};font-size:12px;font-weight:600">${u.bulbCondition?condIcon:'—'}${mismatchTag}</td>
+      </tr>`;}).join('');
+}
+// ── Used Bulbs ──
+let _aubCamScanner=null,_aubCamRunning=false;
+function toggleAubCamera(){_aubCamRunning?stopAubCamera():startAubCamera();}
+function startAubCamera(){
+  const wrap=document.getElementById('aub-scanner-wrap');wrap.style.display='';
+  _aubCamScanner=new Html5Qrcode('aub-qr-reader');_aubCamRunning=true;
+  _aubCamScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},
+    code=>{stopAubCamera();document.getElementById('aub-id').value=code.toUpperCase();},()=>{}
+  ).catch(err=>{toast('Camera error: '+err,'error');stopAubCamera();});
+}
+function stopAubCamera(){
+  if(_aubCamScanner&&_aubCamRunning){_aubCamScanner.stop().catch(()=>{});_aubCamRunning=false;_aubCamScanner=null;}
+  const wrap=document.getElementById('aub-scanner-wrap');if(wrap){wrap.style.display='none';const el=document.getElementById('aub-qr-reader');if(el)el.innerHTML='';}
+}
+function openAddUsedBulbModal(){
+  // Populate datalists
+  const typeList=document.getElementById('aub-type-list');
+  const fixList=document.getElementById('aub-fix-list');
+  if(typeList) typeList.innerHTML=db.inventory.map(i=>`<option value="${i.bulbType}">`).join('');
+  if(fixList)  fixList.innerHTML=db.fixtures.map(f=>`<option value="${f.id}">`).join('');
+  openM('addUsedBulb');
+}
+function addUsedBulb(){
+  const bulbId=document.getElementById('aub-id').value.trim().toUpperCase();
+  const bulbType=document.getElementById('aub-type').value.trim();
+  const fixture=document.getElementById('aub-fixture').value.trim().toUpperCase();
+  const cond=document.getElementById('aub-cond').value;
+  const notes=document.getElementById('aub-notes').value.trim();
+  if(!bulbType){toast('Bulb type required','error');return;}
+  const fix=db.fixtures.find(f=>f.id===fixture);
+  db.usedBulbs.push({
+    id:'UB-'+Date.now(),bulbId,bulbType,pulledFrom:fixture,
+    fixtureName:fix?fix.name:'',datePulled:Date.now(),
+    condition:cond,status:'available',notes,autoLogged:false
+  });
+  save();closeM('addUsedBulb');renderInv();
+  ['aub-id','aub-type','aub-fixture','aub-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  toast('Used bulb added to list','success');
+}
+function renderUsedBulbs(){
+  const tbody=document.getElementById('usedBulbsTbl');if(!tbody)return;
+  const list=[...db.usedBulbs].sort((a,b)=>b.datePulled-a.datePulled);
+  if(!list.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--dim);padding:28px">No used bulbs logged yet</td></tr>';return;}
+  const condLabel={new:'✅ New',blown:'💀 Blown'};
+  const statusColor={available:'var(--amber)',reinstalled:'var(--blue)',disposed:'var(--dim)'};
+  tbody.innerHTML=list.map(b=>`<tr>
+    <td class="mono" style="font-size:11px">${b.bulbId||'<span class="dim">unlabelled</span>'}</td>
+    <td>${b.bulbType}</td>
+    <td class="dim">${b.fixtureName?b.fixtureName+' ('+b.pulledFrom+')':b.pulledFrom||'—'}</td>
+    <td class="dim">${b.datePulled?fmtD(b.datePulled):'—'}</td>
+    <td>${condLabel[b.condition]||b.condition}</td>
+    <td><span style="font-weight:700;color:${statusColor[b.status]||'var(--text)'}">${b.status==='available'?'♻️ Available':b.status==='reinstalled'?'🔄 Reinstalled':'🗑️ Disposed'}</span>
+      ${b.reinstalledIn?`<div class="dim" style="font-size:10px">→ ${b.reinstalledIn} by ${b.reinstalledBy||'?'}</div>`:''}
+    </td>
+    <td class="dim" style="font-size:11px;max-width:150px">${b.notes||'—'}</td>
+    <td><div class="row gap6">
+      ${b.status==='available'?`<button class="btn bgh bsm" onclick="setUsedBulbStatus('${b.id}','disposed')">🗑️</button>`:''}
+      <button class="btn bgh bsm" onclick="editUsedBulbCond('${b.id}')">✏️</button>
+    </div></td>
+  </tr>`).join('');
+}
+function setUsedBulbStatus(id,status){
+  const b=db.usedBulbs.find(x=>x.id===id);if(!b)return;
+  b.status=status;save();renderUsedBulbs();toast('Bulb marked as '+status,'info');
+}
+function editUsedBulbCond(id){
+  const b=db.usedBulbs.find(x=>x.id===id);if(!b)return;
+  const opts=['new','blown'];
+  const cur=opts.indexOf(b.condition);
+  const nxt=opts[(cur+1)%opts.length];
+  b.condition=nxt;
+  // If marking as blown, also flag in registry so future scans hard-block
+  if(nxt==='blown'&&b.bulbId){
+    const reg=db.bulbRegistry.find(r=>r.bulbId===b.bulbId);
+    if(reg){
+      reg.status='disposed';
+      reg.history.push({event:'marked_blown',fixture:b.pulledFrom||'',tech:'manual',timestamp:Date.now()});
+    }
+  }
+  save();renderUsedBulbs();renderBulbRegistry&&renderBulbRegistry();
+  toast('Condition updated to: '+nxt+(nxt==='blown'?' — permanently blocked in registry':''),'info');
+}
+
+function openEditInv(bulbType){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const i=db.inventory.find(x=>x.bulbType===bulbType);
+  if(!i)return;
+  document.getElementById('ei-type').value=i.bulbType;
+  document.getElementById('ei-stock').value=i.inStock;
+  document.getElementById('ei-threshold').value=i.threshold;
+  document.getElementById('ei-received').value=i.totalReceived;
+  document.getElementById('ei-used').value=i.totalUsed;
+  openM('editInv');
+}
+function saveInvEdit(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const bulbType=document.getElementById('ei-type').value;
+  const i=db.inventory.find(x=>x.bulbType===bulbType);
+  if(!i)return;
+  const newStock=parseInt(document.getElementById('ei-stock').value);
+  const newThreshold=parseInt(document.getElementById('ei-threshold').value);
+  const newReceived=parseInt(document.getElementById('ei-received').value);
+  const newUsed=parseInt(document.getElementById('ei-used').value);
+  if(isNaN(newStock)||isNaN(newThreshold)){toast('Stock and threshold are required','error');return;}
+  i.inStock=newStock;
+  i.threshold=newThreshold;
+  if(!isNaN(newReceived)) i.totalReceived=newReceived;
+  if(!isNaN(newUsed)) i.totalUsed=newUsed;
+  save();closeM('editInv');renderInv();
+  toast(bulbType+' updated','success');
+}
+function deleteInvRow(t){
+  if(!confirm('Remove "'+t+'" from inventory?'))return;
+  db.inventory=db.inventory.filter(i=>i.bulbType!==t);
+  db.orders=db.orders.filter(o=>o.bulbType!==t);
+  save();renderInv();toast(t+' removed','info');
+}
+function clearAllInventory(){
+  if(!isMaster()){toast('Master admin only','error');return;}
+  if(!confirm('Clear ALL inventory, orders and usage history?'))return;
+  db.inventory=[];db.orders=[];db.usageLog=[];save();renderInv();toast('Inventory cleared','info');
+}
+
+// ── History ──
+function renderHist(){
+  const sorted=[...db.outages].sort((a,b)=>b.timestamp-a.timestamp);
+  document.getElementById('histTbl').innerHTML=!sorted.length
+    ?'<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:28px">No outages yet</td></tr>'
+    :sorted.map(o=>`<tr>
+        <td class="dim mono" style="font-size:10px">${fmtD(o.timestamp)}</td>
+        <td><div class="fw7">${o.fixtureName}</div><div class="dim mono">${o.fixtureId}</div></td>
+        <td class="dim">${o.bulbType}</td><td>${o.reportedBy||'—'}</td><td>${o.resolvedBy||'—'}</td>
+        <td>${o.resolved?'<span class="badge bok">✅ Resolved</span>':'<span class="badge bout">Pending</span>'}</td>
+        <td class="dim">${o.resolved?fmtDur(o.resolvedAt-o.timestamp):'<span class="cr">Ongoing</span>'}</td>
+      </tr>`).join('');
+}
+
+// ── Stats ──
+function renderStats(){
+  // Destroy old charts
+  Object.values(_charts).forEach(c=>{try{c.destroy();}catch(e){}});_charts={};
+  const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a8fa8',font:{family:'IBM Plex Mono',size:10}}}},scales:{x:{ticks:{color:'#7a8fa8',font:{size:10}},grid:{color:'rgba(31,45,66,.5)'}},y:{ticks:{color:'#7a8fa8',font:{size:10}},grid:{color:'rgba(31,45,66,.5)'}}}};
+
+  // Monthly outages
+  const months={};for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);const k=d.toLocaleString('en',{month:'short',year:'2-digit'});months[k]=0;}
+  db.outages.forEach(o=>{const d=new Date(o.timestamp);const k=d.toLocaleString('en',{month:'short',year:'2-digit'});if(k in months)months[k]++;});
+  _charts.monthly=new Chart(document.getElementById('chartMonthly'),{type:'bar',data:{labels:Object.keys(months),datasets:[{label:'Outages',data:Object.values(months),backgroundColor:'rgba(224,60,60,.6)',borderColor:'#e03c3c',borderWidth:1}]},options:chartOpts});
+
+  // Top fixtures by outages
+  const fixCount=db.fixtures.map(f=>({name:f.id,count:db.outages.filter(o=>o.fixtureId===f.id).length})).sort((a,b)=>b.count-a.count).slice(0,8);
+  _charts.fixtures=new Chart(document.getElementById('chartFixtures'),{type:'bar',data:{labels:fixCount.map(f=>f.name),datasets:[{label:'Outages',data:fixCount.map(f=>f.count),backgroundColor:'rgba(240,165,0,.6)',borderColor:'#f0a500',borderWidth:1}]},options:chartOpts});
+
+  // Replacements by tech
+  const techCount=db.technicians.map(t=>({name:t.name.split(' ')[0],count:db.usageLog.filter(u=>u.techId===t.id).length}));
+  _charts.tech=new Chart(document.getElementById('chartTech'),{type:'doughnut',data:{labels:techCount.map(t=>t.name),datasets:[{data:techCount.map(t=>t.count),backgroundColor:['rgba(40,201,122,.7)','rgba(61,155,233,.7)','rgba(168,85,247,.7)','rgba(240,165,0,.7)','rgba(224,60,60,.7)']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a8fa8',font:{family:'IBM Plex Mono',size:10}}}}}});
+
+  // Bulb usage by type
+  const bulbCount={};db.usageLog.forEach(u=>{bulbCount[u.bulbType]=(bulbCount[u.bulbType]||0)+u.qty;});
+  _charts.bulbs=new Chart(document.getElementById('chartBulbs'),{type:'doughnut',data:{labels:Object.keys(bulbCount),datasets:[{data:Object.values(bulbCount),backgroundColor:['rgba(61,155,233,.7)','rgba(168,85,247,.7)','rgba(40,201,122,.7)','rgba(240,165,0,.7)']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a8fa8',font:{family:'IBM Plex Mono',size:10}}}}}});
+
+  // Key metrics
+  const totalOuts=db.outages.length;
+  const resolved=db.outages.filter(o=>o.resolved);
+  const avgDown=resolved.length?Math.round(resolved.reduce((s,o)=>s+(o.resolvedAt-o.timestamp),0)/resolved.length/60000):0;
+  const worstFix=db.fixtures.reduce((a,f)=>{const c=db.outages.filter(o=>o.fixtureId===f.id).length;return c>a.count?{name:f.name,count:c}:a},{name:'—',count:0});
+  const totalBulbsUsed=db.usageLog.reduce((s,u)=>s+u.qty,0);
+  document.getElementById('keyMetrics').innerHTML=`
+    <div class="grid3">
+      <div style="text-align:center;padding:16px"><div class="dim mb8">TOTAL OUTAGES</div><div style="font-size:36px;font-weight:900;color:var(--red)">${totalOuts}</div></div>
+      <div style="text-align:center;padding:16px"><div class="dim mb8">AVG DOWNTIME</div><div style="font-size:36px;font-weight:900;color:var(--amber)">${avgDown} min</div></div>
+      <div style="text-align:center;padding:16px"><div class="dim mb8">BULBS USED TOTAL</div><div style="font-size:36px;font-weight:900;color:var(--blue)">${totalBulbsUsed}</div></div>
+      <div style="text-align:center;padding:16px"><div class="dim mb8">MOST PROBLEMATIC</div><div style="font-size:18px;font-weight:700;color:var(--amber)">${worstFix.name}</div><div class="dim">${worstFix.count} outages</div></div>
+      <div style="text-align:center;padding:16px"><div class="dim mb8">RESOLUTION RATE</div><div style="font-size:36px;font-weight:900;color:var(--green)">${totalOuts?Math.round(resolved.length/totalOuts*100):0}%</div></div>
+      <div style="text-align:center;padding:16px"><div class="dim mb8">FIXTURES TRACKED</div><div style="font-size:36px;font-weight:900;color:var(--purple)">${db.fixtures.length}</div></div>
+    </div>`;
+}
+
+// ── Crew ──
+function renderCrew(){
+  document.getElementById('crewCards').innerHTML=!db.technicians.length
+    ?'<p class="dim">No technicians yet.</p>'
+    :db.technicians.map(t=>`<div class="tcard">
+        <div style="font-size:28px;flex-shrink:0">${t.avatar||'👤'}</div>
+        <div style="flex:1;min-width:0">
+          <div class="fw7" style="font-size:14px">${t.name}</div>
+          <div class="dim">${t.role||'Technician'}</div>
+          <div class="dim" style="color:${t.email?'var(--blue)':'var(--red)'}">${t.email||'No email set'}</div>
+          <div class="dim" style="color:${t.passwordHash?'var(--green)':'var(--red)'}">${t.passwordHash?'🔒 Password set':'⚠️ No password'}</div>
+          <div class="dim" style="color:${t.userRole==='master'?'var(--amber)':t.userRole==='admin'?'var(--blue)':'var(--dim2)'}">
+            ${t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User'}
+          </div>
+          ${t.canSchedule?'<div class="dim" style="color:var(--amber)">📅 Can edit schedule</div>':''}
+        </div>
+        <div class="row gap6">
+          <button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️</button>
+          <button class="btn bgh bsm" data-perm="admin" onclick="adminResetPassword('${t.id}')" title="Admin: reset password">🔑</button>
+          <button class="btn bgh bsm" data-perm="admin" onclick="requirePin(()=>removeTech('${t.id}'))">✕</button>
+        </div>
+      </div>`).join('');
+  document.getElementById('crewStats').innerHTML=!db.technicians.length?''
+    :db.technicians.map(t=>{
+        const rep=db.outages.filter(o=>o.techId===t.id).length;
+        const rpl=db.usageLog.filter(u=>u.techId===t.id).length;
+        const resolved=db.outages.filter(o=>o.resolvedTechId===t.id&&o.resolved);
+        const avgResp=resolved.length?fmtDur(resolved.reduce((s,o)=>s+(o.resolvedAt-o.timestamp),0)/resolved.length):'—';
+        const times=[...db.outages.filter(o=>o.techId===t.id).map(o=>o.timestamp),...db.usageLog.filter(u=>u.techId===t.id).map(u=>u.date)].sort((a,b)=>b-a);
+        return`<tr>
+          <td><div class="row gap8"><span style="font-size:20px">${t.avatar||'👤'}</span><div><div class="fw7">${t.name}</div><div class="dim">${t.role||''}</div></div></div></td>
+          <td>${rep}</td><td>${rpl}</td><td class="dim">${avgResp}</td><td class="dim">${times.length?ago(times[0]):'Never'}</td>
+        </tr>`;
+      }).join('');
+}
+
+// ── Settings ──
+function renderSettings(){
+  const s=db.settings||{};
+  // Show/hide claim master panel
+  const claimPanel=document.getElementById('claimMasterPanel');
+  if(claimPanel){
+    const hasMaster=db.technicians.some(t=>t.userRole==='master');
+    claimPanel.style.display=(!hasMaster&&getCurTech())?'':'none';
+  }
+  // Render role management list (master only)
+  const roleList=document.getElementById('roleMgmtList');
+  if(roleList&&isMaster()){
+    roleList.innerHTML=db.technicians.filter(t=>t.userRole!=='master').map(t=>`
+      <div class="row jbet" style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div class="row gap8">
+          <span style="font-size:20px">${t.avatar||'👤'}</span>
+          <div><div class="fw7">${t.name}</div><div class="dim">${t.role||'Technician'}</div></div>
+        </div>
+        <select onchange="setUserRole('${t.id}',this.value)" style="width:auto;padding:5px 8px;font-size:11px">
+          <option value="user" ${(t.userRole||'user')==='user'?'selected':''}>👤 Regular User</option>
+          <option value="admin" ${t.userRole==='admin'?'selected':''}>🔑 User Admin</option>
+        </select>
+      </div>`).join('') || '<p class="dim">No other crew members yet.</p>';
+  }
+  document.getElementById('maintInterval').value=s.maintInterval||90;
+  const np=document.getElementById('notifStatus');
+  if(!('Notification' in window)){np.innerHTML='<p class="dim">Notifications not supported in this browser.</p>';}
+  else if(Notification.permission==='granted'){np.innerHTML='<span class="badge bok">✅ Notifications enabled</span>';}
+  else if(Notification.permission==='denied'){np.innerHTML='<span class="badge bout">Blocked — enable in browser settings</span>';}
+  else{np.innerHTML='<span class="badge blow">Not yet enabled</span>';}
+}
+function claimMasterAdmin(){
+  const t=getCurTech();
+  if(!t){toast('Log in first','error');return;}
+  const hasMaster=db.technicians.some(x=>x.userRole==='master');
+  if(hasMaster){toast('A master admin already exists','error');return;}
+  if(!confirm('Make '+t.name+' the Master Admin?\n\nThis gives full system access including data reset and deletion.'))return;
+  t.userRole='master';
+  save();applyPermissions();renderSettings();updTechUI();
+  toast('👑 '+t.name+' is now Master Admin','success');
+}
+
+function setUserRole(techId, role){
+  if(!isMaster()){toast('Master admin only','error');return;}
+  const t=db.technicians.find(x=>x.id===techId);
+  if(!t||t.userRole==='master')return;
+  t.userRole=role;
+  save();renderSettings();
+  toast(t.name+' is now '+role,'success');
+}
+
+function savePin(){
+  const cur=document.getElementById('currentPin').value;
+  const nw=document.getElementById('newPin').value;
+  const stored=localStorage.getItem(PIN_KEY)||'';
+  if(stored&&cur!==stored){toast('Current PIN incorrect','error');return;}
+  if(nw&&nw.length!==4){toast('PIN must be exactly 4 digits','error');return;}
+  if(nw) localStorage.setItem(PIN_KEY,nw);
+  else localStorage.removeItem(PIN_KEY);
+  document.getElementById('currentPin').value='';document.getElementById('newPin').value='';
+  toast(nw?'PIN saved':'PIN removed','success');
+}
+function saveMaintSettings(){
+  const v=parseInt(document.getElementById('maintInterval').value)||90;
+  db.settings.maintInterval=v;save();toast('Maintenance interval saved','success');
+}
+
+
+// ── PIN ──
+function requirePin(cb){
+  const stored=localStorage.getItem(PIN_KEY);
+  if(!stored){cb();return;}
+  _pinCallback=cb;_pinEntry='';updatePinDots();
+  document.getElementById('pinOverlay').style.display='flex';
+}
+function pinKey(k){
+  if(k==='C'){_pinEntry='';updatePinDots();return;}
+  if(k==='ok'){checkPin();return;}
+  if(_pinEntry.length<4){_pinEntry+=k;updatePinDots();}
+  if(_pinEntry.length===4) setTimeout(checkPin,120);
+}
+function checkPin(){
+  const stored=localStorage.getItem(PIN_KEY);
+  if(_pinEntry===stored){
+    document.getElementById('pinOverlay').style.display='none';
+    if(_pinCallback){_pinCallback();_pinCallback=null;}
+  } else {
+    _pinEntry='';updatePinDots();
+    document.getElementById('pinSub').textContent='Incorrect PIN — try again';
+    setTimeout(()=>document.getElementById('pinSub').textContent='Enter 4-digit PIN',1000);
+  }
+}
+function cancelPin(){document.getElementById('pinOverlay').style.display='none';_pinCallback=null;_pinEntry='';}
+function updatePinDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).className='pin-dot'+(i<_pinEntry.length?' filled':'');}
+
+// ── Push Notifications ──
+function requestNotifPermission(){
+  if(!('Notification' in window)){toast('Not supported in this browser','error');return;}
+  Notification.requestPermission().then(p=>{renderSettings();if(p==='granted')toast('Notifications enabled!','success');});
+}
+function sendNotif(title,body){
+  if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+    try{new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💡</text></svg>'});}catch(e){}
+  }
+}
+
+// ── Tech helpers ──
+function getCurTech(){return _techId?db.technicians.find(t=>t.id===_techId)||null:null;}
+function loadTech(){try{_techId=localStorage.getItem(TECH_KEY)||null;}catch(e){}updTechUI();}
+function setTech(id){
+  _techId=id;try{localStorage.setItem(TECH_KEY,id);}catch(e){}
+  updTechUI();closeM('whoAmI');applyPermissions();
+  const t=db.technicians.find(x=>x.id===id);if(t)toast('Welcome, '+t.name+'! 👋','success');
+  renderDash();
+}
+function updTechUI(){
+  const t=getCurTech();
+  const chip=document.getElementById('techChip');
+  const logoutBtn=document.getElementById('logoutBtn');
+  if(chip) chip.textContent=t?t.avatar+' '+t.name:'— Not logged in —';
+  if(logoutBtn) logoutBtn.style.display=t?'':'none';
+  const banner=document.getElementById('whoBanner');
+  if(t){banner.style.display='';document.getElementById('bannerAv').textContent=t.avatar||'👤';document.getElementById('bannerName').textContent=t.name;const roleLabel=t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 '+t.role||'Technician';document.getElementById('bannerRole').textContent=roleLabel;}
+  else banner.style.display='none';
+}
+function buildTechGrid(cid,key){
+  const el=document.getElementById(cid);if(!el)return;
+  if(!_selTech[key]&&_techId)_selTech[key]=_techId;
+  const sel=_selTech[key];
+  if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians. <a href="#" class="ca" onclick="closeAllM();go(\'crew\')">Add crew →</a></p>';return;}
+  el.innerHTML=db.technicians.map(t=>`<div class="tpb ${t.id===sel?'sel':''}" onclick="pickTech('${key}','${t.id}','${cid}')"><div class="tav">${t.avatar||'👤'}</div><div>${t.name.split(' ')[0]}</div></div>`).join('');
+}
+function pickTech(key,id,cid){_selTech[key]=id;buildTechGrid(cid,key);}
+function getTech(key){const id=_selTech[key];return id?db.technicians.find(t=>t.id===id)||null:null;}
+
+// ── Modals ──
+function openM(id){
+  document.getElementById('m-'+id).style.display='flex';
+  if(id==='whoAmI'){document.getElementById('whoStep1').style.display='';document.getElementById('whoStep2').style.display='none';_whoSelectedId=null;buildWhoGrid();}
+  if(id==='reportOutage')buildTechGrid('outTechG','outage');
+  if(id==='markReplaced')buildTechGrid('repTechG','replace');
+  if(id==='receiveBulbs')buildTechGrid('recvTechG','recv');
+}
+function closeM(id){document.getElementById('m-'+id).style.display='none';if(id==='markReplaced')stopRepCamera&&stopRepCamera();}
+function mOut(e,id){if(e.target===document.getElementById('m-'+id))closeM(id);}
+function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw','globalScan','addUsedBulb','editSchedule','editInv'].forEach(closeM);}
+function buildWhoGrid(){
+  const el=document.getElementById('whoGrid');
+  if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians yet.</p>';return;}
+  el.innerHTML=db.technicians.map(t=>`<div class="tpb ${t.id===_techId?'sel':''}" onclick="whoSelectTech('${t.id}')"><div class="tav">${t.avatar||'👤'}</div><div>${t.name.split(' ')[0]}</div></div>`).join('');
+}
+let _whoSelectedId=null;
+function whoSelectTech(id){
+  const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  // If technician has no password set, log in directly
+  if(!t.passwordHash){setTech(id);return;}
+  _whoSelectedId=id;
+  document.getElementById('whoStep1').style.display='none';
+  document.getElementById('whoStep2').style.display='';
+  document.getElementById('whoLoginAv').textContent=t.avatar||'👤';
+  document.getElementById('whoLoginName').textContent=t.name;
+  document.getElementById('whoLoginRole').textContent=t.role||'Technician';
+  document.getElementById('whoPassword').value='';
+  document.getElementById('whoLoginErr').style.display='none';
+  setTimeout(()=>document.getElementById('whoPassword').focus(),100);
+}
+function whoBack(){
+  document.getElementById('whoStep1').style.display='';
+  document.getElementById('whoStep2').style.display='none';
+  _whoSelectedId=null;
+}
+function submitLogin(){
+  const t=db.technicians.find(x=>x.id===_whoSelectedId);if(!t)return;
+  const pw=document.getElementById('whoPassword').value;
+  const hash=simpleHash(pw);
+  if(hash!==t.passwordHash){
+    document.getElementById('whoLoginErr').style.display='';
+    document.getElementById('whoPassword').value='';
+    document.getElementById('whoPassword').focus();
+    return;
+  }
+  setTech(t.id);
+  whoBack();
+}
+function whoForgot(){
+  closeM('whoAmI');
+  toast('Ask the admin to reset your password on the Crew page','info');
+}
+// Simple hash — not cryptographic but sufficient for this use case
+function simpleHash(str){
+  let hash=0;
+  for(let i=0;i<str.length;i++){hash=((hash<<5)-hash)+str.charCodeAt(i);hash|=0;}
+  return hash.toString(36);
+}
+function addTech(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const name=document.getElementById('tn').value.trim();
+  const role=document.getElementById('tr').value.trim();
+  const av=document.getElementById('ta').value.trim()||'👤';
+  const email=document.getElementById('tem').value.trim();
+  const pw=document.getElementById('tpw').value;
+  const pw2=document.getElementById('tpw2').value;
+  if(!name){toast('Name required','error');return;}
+  if(!pw){toast('Password is required','error');return;}
+  if(pw!==pw2){toast('Passwords do not match','error');return;}
+  const canSched=document.getElementById('tcanschedule').checked;
+  const userRole=document.getElementById('tuserrole').value;
+  db.technicians.push({id:'t'+Date.now(),name,role,avatar:av,email,passwordHash:simpleHash(pw),canSchedule:canSched,userRole});
+  save();closeM('addTech');renderCrew();
+  ['tn','tr','ta','tem','tpw','tpw2'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tcanschedule').checked=false;
+  document.getElementById('tuserrole').value='user';
+  toast(name+' added to crew','success');
+}
+function editTech(id){
+  const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  document.getElementById('etech-id').value=t.id;
+  document.getElementById('etn').value=t.name;
+  document.getElementById('etr').value=t.role||'';
+  document.getElementById('eta').value=t.avatar||'👤';
+  document.getElementById('etem').value=t.email||'';
+  document.getElementById('etcanschedule').checked=t.canSchedule||false;
+  document.getElementById('etuserrole').value=t.userRole||'user';
+  openM('editTech');
+}
+function saveTechEdit(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const id=document.getElementById('etech-id').value;
+  const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  t.name=document.getElementById('etn').value.trim()||t.name;
+  t.role=document.getElementById('etr').value.trim();
+  t.avatar=document.getElementById('eta').value.trim()||'👤';
+  t.email=document.getElementById('etem').value.trim();
+  t.canSchedule=document.getElementById('etcanschedule').checked;
+  const newUserRole=document.getElementById('etuserrole').value;
+  // Prevent changing master admin role
+  if(t.userRole!=='master') t.userRole=newUserRole;
+  const newPw=document.getElementById('etpw').value;
+  const newPw2=document.getElementById('etpw2').value;
+  if(newPw){
+    if(newPw!==newPw2){toast('Passwords do not match','error');return;}
+    t.passwordHash=simpleHash(newPw);
+    toast('Password updated for '+t.name,'success');
+  }
+  ['etpw','etpw2'].forEach(id=>document.getElementById(id).value='');
+  save();closeM('editTech');renderCrew();updTechUI();toast('Technician updated','success');
+}
+function changeMyPassword(){
+  const t=getCurTech();if(!t){toast('Not logged in','error');return;}
+  const cur=document.getElementById('cmpCur').value;
+  const nw=document.getElementById('cmpNew').value;
+  const nw2=document.getElementById('cmpNew2').value;
+  const errEl=document.getElementById('cmpErr');
+  errEl.style.display='none';
+  if(t.passwordHash&&simpleHash(cur)!==t.passwordHash){errEl.textContent='❌ Current password is incorrect';errEl.style.display='';return;}
+  if(!nw){errEl.textContent='❌ New password cannot be empty';errEl.style.display='';return;}
+  if(nw!==nw2){errEl.textContent='❌ Passwords do not match';errEl.style.display='';return;}
+  t.passwordHash=simpleHash(nw);
+  save();closeM('changeMyPw');
+  ['cmpCur','cmpNew','cmpNew2'].forEach(id=>document.getElementById(id).value='');
+  toast('Password updated successfully!','success');
+}
+
+function adminResetPassword(id){
+  const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  requirePin(()=>{
+    const newPw=prompt('Set new password for '+t.name+':');
+    if(!newPw){toast('Cancelled','info');return;}
+    const confirm=prompt('Confirm new password:');
+    if(newPw!==confirm){toast('Passwords do not match','error');return;}
+    t.passwordHash=simpleHash(newPw);
+    save();renderCrew();toast('Password reset for '+t.name,'success');
+  });
+}
+function removeTech(id){
+  if(!confirm('Remove this technician?'))return;
+  db.technicians=db.technicians.filter(t=>t.id!==id);
+  if(_techId===id){_techId=null;try{localStorage.removeItem(TECH_KEY);}catch(e){}updTechUI();}
+  save();renderCrew();
+}
+function editFixture(id){
+  const f=db.fixtures.find(x=>x.id===id);if(!f)return;
+  document.getElementById('efix-id').value=f.id;
+  document.getElementById('efid').value=f.id;
+  document.getElementById('efna').value=f.name||'';
+  document.getElementById('eflo').value=f.location||'';
+  document.getElementById('efbu').value=f.bulbType||'';
+  document.getElementById('efcat').value=f.category||'other';
+  document.getElementById('efmaint').value=f.maintInterval||'';
+  document.getElementById('efnotes').value=f.notes||'';
+  openM('editFixture');
+}
+function saveFixtureEdit(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const id=document.getElementById('efix-id').value;
+  const f=db.fixtures.find(x=>x.id===id);if(!f)return;
+  f.name=document.getElementById('efna').value.trim()||f.name;
+  f.location=document.getElementById('eflo').value.trim();
+  f.bulbType=document.getElementById('efbu').value.trim()||f.bulbType;
+  f.category=document.getElementById('efcat').value;
+  f.maintInterval=parseInt(document.getElementById('efmaint').value)||null;
+  f.notes=document.getElementById('efnotes').value.trim();
+  save();closeM('editFixture');renderFix();toast('Fixture '+f.id+' updated','success');
+}
+
+function addFixture(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const id=document.getElementById('fid').value.trim().toUpperCase();
+  const nam=document.getElementById('fna').value.trim();
+  const loc=document.getElementById('flo').value.trim();
+  const bul=document.getElementById('fbu').value.trim();
+  const cat=document.getElementById('fcat').value;
+  const maint=parseInt(document.getElementById('fmaint').value)||null;
+  const notes=document.getElementById('fnotes').value.trim();
+  if(!id||!bul){toast('Fixture ID and Bulb Type required','error');return;}
+  if(db.fixtures.find(f=>f.id===id)){toast('Fixture ID already exists','error');return;}
+  db.fixtures.push({id,name:nam||id,location:loc,bulbType:bul,category:cat,maintInterval:maint,notes,status:'ok',outageCount:0,addedAt:Date.now()});
+  save();closeM('addFixture');renderFix();toast('Fixture '+id+' added','success');
+}
+function openOutModal(fid){
+  const f=db.fixtures.find(x=>x.id===fid);if(!f)return;
+  _curFix=fid;_selTech['outage']=_techId||null;
+  document.getElementById('outTitle').textContent='🔴 Report Outage — '+f.id;
+  document.getElementById('outInfo').innerHTML=`<div class="fw7" style="font-size:14px;margin-bottom:3px">${f.name}</div><div class="dim">${f.location} · ${f.bulbType}</div>`;
+  document.getElementById('onotes').value='';
+  openM('reportOutage');
+}
+function openRepModal(fid){
+  const f=db.fixtures.find(x=>x.id===fid);if(!f)return;
+  _curFix=fid;_selTech['replace']=_techId||null;
+  document.getElementById('repInfo').innerHTML=`
+    <div class="fw7" style="font-size:14px;margin-bottom:3px">${f.name}</div>
+    <div class="dim">${f.location}</div>
+    <div style="margin-top:6px;font-family:var(--mono);font-size:11px">
+      Required bulb: <strong style="color:var(--amber)">${f.bulbType}</strong>
+      ${(()=>{const inv=db.inventory.find(i=>i.bulbType===f.bulbType);return inv?`<span style="margin-left:10px;color:${inv.inStock>0?'var(--green)':'var(--red)'}">${inv.inStock} in stock</span>`:'<span style="color:var(--red);margin-left:10px">Not in inventory</span>';})()}
+    </div>`;
+  document.getElementById('rnotes').value='';
+  document.getElementById('rbulbid').value='';
+  document.getElementById('rbulbcond').value='new';
+  document.getElementById('repMatchBanner').style.display='none';
+  stopRepCamera();
+  openM('markReplaced');
+}
+function closeRepModal(){
+  stopRepCamera();
+  closeM('markReplaced');
+}
+function submitOutage(){
+  const f=db.fixtures.find(x=>x.id===_curFix);if(!f)return;
+  const t=getTech('outage');if(!t){toast('Select a technician first','error');return;}
+  db.outages.push({id:'OUT-'+Date.now(),fixtureId:f.id,fixtureName:f.name,bulbType:f.bulbType,reportedBy:t.name,techId:t.id,notes:document.getElementById('onotes').value.trim(),timestamp:Date.now(),resolved:false});
+  f.status='out';f.outageCount=(f.outageCount||0)+1;
+  f.currentBulbId=null;f.currentBulbType=null;
+  // Send outage alert email + push notification
+  sendOutageAlerts(f.name,f.id,f.bulbType,t.name);
+  sendNotif('🔴 Fixture Out: '+f.name,'Reported by '+t.name+' — '+f.id);
+  // Update registry — mark installed bulb as blown/disposed when outage reported
+  const pulledReg=db.bulbRegistry.find(b=>b.installedIn===f.id&&b.status==='installed');
+  if(pulledReg){
+    pulledReg.history.push({event:'blown',fixture:f.id,fixtureName:f.name,tech:t.name,timestamp:Date.now()});
+    pulledReg.status='disposed';
+    pulledReg.installedIn=null;
+  }
+
+  // Auto-log the old bulb as pulled/used when outage reported
+  db.usedBulbs.push({
+    id:'UB-'+Date.now(),
+    bulbId:'',               // unknown until physically labelled
+    bulbType:f.bulbType,
+    pulledFrom:f.id,
+    fixtureName:f.name,
+    datePulled:Date.now(),
+    condition:'new',
+    status:'available',      // available | reinstalled | disposed
+    notes:'Auto-logged when '+f.name+' reported out by '+t.name,
+    autoLogged:true
+  });
+  save();closeM('reportOutage');toast('Outage reported for '+f.id,'error');refreshPage();
+}
+// ── In-modal replacement camera ──
+let _repCamScanner=null, _repCamRunning=false;
+
+function toggleRepCamera(){
+  _repCamRunning?stopRepCamera():startRepCamera();
+}
+function startRepCamera(){
+  const wrap=document.getElementById('repScannerWrap');
+  const btn=document.getElementById('repCamBtn');
+  wrap.style.display='';
+  btn.textContent='⏹ Stop';
+  _repCamScanner=new Html5Qrcode('rep-qr-reader');
+  _repCamRunning=true;
+  _repCamScanner.start(
+    {facingMode:'environment'},
+    {fps:10,qrbox:{width:220,height:220}},
+    code=>{
+      stopRepCamera();
+      document.getElementById('rbulbid').value=code.toUpperCase();
+      onBulbIdInput(code.toUpperCase());
+    },
+    ()=>{}
+  ).catch(err=>{toast('Camera error: '+err,'error');stopRepCamera();});
+}
+function stopRepCamera(){
+  if(_repCamScanner&&_repCamRunning){
+    _repCamScanner.stop().catch(()=>{});
+    _repCamRunning=false;_repCamScanner=null;
+  }
+  const wrap=document.getElementById('repScannerWrap');
+  if(wrap){wrap.style.display='none';const el=document.getElementById('rep-qr-reader');if(el)el.innerHTML='';}
+  const btn=document.getElementById('repCamBtn');
+  if(btn)btn.textContent='📷 Scan';
+}
+
+// Called whenever bulb ID field changes (scan or manual)
+function onBulbIdInput(code){
+  const banner=document.getElementById('repMatchBanner');
+  if(!code){banner.style.display='none';return;}
+  const f=db.fixtures.find(x=>x.id===_curFix);
+  if(!f)return;
+
+  // ── STEP 0: Check bulb registry — is this label known? Is it already installed? ──
+  const reg=db.bulbRegistry.find(b=>b.bulbId===code);
+  if(reg){
+    if(reg.status==='installed'){
+      // BLOCK — this exact bulb is currently installed in another fixture
+      const installedFix=db.fixtures.find(x=>x.id===reg.installedIn);
+      const fixName=installedFix?installedFix.name:reg.installedIn;
+      banner.style.display='';
+      banner.style.background='var(--rglow)';
+      banner.style.border='1px solid rgba(224,60,60,.5)';
+      banner.innerHTML=`
+        <div style="color:var(--red);font-size:15px;font-weight:900">🚫 HARD BLOCK — Bulb Currently In Use!</div>
+        <div style="margin-top:8px;background:rgba(224,60,60,.1);border-radius:6px;padding:10px">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text)">Bulb <strong>${code}</strong> is currently installed in:</div>
+          <div style="font-size:16px;font-weight:700;color:var(--red);margin-top:4px">${fixName} (${reg.installedIn})</div>
+          <div class="dim" style="margin-top:2px">Installed ${reg.installedAt?ago(reg.installedAt):'unknown'} by ${reg.installedBy||'unknown'}</div>
+        </div>
+        <div style="font-size:12px;color:var(--red);margin-top:10px;font-weight:700">❌ This bulb is in use. Scan a different bulb.</div>
+        <button class="btn bgh bsm" style="margin-top:8px" onclick="document.getElementById('rbulbid').value='';onBulbIdInput('')">✕ Scan Different Bulb</button>`;
+      document.getElementById('rbulbcond').value='new';
+      document.getElementById('rdeduct').checked=false;
+      return;
+    }
+    if(reg.status==='disposed'){
+      banner.style.display='';
+      banner.style.background='var(--rglow)';
+      banner.style.border='1px solid rgba(224,60,60,.4)';
+      banner.innerHTML=`<div style="color:var(--red);font-size:15px;font-weight:900">🚫 HARD BLOCK — Bulb Disposed</div>
+        <div style="margin-top:8px;background:rgba(224,60,60,.1);border-radius:6px;padding:10px">
+          <div class="dim">Bulb <strong>${code}</strong> (${reg.bulbType}) has been disposed of.</div>
+        </div>
+        <div style="font-size:12px;color:var(--red);margin-top:10px;font-weight:700">❌ This bulb cannot be used. Scan a different bulb.</div>`;
+      document.getElementById('rbulbcond').value='blown';
+      document.getElementById('rdeduct').checked=false;
+      return;
+    }
+    // Bulb is in_stock or pulled — check type match then fall through
+    if(reg.status==='in_stock'||reg.status==='pulled'){
+      const typeMatch=reg.bulbType.toUpperCase()===f.bulbType.toUpperCase();
+      const inv=db.inventory.find(i=>i.bulbType===reg.bulbType);
+      if(typeMatch){
+        banner.style.display='';
+        banner.style.background='var(--gglow)';
+        banner.style.border='1px solid rgba(40,201,122,.3)';
+        banner.innerHTML=`<div style="color:var(--green);font-weight:700">✅ Registered Bulb — Correct Type</div>
+          <div class="dim" style="margin-top:4px">ID: <strong>${code}</strong> · Type: ${reg.bulbType}${reg.status==='pulled'?' · Previously pulled':''}
+          ${inv?' · '+inv.inStock+' of this type in stock':''}</div>
+          <div class="dim">Created ${ago(reg.createdAt)} · ${reg.history.length} prior installation${reg.history.length!==1?'s':''}</div>`;
+        document.getElementById('rbulbcond').value=reg.status==='pulled'?'reused':'new';
+        document.getElementById('rdeduct').checked=true;
+        return;
+      } else {
+        banner.style.display='';
+        banner.style.background='var(--aglow)';
+        banner.style.border='1px solid rgba(240,165,0,.3)';
+        banner.innerHTML=`<div style="color:var(--amber);font-weight:700">⚠️ Registered Bulb — Type Mismatch</div>
+          <div class="dim" style="margin-top:4px">Scanned: <strong>${reg.bulbType}</strong> · Fixture needs: <strong>${f.bulbType}</strong></div>
+          <div style="font-size:11px;color:var(--amber);margin-top:4px">Mismatch will be logged. You can still proceed.</div>`;
+        document.getElementById('rbulbcond').value='new';
+        return;
+      }
+    }
+  }
+
+  // ── STEP 1: Check used bulbs list ──
+  const usedMatch=db.usedBulbs.find(b=>b.bulbId&&b.bulbId.toUpperCase()===code&&b.status==='available');
+  if(usedMatch){
+    const typeMatch=usedMatch.bulbType.toUpperCase()===f.bulbType.toUpperCase();
+    const condLabel={new:'✅ New',blown:'💀 Blown'}[usedMatch.condition]||usedMatch.condition;
+    const timePulled=usedMatch.datePulled?ago(usedMatch.datePulled):'unknown date';
+    let bg,border,html;
+    if(usedMatch.condition==='blown'){
+      // Block — blown bulb
+      bg='var(--rglow)';border='rgba(224,60,60,.4)';
+      html=`<div style="color:var(--red);font-size:15px;font-weight:900">🚫 HARD BLOCK — This Bulb is Blown!</div>
+            <div style="margin-top:8px;background:rgba(224,60,60,.1);border-radius:6px;padding:10px">
+              <div class="dim">Bulb ID: <strong>${usedMatch.bulbId}</strong> · Type: ${usedMatch.bulbType}</div>
+              <div class="dim">Pulled from: ${usedMatch.fixtureName||usedMatch.pulledFrom} · ${timePulled}</div>
+            </div>
+            <div style="font-size:12px;color:var(--red);margin-top:10px;font-weight:700">❌ This bulb cannot be used. Scan a different bulb.</div>`;
+      document.getElementById('rbulbcond').value='blown';
+      document.getElementById('rdeduct').checked=false;
+    } else if(!typeMatch){
+      // Used bulb found but wrong type — warn and block, allow override
+      bg='var(--aglow)';border='rgba(240,165,0,.4)';
+      html=`<div style="color:var(--amber);font-size:14px;font-weight:700">⚠️ Used Bulb — Type Mismatch!</div>
+            <div class="dim" style="margin-top:4px">Scanned: <strong>${usedMatch.bulbType}</strong> · Fixture needs: <strong>${f.bulbType}</strong></div>
+            <div class="dim">Condition: ${condLabel} · Pulled ${timePulled} from ${usedMatch.fixtureName||usedMatch.pulledFrom}</div>
+            <div style="font-size:11px;color:var(--amber);margin-top:6px">Wrong bulb type — mismatch will be logged.</div>
+            <button class="btn ba bsm" style="margin-top:8px" onclick="forceUsedBulb('${usedMatch.id}')">Proceed Anyway</button>`;
+      document.getElementById('rbulbcond').value='new';
+    } else {
+      // Used bulb, correct type — warn but allow
+      bg='var(--aglow)';border='rgba(240,165,0,.3)';
+      html=`<div style="color:var(--amber);font-size:14px;font-weight:700">♻️ Previously Used Bulb</div>
+            <div class="dim" style="margin-top:4px">Type: <strong>${usedMatch.bulbType}</strong> ✓ matches fixture</div>
+            <div class="dim">Condition: ${condLabel} · Pulled ${timePulled} from ${usedMatch.fixtureName||usedMatch.pulledFrom}</div>
+            <div style="font-size:11px;color:var(--amber);margin-top:4px">${usedMatch.notes||''}</div>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button class="btn bg bsm" onclick="forceUsedBulb('${usedMatch.id}')">✅ Use This Bulb</button>
+              <button class="btn bgh bsm" onclick="document.getElementById('rbulbid').value='';onBulbIdInput('')">✕ Cancel</button>
+            </div>`;
+      document.getElementById('rbulbcond').value='new';
+      document.getElementById('rdeduct').checked=false; // don't deduct from stock — it's already used
+    }
+    banner.style.display='';banner.style.background=bg;banner.style.border='1px solid '+border;banner.innerHTML=html;
+    return;
+  }
+
+  // ── STEP 2: Not on used list — check new stock inventory ──
+  const inv=db.inventory.find(i=>i.bulbType.toUpperCase()===code)||null;
+  const fixtureType=f.bulbType.toUpperCase();
+  const isMatch=inv&&inv.bulbType.toUpperCase()===fixtureType;
+  const inStock=inv?inv.inStock:null;
+  let html='',bg='',border='';
+
+  if(!inv){
+    bg='var(--bglow)';border='rgba(61,155,233,.3)';
+    html=`<div style="color:var(--blue)">📦 Bulb scanned: <strong>${code}</strong></div>
+          <div class="dim" style="margin-top:4px">Not on used list or inventory — logged as new bulb from stock</div>`;
+    document.getElementById('rbulbcond').value='new';
+  } else if(isMatch){
+    bg='var(--gglow)';border='rgba(40,201,122,.3)';
+    html=`<div style="color:var(--green)">✅ New stock — correct type: <strong>${inv.bulbType}</strong></div>
+          <div class="dim" style="margin-top:4px">${inStock} in stock · Will deduct 1 on confirm</div>`;
+    document.getElementById('rbulbcond').value='new';
+    document.getElementById('rdeduct').checked=true;
+  } else {
+    bg='var(--aglow)';border='rgba(240,165,0,.3)';
+    html=`<div style="color:var(--amber)">⚠️ Type mismatch — new stock</div>
+          <div class="dim" style="margin-top:4px">Scanned: <strong>${inv.bulbType}</strong> · Fixture needs: <strong>${f.bulbType}</strong></div>
+          <div style="font-size:11px;color:var(--amber);margin-top:4px">Logged as mismatch — you can still proceed</div>`;
+    document.getElementById('rbulbcond').value='new';
+  }
+  banner.style.display='';banner.style.background=bg;banner.style.border='1px solid '+border;banner.innerHTML=html;
+}
+
+// Called when technician overrides a used bulb warning
+let _forcedUsedBulbId=null;
+
+function onConditionChange(val){
+  if(val==='blown'){
+    const banner=document.getElementById('repMatchBanner');
+    banner.style.display='';
+    banner.style.background='var(--rglow)';
+    banner.style.border='1px solid rgba(224,60,60,.5)';
+    banner.innerHTML=`<div style="color:var(--red);font-size:15px;font-weight:900">🚫 HARD BLOCK — Blown Selected</div>
+      <div style="font-size:12px;color:var(--red);margin-top:8px">You cannot confirm a replacement with a blown bulb. Change to ✅ New or scan a different bulb.</div>`;
+  } else {
+    const code=document.getElementById('rbulbid').value.trim().toUpperCase();
+    if(code) onBulbIdInput(code);
+    else document.getElementById('repMatchBanner').style.display='none';
+  }
+}
+
+// forceRegistryOverride removed — installed and blown bulbs are hard locked
+function forceUsedBulb(usedBulbId){
+  _forcedUsedBulbId=usedBulbId;
+  const ub=db.usedBulbs.find(b=>b.id===usedBulbId);
+  if(!ub)return;
+  const banner=document.getElementById('repMatchBanner');
+  banner.style.background='var(--gglow)';
+  banner.style.border='1px solid rgba(40,201,122,.3)';
+  banner.innerHTML=`<div style="color:var(--green)">✅ Used bulb accepted</div>
+    <div class="dim" style="margin-top:4px">ID: ${ub.bulbId||'unlabelled'} · Type: ${ub.bulbType} · Will be marked as reinstalled</div>`;
+  document.getElementById('rbulbcond').value='new';
+  document.getElementById('rdeduct').checked=false;
+}
+
+function submitReplaced(){
+  const f=db.fixtures.find(x=>x.id===_curFix);if(!f)return;
+  const t=getTech('replace');if(!t){toast('Select a technician first','error');return;}
+  // Hard block if blown condition selected
+  const condCheck=document.getElementById('rbulbcond').value;
+  if(condCheck==='blown'){
+    const banner=document.getElementById('repMatchBanner');
+    banner.style.display='';
+    banner.style.background='var(--rglow)';
+    banner.style.border='1px solid rgba(224,60,60,.5)';
+    banner.innerHTML=`<div style="color:var(--red);font-size:15px;font-weight:900">🚫 HARD BLOCK — Blown Bulb Selected!</div>
+      <div style="margin-top:8px;background:rgba(224,60,60,.1);border-radius:6px;padding:10px">
+        <div class="dim">You have selected <strong>💀 Blown</strong> as the bulb condition.</div>
+        <div class="dim" style="margin-top:4px">A blown bulb cannot be installed. Change the condition to ✅ New or scan a different bulb.</div>
+      </div>
+      <div style="font-size:12px;color:var(--red);margin-top:10px;font-weight:700">❌ Cannot confirm — please use a working bulb.</div>`;
+    toast('🚫 Cannot install a blown bulb!','error');
+    return;
+  }
+  const out=[...db.outages].filter(o=>o.fixtureId===f.id&&!o.resolved).sort((a,b)=>b.timestamp-a.timestamp)[0];
+  if(out){out.resolved=true;out.resolvedAt=Date.now();out.resolvedBy=t.name;out.resolvedTechId=t.id;}
+  f.status='ok';
+  const deduct=document.getElementById('rdeduct').checked;
+  const inv=db.inventory.find(i=>i.bulbType===f.bulbType);
+  const bulbId=document.getElementById('rbulbid').value.trim();
+  const bulbCond=document.getElementById('rbulbcond').value;
+
+  // Mark used bulb as reinstalled if one was forced/selected
+  if(_forcedUsedBulbId){
+    const ub=db.usedBulbs.find(b=>b.id===_forcedUsedBulbId);
+    if(ub){ub.status='reinstalled';ub.reinstalledIn=f.id;ub.reinstalledAt=Date.now();ub.reinstalledBy=t.name;}
+    _forcedUsedBulbId=null;
+  }
+
+  // Update bulb registry — mark bulb as installed in this fixture
+  const scannedBulbId=document.getElementById('rbulbid').value.trim().toUpperCase();
+  if(scannedBulbId){
+    let reg=db.bulbRegistry.find(b=>b.bulbId===scannedBulbId);
+    if(!reg){
+      // Auto-register if not already (e.g. old label pre-registry)
+      reg={bulbId:scannedBulbId,bulbType:f.bulbType,status:'in_stock',createdAt:Date.now(),installedIn:null,installedAt:null,installedBy:null,history:[]};
+      db.bulbRegistry.push(reg);
+    }
+    // Update registry to installed
+    reg.history.push({event:'installed',fixture:f.id,fixtureName:f.name,tech:t.name,timestamp:Date.now()});
+    reg.status='installed';
+    reg.installedIn=f.id;
+    reg.installedAt=Date.now();
+    reg.installedBy=t.name;
+    // Store on fixture for quick lookup
+    f.currentBulbId=scannedBulbId;
+    f.currentBulbType=reg.bulbType;
+    f.currentBulbInstalledAt=Date.now();
+  }
+
+  if(deduct){
+    if(inv&&inv.inStock>0){inv.inStock--;inv.totalUsed++;}
+    const scannedInv=bulbId?db.inventory.find(i=>i.bulbType.toUpperCase()===bulbId):null;
+    const mismatch=scannedInv&&scannedInv.bulbType.toUpperCase()!==f.bulbType.toUpperCase();
+    db.usageLog.push({date:Date.now(),bulbType:f.bulbType,qty:1,fixture:f.id,tech:t.name,techId:t.id,bulbId,bulbCondition:bulbCond,mismatch:mismatch||false,scannedBulbType:scannedInv?scannedInv.bulbType:null});
+    if(bulbCond==='blown'){
+      // Permanently mark this bulb as blown in the registry
+      if(scannedBulbId){
+        const blownReg=db.bulbRegistry.find(b=>b.bulbId===scannedBulbId);
+        if(blownReg){
+          blownReg.status='disposed';
+          blownReg.history.push({event:'marked_blown',fixture:f.id,tech:t.name,timestamp:Date.now()});
+        }
+      }
+      toast('💀 Blown bulb permanently flagged in registry','error');
+    }
+    // no reused condition any more
+    if(mismatch) toast('⚠️ Mismatch logged: '+scannedInv.bulbType+' used in '+f.bulbType+' fixture','info');
+    if(inv&&inv.inStock<=inv.threshold){
+      sendLowStockAlerts(f.bulbType,inv.inStock,inv.threshold,t.name);
+      sendNotif('📦 Low Stock: '+f.bulbType,inv.inStock+' remaining (threshold: '+inv.threshold+')');
+    }
+  }
+  save();closeM('markReplaced');toast('Fixture '+f.id+(deduct?' replaced — 1 bulb deducted':' marked resolved — no bulb deducted'),'success');refreshPage();
+}
+function receiveBulbs(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const type=document.getElementById('btype').value.trim();
+  const qty=parseInt(document.getElementById('bqty').value)||0;
+  const sup=document.getElementById('bsup').value.trim();
+  const thr=parseInt(document.getElementById('bthr').value)||3;
+  const nts=document.getElementById('bnotes').value.trim();
+  if(!type||qty<1){toast('Bulb type and quantity required','error');return;}
+  const t=getTech('recv');
+  let inv=db.inventory.find(i=>i.bulbType===type);
+  if(inv){inv.inStock+=qty;inv.totalReceived+=qty;inv.threshold=thr;}
+  else db.inventory.push({bulbType:type,inStock:qty,threshold:thr,totalReceived:qty,totalUsed:0});
+  db.orders.push({date:Date.now(),bulbType:type,qty,supplier:sup,notes:nts,tech:t?t.name:'Unknown'});
+  save();closeM('receiveBulbs');renderInv();toast(qty+' × '+type+' added to inventory','success');
+}
+
+// ── Email alerts ──
+async function sendLowStockAlerts(bulbType,stock,threshold,techName){
+  // Only notify admins and master admin — they're the ones who can reorder
+  const recipients=db.technicians.filter(t=>t.email&&t.email.includes('@')&&(t.userRole==='admin'||t.userRole==='master'));
+  if(!recipients.length)return;
+  const time=new Date().toLocaleString('en-CA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  for(const rec of recipients){
+    try{
+      await emailjs.send(EJSID,EJTPL,{
+        to_email: rec.email,
+        to_name:  rec.name,
+        subject:  '⚠️ Low Stock Alert — '+bulbType,
+        message:  'Bulb type '+bulbType+' is running low and may need reordering.\n\n'+
+                  'Current stock:  '+stock+' remaining\n'+
+                  'Threshold:      '+threshold+'\n'+
+                  'Logged by:      '+techName+'\n'+
+                  'Time:           '+time
+      });
+    }catch(e){console.warn('Email failed',e);}
+  }
+  toast('📧 Low stock alert sent to '+recipients.length+' crew member'+(recipients.length>1?'s':''),'info');
+}
+async function sendOutageAlerts(fixtureName,fixtureId,bulbType,techName){
+  // Only notify admins and master admin
+  const recipients=db.technicians.filter(t=>t.email&&t.email.includes('@')&&(t.userRole==='admin'||t.userRole==='master'));
+  if(!recipients.length)return;
+  const time=new Date().toLocaleString('en-CA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  for(const rec of recipients){
+    try{
+      await emailjs.send(EJSID,EJTPL,{
+        to_email: rec.email,
+        to_name:  rec.name,
+        subject:  '🔴 Fixture Out — '+fixtureName+' ('+fixtureId+')',
+        message:  'A fixture has been reported out and needs attention.\n\n'+
+                  'Fixture:      '+fixtureName+' ('+fixtureId+')\n'+
+                  'Bulb Type:    '+bulbType+'\n'+
+                  'Reported by:  '+techName+'\n'+
+                  'Time:         '+time
+      });
+    }catch(e){console.warn('Email failed',e);}
+  }
+  toast('📧 Outage alert sent to '+recipients.length+' crew member'+(recipients.length>1?'s':''),'info');
+}
+
+
+
+function manualSendScheduleEmail(){
+  if(!isAdmin()){ toast('Admin permission required','error'); return; }
+  // Find the upcoming Sunday using local date
+  const now = new Date();
+  const daysUntilSun = (7 - now.getDay()) % 7 || 7;
+  const sun = new Date(now); sun.setDate(now.getDate() + daysUntilSun);
+  const key = schedKey(sun);
+  const entry = db.schedules[key];
+  const dateStr = sun.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  if(!entry || !entry.crew || !entry.crew.length){
+    toast('No crew scheduled for '+dateStr,'error');
+    return;
+  }
+  if(!confirm('Send schedule emails to '+entry.crew.length+' crew member'+(entry.crew.length>1?'s':'')+' for '+dateStr+'?')) return;
+  sendScheduleEmails(key, entry);
+}
+
+function checkScheduleEmails(){
+  // Auto-send schedule emails every Thursday (day 4) for the upcoming Sunday
+  const today=new Date();
+  if(today.getDay()!==4) return; // not Thursday
+  const lastSent=localStorage.getItem('slt_last_sched_email');
+  const todayStr=today.toDateString();
+  if(lastSent===todayStr) return; // already sent today
+  localStorage.setItem('slt_last_sched_email',todayStr);
+
+  // Find the upcoming Sunday (3 days away)
+  const sunday=new Date(today);
+  sunday.setDate(sunday.getDate()+3);
+  const key=schedKey(sunday);
+  const entry=db.schedules[key];
+
+  if(!entry||!entry.crew||!entry.crew.length){
+    console.log('No schedule set for upcoming Sunday '+key+' — skipping auto-email');
+    return;
+  }
+
+  // Send emails to assigned crew
+  setTimeout(()=>{
+    sendScheduleEmails(key, entry);
+    toast('📧 Thursday auto-send: schedule emails sent for '+sunday.toLocaleDateString('en-CA',{month:'short',day:'numeric'}),'info');
+  }, 2000);
+}
+
+// ── Export CSV ──
+function exportCSV(type='history'){
+  let csv='',filename='';
+  if(type==='history'||type==='stats'){
+    csv='Date,Fixture,Fixture ID,Bulb Type,Reported By,Resolved By,Status,Down Time (min)\n';
+    csv+=db.outages.sort((a,b)=>b.timestamp-a.timestamp).map(o=>[fmtD(o.timestamp),o.fixtureName,o.fixtureId,o.bulbType,o.reportedBy||'',o.resolvedBy||'',o.resolved?'Resolved':'Pending',o.resolved?Math.round((o.resolvedAt-o.timestamp)/60000):''].join(',')).join('\n');
+    filename='outage-history.csv';
+  } else if(type==='inventory'){
+    csv='Bulb Type,In Stock,Threshold,Total Received,Total Used\n';
+    csv+=db.inventory.map(i=>[i.bulbType,i.inStock,i.threshold,i.totalReceived,i.totalUsed].join(',')).join('\n');
+    filename='inventory.csv';
+  }
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+  toast('CSV exported','success');
+}
+
+// ── Reset ──
+function resetAllData(){
+  if(!isMaster()){toast('Master admin only','error');return;}
+  if(!confirm('RESET EVERYTHING?\n\nWipes all data from ALL devices.'))return;
+  if(prompt('Type RESET to confirm:')!=='RESET'){toast('Reset cancelled','info');return;}
+  db={fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{}};
+  try{localStorage.removeItem(LS_KEY);}catch(e){}
+  save();toast('All data wiped','info');refreshPage();
+}
+
+// ── Camera ──
+let _gsScanner=null, _gsRunning=false, _gsFieldTarget=null;
+
+function toggleCamera(){_camRunning?stopCamera():startCamera();}
+
+function openGlobalScanner(fieldTarget){
+  _gsFieldTarget=fieldTarget||null;
+  document.getElementById('gsManual').value='';
+  document.getElementById('gs-result').style.display='none';
+  // Set action buttons based on context
+  const acts=document.getElementById('gsActions');
+  if(fieldTarget){
+    acts.innerHTML=`<button class="btn ba" style="grid-column:1/-1;justify-content:center" onclick="gsSubmitToField()">✅ Use This Code</button>`;
+  } else {
+    acts.innerHTML=`
+      <button class="btn br" onclick="gsAction('outage')">🔴 Report Outage</button>
+      <button class="btn bg" onclick="gsAction('replace')">✅ Mark Replaced</button>
+      <button class="btn bgh" onclick="gsAction('scanIn')">📥 Bulb Scan IN</button>
+      <button class="btn ba" onclick="gsSubmit()" style="grid-column:2">🔍 Auto-Detect</button>`;
+  }
+  document.getElementById('m-globalScan').style.display='flex';
+  // Start scanner
+  setTimeout(()=>{
+    const el=document.getElementById('gs-reader');
+    if(!el)return;
+    _gsScanner=new Html5Qrcode('gs-reader');_gsRunning=true;
+    _gsScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},
+      code=>{
+        const upper=code.toUpperCase();
+        document.getElementById('gsManual').value=upper;
+        document.getElementById('gs-result').style.display='';
+        document.getElementById('gs-result').textContent='✅ Scanned: '+upper;
+        stopGsScanner();
+        if(_gsFieldTarget) gsSubmitToField();
+        else gsSubmit();
+      },()=>{}
+    ).catch(err=>{toast('Camera error: '+err,'error');stopGsScanner();});
+  },200);
+}
+
+function stopGsScanner(){
+  if(_gsScanner&&_gsRunning){_gsScanner.stop().catch(()=>{});_gsRunning=false;_gsScanner=null;}
+}
+function closeGlobalScanner(){
+  stopGsScanner();
+  document.getElementById('m-globalScan').style.display='none';
+  document.getElementById('gs-reader').innerHTML='';
+}
+function gsSubmit(){
+  const code=document.getElementById('gsManual').value.trim().toUpperCase();
+  if(!code){toast('Scan or enter a code first','error');return;}
+  closeGlobalScanner();
+  smartHandleCode(code);
+}
+function gsAction(action){
+  const code=document.getElementById('gsManual').value.trim().toUpperCase();
+  if(!code){toast('Scan or enter a code first','error');return;}
+  if(action==='outage'||action==='replace'){
+    const f=db.fixtures.find(x=>x.id===code);
+    if(!f){toast('Fixture "'+code+'" not found','error');return;}
+    closeGlobalScanner();
+    if(action==='outage')openOutModal(f.id);else openRepModal(f.id);
+  } else if(action==='scanIn'){
+    closeGlobalScanner();
+    openM('receiveBulbs');
+    document.getElementById('btype').value=code;
+    toast('📦 Fill in quantity to receive','info');
+  }
+}
+function gsSubmitToField(){
+  const code=document.getElementById('gsManual').value.trim().toUpperCase();
+  if(!code){toast('Scan or enter a code first','error');return;}
+  const el=document.getElementById(_gsFieldTarget);
+  if(el) el.value=code;
+  closeGlobalScanner();
+  toast('✅ Code entered: '+code,'success');
+}
+// Scan directly into a specific input field (e.g. bulb ID field in replace modal)
+function scanIntoField(fieldId){
+  openGlobalScanner(fieldId);
+}
+function startCamera(){
+  stopRepCamera&&stopRepCamera();
+  document.getElementById('qr-reader').style.display='';
+  document.getElementById('camBtn').textContent='⏹ Stop Camera';
+  _camScanner=new Html5Qrcode('qr-reader');_camRunning=true;
+  _camScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},
+    code=>handleScannedCode(code),()=>{}
+  ).catch(err=>{toast('Camera error: '+err,'error');stopCamera();});
+}
+function stopCamera(){
+  if(_camScanner&&_camRunning){_camScanner.stop().catch(()=>{});_camRunning=false;_camScanner=null;}
+  const el=document.getElementById('qr-reader');if(el){el.style.display='none';el.innerHTML='';}
+  const btn=document.getElementById('camBtn');if(btn)btn.textContent='📷 Start Camera Scanner';
+}
+function handleScannedCode(code){
+  document.getElementById('manualId').value=code.toUpperCase();
+  const res=document.getElementById('scanResult');res.style.display='';res.textContent='✅ Scanned: '+code;
+  stopCamera();
+  smartHandleCode(code.toUpperCase());
+}
+function smartHandleCode(code){
+  // Check if it's a known fixture
+  const fixture=db.fixtures.find(x=>x.id===code);
+  if(fixture){
+    toast('💡 Fixture: '+fixture.name,'info');
+    if(fixture.status==='out') openRepModal(fixture.id);
+    else openOutModal(fixture.id);
+    return;
+  }
+  // Check if it looks like a bulb label (contains BLB, BULB, or matches inventory type)
+  const isBulbLabel=code.includes('BLB')||code.includes('BULB');
+  const invMatch=db.inventory.find(i=>i.bulbType.toUpperCase()===code);
+  if(isBulbLabel||invMatch){
+    // Open receive bulbs with type pre-filled
+    openM('receiveBulbs');
+    if(invMatch) document.getElementById('btype').value=invMatch.bulbType;
+    else document.getElementById('btype').value=code;
+    toast('📦 Bulb scanned — fill in quantity to receive','info');
+    return;
+  }
+  // Unknown code — show options
+  document.getElementById('manualId').value=code;
+  toast('❓ Unknown code "'+code+'" — use buttons below to act on it','info');
+}
+function scanAction(action){
+  const id=document.getElementById('manualId').value.trim().toUpperCase();
+  if(!id){toast('Enter or scan a Fixture ID first','error');return;}
+  if(action==='outage'||action==='replace'){
+    const f=db.fixtures.find(x=>x.id===id);
+    if(!f){toast('Fixture "'+id+'" not found','error');return;}
+    if(action==='outage')openOutModal(f.id);else openRepModal(f.id);
+  } else if(action==='scanIn'){openM('receiveBulbs');}
+}
+
+// ── Print ──
+function printLabels(){
+  const type=prompt('Label type:\n1 = Fixture Labels\n2 = Bulb Labels','1');if(!type)return;
+  const prefix=(prompt('Prefix (e.g. FX or BLB-A):',type==='1'?'FX':'BLB-A')||'LBL').toUpperCase();
+  const qty=Math.min(parseInt(prompt('How many labels?','6')||'6'),100);
+
+  // For bulb labels — ask bulb type so we can register them
+  let bulbType='';
+  if(type==='2'){
+    bulbType=prompt('Bulb type for these labels? (e.g. PAR64 1000W)','')?.trim();
+    if(!bulbType){toast('Bulb type required to register labels','error');return;}
+  }
+
+  const pa=document.getElementById('printArea');
+  pa.innerHTML=`<div style="font-family:monospace;padding:10px"><h2 style="font-size:14px;margin-bottom:12px;color:#000">Stage Light Tracker — ${type==='1'?'Fixture':'Bulb'} Labels</h2><div id="pqg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px"></div></div>`;
+  const grid=document.getElementById('pqg');
+  const newLabels=[];
+
+  for(let i=1;i<=qty;i++){
+    const code=prefix+'-'+String(i).padStart(3,'0');
+
+    // Register bulb labels in the registry (skip if already registered)
+    if(type==='2'){
+      const exists=db.bulbRegistry.find(b=>b.bulbId===code);
+      if(!exists){
+        db.bulbRegistry.push({
+          bulbId:code,
+          bulbType,
+          status:'in_stock',       // in_stock | installed | pulled | disposed
+          createdAt:Date.now(),
+          installedIn:null,
+          installedAt:null,
+          installedBy:null,
+          history:[]               // array of {event,fixture,tech,timestamp}
+        });
+        newLabels.push(code);
+      }
+    }
+
+    const div=document.createElement('div');
+    div.style.cssText='background:#fff;border:1px solid #ccc;border-radius:4px;padding:8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;break-inside:avoid';
+    const qd=document.createElement('div');qd.id='plq'+i;div.appendChild(qd);
+    const lb=document.createElement('div');lb.style.cssText='font-family:monospace;font-size:9px;font-weight:700;color:#000;margin-top:4px';lb.textContent=code;div.appendChild(lb);
+    const sb=document.createElement('div');sb.style.cssText='font-family:monospace;font-size:8px;color:#555';sb.textContent=type==='1'?'FIXTURE':bulbType||'BULB';div.appendChild(sb);
+    grid.appendChild(div);
+    try{new QRCode(qd,{text:code,width:90,height:90,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M});}catch(e){}
+  }
+
+  if(newLabels.length>0){
+    save();
+    toast(newLabels.length+' bulb labels registered in registry','success');
+  }
+  setTimeout(()=>window.print(),600);
+}
+
+// ── Inv tabs ──
+function invTab(tab,btn){
+  ['stock','orders','usage','used','registry'].forEach(t=>document.getElementById('it-'+t).style.display=t===tab?'':'none');
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  if(tab==='used')renderUsedBulbs();
+  if(tab==='registry')renderBulbRegistry();
+}
+
+function clearBulbRegistry(){
+  if(!confirm('Clear the entire Bulb Registry?\n\nThis removes all bulb label history. Fixtures will lose their current bulb records. This cannot be undone.')) return;
+  db.bulbRegistry=[];
+  // Also clear currentBulbId from all fixtures
+  db.fixtures.forEach(f=>{f.currentBulbId=null;f.currentBulbType=null;});
+  save();renderBulbRegistry();renderFix();
+  toast('Bulb Registry cleared','info');
+}
+
+function renderBulbRegistry(){
+  const tbody=document.getElementById('regTbl');if(!tbody)return;
+  const filter=document.getElementById('regFilter')?.value||'all';
+  let list=[...db.bulbRegistry].sort((a,b)=>b.createdAt-a.createdAt);
+  if(filter!=='all')list=list.filter(b=>b.status===filter);
+  if(!list.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:28px">No bulbs registered yet — generate labels to register them</td></tr>';return;}
+  const statusStyle={
+    in_stock:{icon:'📦',color:'var(--blue)',label:'In Stock'},
+    installed:{icon:'💡',color:'var(--green)',label:'Installed'},
+    pulled:{icon:'♻️',color:'var(--amber)',label:'Available (Pulled)'},
+    disposed:{icon:'💀',color:'var(--red)',label:'Blown / Disposed'}
+  };
+  tbody.innerHTML=list.map(b=>{
+    const ss=statusStyle[b.status]||{icon:'❓',color:'var(--dim)',label:b.status};
+    const curFix=b.installedIn?db.fixtures.find(f=>f.id===b.installedIn):null;
+    const lastEvent=b.history.length?b.history[b.history.length-1]:null;
+    return`<tr>
+      <td><span class="mono ca" style="font-size:12px">${b.bulbId}</span></td>
+      <td style="font-size:12px">${b.bulbType}</td>
+      <td><span style="color:${ss.color};font-weight:700;font-size:12px">${ss.icon} ${ss.label}</span></td>
+      <td style="font-size:12px">${curFix?curFix.name+' ('+b.installedIn+')':b.status==='installed'?b.installedIn||'—':'—'}</td>
+      <td style="text-align:center"><strong>${b.history.filter(h=>h.event==='installed').length}</strong></td>
+      <td class="dim">${fmtD(b.createdAt)}</td>
+      <td class="dim">${lastEvent?lastEvent.event+' · '+ago(lastEvent.timestamp):'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Helpers ──
+function fmtD(ts){return new Date(ts).toLocaleString('en-CA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function ago(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
+function fmtDur(ms){const m=Math.round(ms/60000);if(m<60)return m+' min';return Math.floor(m/60)+'h '+m%60+'m';}
+function toast(msg,type='info'){const c=document.getElementById('toasts');const el=document.createElement('div');el.className='toast '+type;el.innerHTML=(type==='success'?'✅':type==='error'?'🔴':'💡')+' '+msg;c.appendChild(el);setTimeout(()=>el.remove(),3000);}
+
+// ══════════════════════════════════════════════════
+// SCHEDULE
+// ══════════════════════════════════════════════════
+let _schedSelectedKey = null;
+
+function canEditSchedule(){
+  const t = getCurTech();
+  return t && t.canSchedule === true;
+}
+
+function getSundaysOfYear(year){
+  const sundays = [];
+  const d = new Date(year, 0, 1);
+  // Find first Sunday
+  d.setDate(d.getDate() + (7 - d.getDay()) % 7);
+  while(d.getFullYear() === year){
+    sundays.push(new Date(d));
+    d.setDate(d.getDate() + 7);
+  }
+  return sundays;
+}
+
+function schedKey(date){
+  // YYYY-MM-DD key using LOCAL date to avoid UTC timezone shift
+  const y=date.getFullYear();
+  const m=String(date.getMonth()+1).padStart(2,'0');
+  const d=String(date.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+d;
+}
+
+function renderSchedule(){
+  const yearSel = document.getElementById('schedYear');
+  const now = new Date();
+  const curYear = now.getFullYear();
+
+  // Populate year selector if empty
+  if(!yearSel.options.length){
+    [curYear, curYear+1].forEach(y=>{
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if(y === curYear) opt.selected = true;
+      yearSel.appendChild(opt);
+    });
+  }
+
+  const year = parseInt(yearSel.value) || curYear;
+  const sundays = getSundaysOfYear(year);
+
+  // Show/hide edit button based on permissions
+  const canEdit = canEditSchedule();
+  document.getElementById('schedNoPerms').style.display = canEdit ? 'none' : '';
+
+  // Filter to rest of year if current year
+  const filtered = year === curYear
+    ? sundays.filter(s => s >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7))
+    : sundays;
+
+  const grid = document.getElementById('schedGrid');
+  if(!filtered.length){ grid.innerHTML='<p class="dim">No Sundays to show.</p>'; return; }
+
+  // Group by month
+  const byMonth = {};
+  filtered.forEach(s=>{
+    const mo = s.toLocaleString('en',{month:'long',year:'numeric'});
+    if(!byMonth[mo]) byMonth[mo]=[];
+    byMonth[mo].push(s);
+  });
+
+  grid.innerHTML = Object.entries(byMonth).map(([month, dates])=>`
+    <div style="margin-bottom:20px">
+      <div style="font-family:var(--head);font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${month}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+        ${dates.map(d=>{
+          const key = schedKey(d);
+          const entry = db.schedules[key] || null;
+          const isToday = schedKey(d) === schedKey(now);
+          const isPast = d < now;
+          const assignedTechs = entry ? (entry.crew||[]).map(id=>db.technicians.find(t=>t.id===id)).filter(Boolean) : [];
+          return `<div style="background:${isToday?'var(--aglow)':isPast?'var(--s1)':'var(--s2)'};border:1px solid ${isToday?'rgba(240,165,0,.4)':isPast?'var(--border)':'var(--border2)'};border-radius:8px;padding:14px;transition:border-color .18s;${!isPast&&canEdit?'cursor:pointer':''}"
+            ${canEdit&&!isPast?`onclick="openScheduleEdit('${key}',this)"`:''}
+          >
+            <div class="row jbet mb8">
+              <div>
+                <div style="font-weight:900;font-size:15px">${d.toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'})}</div>
+                ${isToday?'<span style="font-size:10px;color:var(--amber);font-family:var(--mono);letter-spacing:1px">THIS SUNDAY</span>':''}
+              </div>
+              ${entry&&assignedTechs.length?`<span class="badge bok">${assignedTechs.length} crew</span>`:(isPast?'<span class="badge" style="background:var(--s3);color:var(--dim);border:1px solid var(--border)">Past</span>':'<span class="badge blow">Unscheduled</span>')}
+            </div>
+            ${assignedTechs.length
+              ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${entry.notes?'8px':'0'}">
+                  ${assignedTechs.map(t=>`
+                    <div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px">
+                      <span>${t.avatar||'👤'}</span>
+                      <span>${t.name.split(' ')[0]}</span>
+                      ${entry.roles&&entry.roles[t.id]?`<span style="color:var(--dim2);font-size:10px;font-family:var(--mono)">· ${entry.roles[t.id]}</span>`:''}
+                    </div>`).join('')}
+                </div>`
+              : (!isPast&&canEdit?`<div class="dim" style="font-size:12px">Tap to assign crew</div>`:`<div class="dim" style="font-size:12px">No crew assigned</div>`)
+            }
+            ${entry&&entry.notes?`<div style="font-size:11px;color:var(--dim2);font-family:var(--mono);margin-top:4px;font-style:italic">${entry.notes}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`
+  ).join('');
+}
+
+let _schedEditKey = null;
+
+function openScheduleEdit(key, el){
+  if(!canEditSchedule()){ toast('You need scheduler permission to edit the schedule','error'); return; }
+  _schedEditKey = key;
+  const date = new Date(key+'T12:00:00');
+  document.getElementById('schedModalTitle').textContent = '📅 ' + date.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('schedModalDate').textContent = date.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+  const entry = db.schedules[key] || {crew:[],roles:{},notes:''};
+  document.getElementById('schedNotes').value = entry.notes||'';
+
+  // Build crew assignment grid
+  const grid = document.getElementById('schedCrewGrid');
+  grid.innerHTML = db.technicians.map(t=>{
+    const assigned = (entry.crew||[]).includes(t.id);
+    const role = entry.roles&&entry.roles[t.id] ? entry.roles[t.id] : '';
+    return `<div id="schedcrew-${t.id}" style="background:${assigned?'var(--aglow)':'var(--s2)'};border:1px solid ${assigned?'rgba(240,165,0,.4)':'var(--border)'};border-radius:8px;padding:12px;transition:all .18s">
+      <div class="row gap8 mb8" style="cursor:pointer" onclick="toggleSchedCrew('${t.id}')">
+        <span style="font-size:22px">${t.avatar||'👤'}</span>
+        <div>
+          <div style="font-weight:700;font-size:13px">${t.name}</div>
+          <div class="dim">${t.role||'Technician'}</div>
+        </div>
+        <div style="margin-left:auto">
+          <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${assigned?'var(--amber)':'var(--border2)'};background:${assigned?'var(--amber)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:12px">${assigned?'✓':''}</div>
+        </div>
+      </div>
+      <div id="schedrole-wrap-${t.id}" style="display:${assigned?'':'none'}">
+        <select id="schedrole-${t.id}" style="font-size:11px;padding:5px 8px">
+          <option value="">— Select Station —</option>
+          <option value="Camera Station" ${role==='Camera Station'?'selected':''}>📷 Camera Station</option>
+          <option value="Streaming Station" ${role==='Streaming Station'?'selected':''}>🖥️ Streaming Station</option>
+          <option value="Presentation Station" ${role==='Presentation Station'?'selected':''}>📊 Presentation Station</option>
+          <option value="Lighting Station" ${role==='Lighting Station'?'selected':''}>💡 Lighting Station</option>
+          <option value="Sound Mixing" ${role==='Sound Mixing'?'selected':''}>🎚️ Sound Mixing</option>
+        </select>
+      </div>
+    </div>`;
+  }).join('');
+
+  openM('editSchedule');
+}
+
+function toggleSchedCrew(techId){
+  const wrap = document.getElementById('schedcrew-'+techId);
+  const roleWrap = document.getElementById('schedrole-wrap-'+techId);
+  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{},notes:''};
+  const idx = (entry.crew||[]).indexOf(techId);
+  const isNowAssigned = idx === -1;
+
+  if(isNowAssigned){
+    if(!entry.crew) entry.crew = [];
+    entry.crew.push(techId);
+  } else {
+    entry.crew.splice(idx,1);
+    if(entry.roles) delete entry.roles[techId];
+  }
+  db.schedules[_schedEditKey] = entry;
+
+  // Update UI
+  wrap.style.background = isNowAssigned ? 'var(--aglow)' : 'var(--s2)';
+  wrap.style.border = isNowAssigned ? '1px solid rgba(240,165,0,.4)' : '1px solid var(--border)';
+  roleWrap.style.display = isNowAssigned ? '' : 'none';
+  const dot = wrap.querySelector('div[style*="border-radius:50%"]');
+  if(dot){ dot.style.border = isNowAssigned?'2px solid var(--amber)':'2px solid var(--border2)'; dot.style.background = isNowAssigned?'var(--amber)':'transparent'; dot.textContent = isNowAssigned?'✓':''; }
+}
+
+function saveScheduleEntry(){
+  if(!canEditSchedule()){ toast('No permission','error'); return; }
+  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{},notes:''};
+  entry.notes = document.getElementById('schedNotes').value.trim();
+  if(!entry.roles) entry.roles = {};
+  (entry.crew||[]).forEach(id=>{
+    const roleEl = document.getElementById('schedrole-'+id);
+    if(roleEl) entry.roles[id] = roleEl.value.trim();
+  });
+  db.schedules[_schedEditKey] = entry;
+  save();
+  closeM('editSchedule');
+  renderSchedule();
+  toast('Schedule saved','success');
+
+  // Emails auto-send every Thursday — no manual send needed
+}
+
+async function sendScheduleEmails(dateKey, entry){
+  // Format the date nicely
+  const date = new Date(dateKey+'T12:00:00');
+  const dateStr = date.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const savedBy = getCurTech()?.name || 'Scheduler';
+  let sent = 0, skipped = 0;
+
+  for(const techId of (entry.crew||[])){
+    const t = db.technicians.find(x=>x.id===techId);
+    if(!t) continue;
+    if(!t.email || !t.email.includes('@')){ skipped++; continue; }
+
+    const roleForDay = entry.roles?.[techId] || t.role || 'Crew';
+    const allCrew = (entry.crew||[])
+      .map(id=>db.technicians.find(x=>x.id===id))
+      .filter(Boolean)
+      .map(x=>x.name)
+      .join(', ');
+
+    try{
+      await emailjs.send(EJSID, EJTPL_SCHED, {
+        to_email:     t.email,
+        to_name:      t.name,
+        date:         dateStr,
+        role:         roleForDay,
+        crew:         allCrew,
+        notes:        entry.notes ? 'Notes: ' + entry.notes : '',
+        scheduled_by: savedBy
+      });
+      sent++;
+    } catch(e){
+      console.warn('Schedule email failed for '+t.name, e);
+    }
+  }
+
+  if(sent > 0)   toast('📧 Schedule emails sent to '+sent+' crew member'+(sent>1?'s':''),'success');
+  if(skipped > 0) toast(skipped+' crew member'+(skipped>1?'s have':' has')+' no email address set','info');
+}
+
+// ── BOOT ──
+lload();
+loadTech();
+go('dashboard'); // render app behind login screen
+applyPermissions();
+// Show login screen — hide it only if already logged in from localStorage
+if(getCurTech()){
+  hideLoginScreen();
+  renderDash();
+  showHomeScreen();
+  checkScheduleEmails();
+  setTimeout(()=>{
+    const hasMaster=db.technicians.some(t=>t.userRole==='master');
+    if(!hasMaster&&db.technicians.length>0) toast('💡 No master admin set — go to Settings','info');
+  },1200);
+} else {
+  // Show login — Firebase will call buildLsGrid() when data arrives
+  buildLsGrid();
+}
+
+// Show "Add to Home Screen" tip once on mobile
+if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
+  const shown=localStorage.getItem('slt_a2hs');
+  if(!shown){
+    localStorage.setItem('slt_a2hs','1');
+    setTimeout(()=>{
+      const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+      toast(isIOS?'📱 Tip: tap Share → Add to Home Screen for the best experience':'📱 Tip: tap ⋮ → Add to Home Screen for the best experience','info');
+    },2000);
+  }
+}
+</script>
+<!-- PWA Service Worker Registration -->
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
