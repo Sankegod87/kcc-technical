@@ -334,6 +334,74 @@ textarea{resize:vertical;min-height:70px;}
 <div id="printArea"></div>
 
 <!-- ═══════════════════════════════════════
+     HOME SCREEN (shown after login)
+     ═══════════════════════════════════════ -->
+<div id="homeScreen" style="
+  position:fixed;inset:0;z-index:900;
+  background:var(--bg);
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+">
+  <!-- Noise overlay -->
+  <div style="position:absolute;inset:0;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.35"></div>
+
+  <div style="position:relative;width:100%;max-width:480px">
+
+    <!-- Greeting -->
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:40px;margin-bottom:10px" id="hs-avatar">👤</div>
+      <div style="font-family:var(--head);font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:4px">Welcome back</div>
+      <div style="font-family:var(--head);font-size:28px;font-weight:900;color:var(--text)" id="hs-name">—</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:4px" id="hs-role">—</div>
+    </div>
+
+    <!-- Two big choice cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+
+      <!-- Lights -->
+      <div onclick="hsGo('dashboard')" style="
+        background:var(--s1);border:1px solid var(--border2);border-radius:14px;
+        padding:28px 16px;text-align:center;cursor:pointer;
+        transition:all .2s;
+      " onmouseover="this.style.borderColor='var(--amber)';this.style.background='var(--aglow)';this.style.transform='translateY(-3px)'"
+         onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--s1)';this.style.transform='none'">
+        <div style="font-size:48px;margin-bottom:12px;filter:drop-shadow(0 0 12px var(--amber))">💡</div>
+        <div style="font-family:var(--head);font-size:18px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--amber)">Lights</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:6px;line-height:1.5">Fixtures · Outages<br>Inventory · Scan</div>
+      </div>
+
+      <!-- Schedule -->
+      <div onclick="hsGo('schedule')" style="
+        background:var(--s1);border:1px solid var(--border2);border-radius:14px;
+        padding:28px 16px;text-align:center;cursor:pointer;
+        transition:all .2s;
+      " onmouseover="this.style.borderColor='var(--blue)';this.style.background='var(--bglow)';this.style.transform='translateY(-3px)'"
+         onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--s1)';this.style.transform='none'">
+        <div style="font-size:48px;margin-bottom:12px;filter:drop-shadow(0 0 12px var(--blue))">📅</div>
+        <div style="font-family:var(--head);font-size:18px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:var(--blue)">Schedule</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:6px;line-height:1.5">Sunday roster<br>Station assignments</div>
+      </div>
+
+    </div>
+
+    <!-- This Sunday preview (if scheduled) -->
+    <div id="hs-sunday" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:8px">THIS SUNDAY</div>
+      <div id="hs-sunday-content"></div>
+    </div>
+
+    <!-- Sign out link -->
+    <div style="text-align:center">
+      <button onclick="lsLogout()" style="background:none;border:none;color:var(--dim2);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline">Sign out</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
      FULL SCREEN LOGIN
      ═══════════════════════════════════════ -->
 <div id="loginScreen" style="
@@ -468,7 +536,7 @@ textarea{resize:vertical;min-height:70px;}
   <button class="bnn active" onclick="go('dashboard')" id="bnn-dashboard"><span class="bni">📊</span><span>Dash</span></button>
   <button class="bnn" onclick="go('fixtures')"  id="bnn-fixtures" ><span class="bni">🎭</span><span>Fixtures</span></button>
   <button class="bnn" onclick="go('inventory')" id="bnn-inventory"><span class="bni">📦</span><span>Stock</span></button>
-  <button class="bnn" onclick="go('scan')"      id="bnn-scan"     ><span class="bni">📷</span><span>Scan</span></button>
+  <button class="bnn" onclick="go('schedule')"  id="bnn-schedule" ><span class="bni">📅</span><span>Schedule</span></button>
   <button class="bnn" onclick="showMobileMenu()" id="bnn-more"    ><span class="bni">☰</span><span>More</span></button>
 </div>
 
@@ -476,9 +544,9 @@ textarea{resize:vertical;min-height:70px;}
 <div id="mobileMoreMenu" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:130;background:var(--s1);border-top:1px solid var(--border2);border-radius:16px 16px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 70px)">
   <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim2);text-transform:uppercase;margin-bottom:12px">More Pages</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('scan');hideMobileMenu()">📷 Scan</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('history');hideMobileMenu()">📋 History</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('stats');hideMobileMenu()">📈 Stats</button>
-    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('schedule');hideMobileMenu()">📅 Schedule</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('crew');hideMobileMenu()">👷 Crew</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('settings');hideMobileMenu()">⚙️ Settings</button>
   </div>
@@ -798,14 +866,8 @@ textarea{resize:vertical;min-height:70px;}
         <textarea id="schedNotes" placeholder="e.g. Full production, extra hands needed..." style="min-height:60px"></textarea>
       </div>
 
-      <!-- Email option -->
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bglow);border:1px solid rgba(61,155,233,.3);border-radius:6px">
-        <input type="checkbox" id="schedSendEmail" checked style="width:16px;height:16px;margin-top:2px;accent-color:var(--blue);flex-shrink:0">
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--blue)">📧 Email assigned crew members</div>
-          <div class="dim">Each person on the schedule will receive a personal email with the date, their role, and any notes. Only crew members with an email address set will receive it.</div>
-        </div>
-      </div>
+      <!-- Emails auto-send every Thursday -->
+      <div style="padding:10px 12px;background:var(--bglow);border:1px solid rgba(61,155,233,.3);border-radius:6px;font-size:12px;color:var(--blue)">📧 Schedule emails automatically send every <strong>Thursday</strong> for the upcoming Sunday.</div>
     </div>
     <div class="mf">
       <button class="btn bgh" onclick="closeM('editSchedule')">Cancel</button>
@@ -1131,7 +1193,7 @@ function lload(){
 window._onRemoteData=function(r){
   db.technicians=r.technicians||[];db.fixtures=r.fixtures||[];db.outages=r.outages||[];
   db.inventory=r.inventory||[];db.orders=r.orders||[];db.usageLog=r.usageLog||[];
-  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};lsave();refreshPage();checkScheduledReport();
+  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};lsave();refreshPage();checkScheduledReport();checkScheduleEmails();
 };
 async function save(){
   lsave();
@@ -1241,13 +1303,74 @@ function lsLogin(id){
   applyPermissions();
   hideLoginScreen();
   const t = db.technicians.find(x=>x.id===id);
-  if(t) toast('Welcome back, '+t.name+'! 👋','success');
-  renderDash();
+  renderDash(); // pre-render behind home screen
+  showHomeScreen();
   // Check master admin claim
   setTimeout(()=>{
     const hasMaster=db.technicians.some(t=>t.userRole==='master');
     if(!hasMaster&&getCurTech()) toast('💡 No master admin set — go to Settings','info');
-  },1000);
+  },1200);
+}
+
+// ── Home Screen ──
+function showHomeScreen(){
+  const t = getCurTech();
+  if(!t){ showLoginScreen(); return; }
+
+  // Populate greeting
+  document.getElementById('hs-avatar').textContent = t.avatar||'👤';
+  document.getElementById('hs-name').textContent = t.name;
+  const roleLabel = t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User';
+  document.getElementById('hs-role').textContent = (t.role||'Crew')+' · '+roleLabel;
+
+  // Show this Sunday's schedule if it exists
+  const now = new Date();
+  const daysUntilSun = (7 - now.getDay()) % 7 || 7;
+  const sun = new Date(now); sun.setDate(now.getDate() + daysUntilSun);
+  const key = sun.toISOString().slice(0,10);
+  const entry = db.schedules[key];
+  const sundayEl = document.getElementById('hs-sunday');
+  const sundayContent = document.getElementById('hs-sunday-content');
+
+  if(entry && entry.crew && entry.crew.length){
+    sundayEl.style.display = '';
+    const myEntry = entry.crew.includes(t.id);
+    const myRole = entry.roles?.[t.id];
+    const dateStr = sun.toLocaleDateString('en-CA',{month:'long',day:'numeric'});
+    const stationIcon = {
+      'Camera Station':'📷','Streaming Station':'🖥️',
+      'Presentation Station':'📊','Lighting Station':'💡','Sound Mixing':'🎚️'
+    };
+    sundayContent.innerHTML =
+      '<div style="font-size:13px;font-weight:700;margin-bottom:6px">'+dateStr+'</div>' +
+      (myEntry
+        ? '<div style="color:var(--green);font-size:13px;margin-bottom:8px">✅ You are scheduled · <strong>'+(stationIcon[myRole]||'')+(myRole||'')+'</strong></div>'
+        : '<div style="color:var(--dim2);font-size:12px;margin-bottom:8px">You are not on the roster this week</div>') +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+      entry.crew.map(id=>{
+        const cr=db.technicians.find(x=>x.id===id);
+        if(!cr) return '';
+        const role=entry.roles?.[id]||'';
+        return '<div style="background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;font-family:var(--mono)">'+(cr.avatar||'👤')+' '+cr.name.split(' ')[0]+(role?' · '+(stationIcon[role]||role):'')+'</div>';
+      }).join('') + '</div>';
+  } else {
+    sundayEl.style.display = 'none';
+  }
+
+  document.getElementById('homeScreen').style.display = 'flex';
+  document.getElementById('homeScreen').style.animation = 'fadeIn .25s';
+}
+
+function hideHomeScreen(){
+  const el = document.getElementById('homeScreen');
+  el.style.opacity = '0';
+  el.style.transition = 'opacity .2s';
+  setTimeout(()=>{ el.style.display='none'; el.style.opacity=''; el.style.transition=''; },200);
+}
+
+function hsGo(page){
+  hideHomeScreen();
+  go(page);
 }
 
 function lsForgot(){
@@ -1259,6 +1382,9 @@ function lsLogout(){
   try{ localStorage.removeItem(TECH_KEY); }catch(e){}
   updTechUI();
   applyPermissions();
+  // Hide home screen if visible
+  const hs=document.getElementById('homeScreen');
+  if(hs) hs.style.display='none';
   buildLsGrid();
   showLoginScreen();
 }
@@ -1311,8 +1437,8 @@ function go(page){
   ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule})[page]?.();
   applyPermissions();
   if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
-  ['dashboard','fixtures','inventory','scan'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
-  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','schedule'].includes(page)?' active':'');
+  ['dashboard','fixtures','inventory','schedule'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
+  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan'].includes(page)?' active':'');
 }
 function refreshPage(){go(_curPage);}
 function showMobileMenu(){
@@ -2417,7 +2543,8 @@ function receiveBulbs(){
 
 // ── Email alerts ──
 async function sendLowStockAlerts(bulbType,stock,threshold,techName){
-  const recipients=db.technicians.filter(t=>t.email&&t.email.includes('@'));
+  // Only notify admins and master admin — they're the ones who can reorder
+  const recipients=db.technicians.filter(t=>t.email&&t.email.includes('@')&&(t.userRole==='admin'||t.userRole==='master'));
   if(!recipients.length)return;
   const time=new Date().toLocaleString('en-CA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   for(const rec of recipients){
@@ -2437,7 +2564,8 @@ async function sendLowStockAlerts(bulbType,stock,threshold,techName){
   toast('📧 Low stock alert sent to '+recipients.length+' crew member'+(recipients.length>1?'s':''),'info');
 }
 async function sendOutageAlerts(fixtureName,fixtureId,bulbType,techName){
-  const recipients=db.technicians.filter(t=>t.email&&t.email.includes('@'));
+  // Only notify admins and master admin
+  const recipients=db.technicians.filter(t=>t.email&&t.email.includes('@')&&(t.userRole==='admin'||t.userRole==='master'));
   if(!recipients.length)return;
   const time=new Date().toLocaleString('en-CA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   for(const rec of recipients){
@@ -2457,7 +2585,8 @@ async function sendOutageAlerts(fixtureName,fixtureId,bulbType,techName){
   toast('📧 Outage alert sent to '+recipients.length+' crew member'+(recipients.length>1?'s':''),'info');
 }
 async function sendWeeklyReport(){
-  const recipients=db.technicians.filter(t=>t.email&&t.email.includes('@'));
+  // Weekly report goes to admins and master admin only
+  const recipients=db.technicians.filter(t=>t.email&&t.email.includes('@')&&(t.userRole==='admin'||t.userRole==='master'));
   if(!recipients.length){toast('No crew emails set up','error');return;}
   const week=db.outages.filter(o=>Date.now()-o.timestamp<7*86400000);
   const resolved=week.filter(o=>o.resolved);
@@ -2486,6 +2615,33 @@ function checkScheduledReport(){
     localStorage.setItem('slt_last_report',todayStr);
     setTimeout(sendWeeklyReport,3000);
   }
+}
+
+function checkScheduleEmails(){
+  // Auto-send schedule emails every Thursday (day 4) for the upcoming Sunday
+  const today=new Date();
+  if(today.getDay()!==4) return; // not Thursday
+  const lastSent=localStorage.getItem('slt_last_sched_email');
+  const todayStr=today.toDateString();
+  if(lastSent===todayStr) return; // already sent today
+  localStorage.setItem('slt_last_sched_email',todayStr);
+
+  // Find the upcoming Sunday (3 days away)
+  const sunday=new Date(today);
+  sunday.setDate(sunday.getDate()+3);
+  const key=sunday.toISOString().slice(0,10);
+  const entry=db.schedules[key];
+
+  if(!entry||!entry.crew||!entry.crew.length){
+    console.log('No schedule set for upcoming Sunday '+key+' — skipping auto-email');
+    return;
+  }
+
+  // Send emails to assigned crew
+  setTimeout(()=>{
+    sendScheduleEmails(key, entry);
+    toast('📧 Thursday auto-send: schedule emails sent for '+sunday.toLocaleDateString('en-CA',{month:'short',day:'numeric'}),'info');
+  }, 2000);
 }
 
 // ── Export CSV ──
@@ -2880,7 +3036,14 @@ function openScheduleEdit(key, el){
         </div>
       </div>
       <div id="schedrole-wrap-${t.id}" style="display:${assigned?'':'none'}">
-        <input type="text" id="schedrole-${t.id}" placeholder="Role for this day (e.g. Head Tech)" value="${role}" style="font-size:11px;padding:5px 8px">
+        <select id="schedrole-${t.id}" style="font-size:11px;padding:5px 8px">
+          <option value="">— Select Station —</option>
+          <option value="Camera Station" ${role==='Camera Station'?'selected':''}>📷 Camera Station</option>
+          <option value="Streaming Station" ${role==='Streaming Station'?'selected':''}>🖥️ Streaming Station</option>
+          <option value="Presentation Station" ${role==='Presentation Station'?'selected':''}>📊 Presentation Station</option>
+          <option value="Lighting Station" ${role==='Lighting Station'?'selected':''}>💡 Lighting Station</option>
+          <option value="Sound Mixing" ${role==='Sound Mixing'?'selected':''}>🎚️ Sound Mixing</option>
+        </select>
       </div>
     </div>`;
   }).join('');
@@ -2927,11 +3090,7 @@ function saveScheduleEntry(){
   renderSchedule();
   toast('Schedule saved','success');
 
-  // Send individual emails if checkbox is ticked
-  const sendEmails = document.getElementById('schedSendEmail')?.checked;
-  if(sendEmails && entry.crew && entry.crew.length){
-    sendScheduleEmails(_schedEditKey, entry);
-  }
+  // Emails auto-send every Thursday — no manual send needed
 }
 
 async function sendScheduleEmails(dateKey, entry){
@@ -2981,8 +3140,9 @@ applyPermissions();
 // Show login screen — hide it only if already logged in from localStorage
 if(getCurTech()){
   hideLoginScreen();
-  const t=getCurTech();
-  if(t) toast('Welcome back, '+t.name+'! 👋','success');
+  renderDash();
+  showHomeScreen();
+  checkScheduleEmails();
   setTimeout(()=>{
     const hasMaster=db.technicians.some(t=>t.userRole==='master');
     if(!hasMaster&&db.technicians.length>0) toast('💡 No master admin set — go to Settings','info');
