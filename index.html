@@ -307,6 +307,12 @@ textarea{resize:vertical;min-height:70px;}
 @media(min-width:769px){
   #bottomNav { display:none !important; }
 }
+/* Schedule hover */
+#schedGrid [onclick]:hover {
+  border-color: var(--amber) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(240,165,0,.12);
+}
 </style>
 </head>
 <body>
@@ -372,6 +378,7 @@ textarea{resize:vertical;min-height:70px;}
     <button class="nb" onclick="go('stats')"     id="nav-stats"    ><span>📈</span><span class="nl"> Stats</span></button>
     <button class="nb" onclick="go('scan')"      id="nav-scan"     ><span>📷</span><span class="nl"> Scan</span></button>
     <button class="nb" onclick="go('crew')"      id="nav-crew"     ><span>👷</span><span class="nl"> Crew</span></button>
+    <button class="nb" onclick="go('schedule')"  id="nav-schedule" ><span>📅</span><span class="nl"> Schedule</span></button>
     <button class="nb" onclick="go('settings')"  id="nav-settings" ><span>⚙️</span><span class="nl"> Settings</span></button>
   </nav>
 </header>
@@ -391,6 +398,7 @@ textarea{resize:vertical;min-height:70px;}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('history');hideMobileMenu()">📋 History</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('stats');hideMobileMenu()">📈 Stats</button>
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('schedule');hideMobileMenu()">📅 Schedule</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('crew');hideMobileMenu()">👷 Crew</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('settings');hideMobileMenu()">⚙️ Settings</button>
   </div>
@@ -435,7 +443,7 @@ textarea{resize:vertical;min-height:70px;}
   <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
     <button class="btn bb bsm" onclick="sendWeeklyReport()">📧 Send Weekly Report</button>
     <button class="btn bgh bsm" onclick="exportCSV()">⬇️ Export CSV</button>
-    <button class="btn bgh bsm" onclick="requirePin(resetAllData)" style="border-color:var(--red);color:var(--red)">⚠️ Reset All Data</button>
+    <button class="btn bgh bsm" data-perm="master" onclick="requirePin(resetAllData)" style="border-color:var(--red);color:var(--red)">⚠️ Reset All Data</button>
   </div>
 </div>
 
@@ -450,7 +458,7 @@ textarea{resize:vertical;min-height:70px;}
         <option value="ok">OK Only</option>
         <option value="maint">Maintenance Due</option>
       </select>
-      <button class="btn ba" onclick="openM('addFixture')">+ Add Fixture</button>
+      <button class="btn ba" data-perm="admin" onclick="openM('addFixture')">+ Add Fixture</button>
     </div>
   </div>
   <div class="panel"><div class="pb" style="padding:0">
@@ -467,8 +475,8 @@ textarea{resize:vertical;min-height:70px;}
     <div class="row gap8">
       <button class="btn bgh" onclick="printLabels()">🖨️ Print Labels</button>
       <button class="btn bgh" onclick="exportCSV('inventory')">⬇️ Export</button>
-      <button class="btn br bsm" onclick="requirePin(clearAllInventory)">🗑️ Clear All</button>
-      <button class="btn ba" onclick="openM('receiveBulbs')">+ Receive Batch</button>
+      <button class="btn br bsm" data-perm="master" onclick="requirePin(clearAllInventory)">🗑️ Clear All</button>
+      <button class="btn ba" data-perm="admin" onclick="openM('receiveBulbs')">+ Receive Batch</button>
     </div>
   </div>
   <div class="tabs">
@@ -585,7 +593,7 @@ textarea{resize:vertical;min-height:70px;}
 <div id="pg-crew" style="display:none">
   <div class="row jbet mb14">
     <h2 class="fw9 tu ls2" style="font-size:14px">Crew / Technicians</h2>
-    <button class="btn ba" onclick="openM('addTech')">+ Add Technician</button>
+    <button class="btn ba" data-perm="admin" onclick="openM('addTech')">+ Add Technician</button>
   </div>
   <div class="tcards" id="crewCards"></div>
   <div class="panel">
@@ -595,6 +603,30 @@ textarea{resize:vertical;min-height:70px;}
       <tbody id="crewStats"></tbody>
     </table></div>
   </div>
+</div>
+
+<!-- ── SCHEDULE ── -->
+<div id="pg-schedule" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Sunday Schedule</h2>
+      <div class="dim" style="margin-top:4px">Team assignments for every Sunday this year</div>
+    </div>
+    <div class="row gap8">
+      <select id="schedYear" onchange="renderSchedule()" style="width:auto;padding:6px 10px;font-size:11px"></select>
+      <div id="schedEditBtns" style="display:none" class="row gap8">
+        <button class="btn ba" onclick="openM('editSchedule')">✏️ Edit Selected</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- No scheduler warning -->
+  <div id="schedNoPerms" style="display:none;background:var(--bglow);border:1px solid rgba(61,155,233,.3);border-radius:8px;padding:14px;margin-bottom:14px;font-size:13px">
+    👁️ <strong>View only</strong> — only crew members with scheduler permission can edit the schedule.
+  </div>
+
+  <!-- Schedule grid -->
+  <div id="schedGrid"></div>
 </div>
 
 <!-- ── SETTINGS ── -->
@@ -609,7 +641,7 @@ textarea{resize:vertical;min-height:70px;}
         <p class="dim mb12">Protect Reset and Delete actions with a 4-digit PIN. Leave blank to disable PIN protection.</p>
         <div class="fg mb12"><label>Current PIN (4 digits)</label><input type="password" id="currentPin" placeholder="Enter current PIN or leave blank" maxlength="4"></div>
         <div class="fg mb12"><label>New PIN (4 digits, leave blank to remove)</label><input type="password" id="newPin" placeholder="New 4-digit PIN" maxlength="4"></div>
-        <button class="btn ba" onclick="savePin()">Save PIN</button>
+        <button class="btn ba" data-perm="admin" onclick="savePin()">Save PIN</button>
       </div>
     </div>
     <div class="panel">
@@ -634,6 +666,21 @@ textarea{resize:vertical;min-height:70px;}
         </div>
       </div>
     </div>
+    <div class="panel" id="claimMasterPanel">
+      <div class="ph"><span class="pt">👑 Claim Master Admin</span></div>
+      <div class="pb">
+        <p class="dim mb12">No master admin has been set yet. The person who claims this role will have full control over the system — including resetting data and deleting fixtures.</p>
+        <p class="dim mb12">Once claimed, this can only be transferred by the current master admin.</p>
+        <button class="btn ba" onclick="claimMasterAdmin()">👑 Claim Master Admin</button>
+      </div>
+    </div>
+    <div class="panel" data-perm="master">
+      <div class="ph"><span class="pt">👑 Role Management</span></div>
+      <div class="pb">
+        <p class="dim mb12">Assign admin roles to crew members. Only the master admin can change roles.</p>
+        <div id="roleMgmtList"></div>
+      </div>
+    </div>
     <div class="panel">
       <div class="ph"><span class="pt">🔧 Maintenance Defaults</span></div>
       <div class="pb">
@@ -648,6 +695,34 @@ textarea{resize:vertical;min-height:70px;}
 </main>
 
 <!-- ══════════ MODALS ══════════ -->
+
+<div id="m-editSchedule" class="mover" style="display:none" onclick="mOut(event,'editSchedule')">
+  <div class="modal wide">
+    <div class="mh"><span class="mt" id="schedModalTitle">📅 Edit Sunday Schedule</span><button class="xb" onclick="closeM('editSchedule')">✕</button></div>
+    <div class="mb">
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:16px">
+        <div class="dim" style="margin-bottom:4px;letter-spacing:1px">DATE</div>
+        <div style="font-size:18px;font-weight:900" id="schedModalDate">—</div>
+      </div>
+
+      <!-- Crew assignment grid -->
+      <div class="fg mb14">
+        <label>Crew Working This Sunday</label>
+        <div id="schedCrewGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px"></div>
+      </div>
+
+      <!-- Notes -->
+      <div class="fg">
+        <label>Notes / Special Instructions</label>
+        <textarea id="schedNotes" placeholder="e.g. Full production, extra hands needed..." style="min-height:60px"></textarea>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('editSchedule')">Cancel</button>
+      <button class="btn ba" onclick="saveScheduleEntry()">Save Schedule</button>
+    </div>
+  </div>
+</div>
 
 <div id="m-whoAmI" class="mover" style="display:none" onclick="mOut(event,'whoAmI')">
   <div class="modal">
@@ -692,10 +767,17 @@ textarea{resize:vertical;min-height:70px;}
       <div class="fgrid">
         <div class="fg"><label>Full Name *</label><input id="tn" placeholder="Jane Smith"></div>
         <div class="fg"><label>Role / Title</label><input id="tr" placeholder="Head Technician"></div>
+        <div class="fg"><label>Permission Level</label>
+          <select id="tuserrole">
+            <option value="user">👤 Regular User — report outages, replacements, receive bulbs</option>
+            <option value="admin">🔑 User Admin — manage crew, fixtures, inventory, schedule</option>
+          </select>
+        </div>
         <div class="fg"><label>Avatar Emoji</label><input id="ta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
         <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="tem" type="email" placeholder="jane@example.com"></div>
         <div class="fg"><label>Password *</label><input id="tpw" type="password" placeholder="Set a password"></div>
         <div class="fg"><label>Confirm Password *</label><input id="tpw2" type="password" placeholder="Confirm password"></div>
+        <div class="fg" style="grid-column:1/-1"><div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px"><input type="checkbox" id="tcanschedule" style="width:16px;height:16px;accent-color:var(--amber)"><div><div style="font-size:13px;font-weight:700;color:var(--amber)">Can edit schedule</div><div class="dim">Allow this technician to create and edit Sunday schedules</div></div></div></div>
       </div>
     </div>
     <div class="mf">
@@ -713,8 +795,15 @@ textarea{resize:vertical;min-height:70px;}
       <div class="fgrid">
         <div class="fg"><label>Full Name *</label><input id="etn" placeholder="Jane Smith"></div>
         <div class="fg"><label>Role / Title</label><input id="etr" placeholder="Head Technician"></div>
+        <div class="fg"><label>Permission Level</label>
+          <select id="etuserrole">
+            <option value="user">👤 Regular User — report outages, replacements, receive bulbs</option>
+            <option value="admin">🔑 User Admin — manage crew, fixtures, inventory, schedule</option>
+          </select>
+        </div>
         <div class="fg"><label>Avatar Emoji</label><input id="eta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
         <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="etem" type="email" placeholder="jane@example.com"></div>
+        <div class="fg" style="grid-column:1/-1"><div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:10px"><input type="checkbox" id="etcanschedule" style="width:16px;height:16px;accent-color:var(--amber)"><div><div style="font-size:13px;font-weight:700;color:var(--amber)">Can edit schedule</div><div class="dim">Allow this technician to create and edit Sunday schedules</div></div></div></div>
         <div class="fg" style="grid-column:1/-1"><div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:4px"><div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:10px">🔑 Change Password</div><div class="fgrid"><div class="fg"><label>New Password (leave blank to keep current)</label><input id="etpw" type="password" placeholder="New password"></div><div class="fg"><label>Confirm New Password</label><input id="etpw2" type="password" placeholder="Confirm new password"></div></div></div></div>
       </div>
     </div>
@@ -946,12 +1035,12 @@ let _charts={};
 // ── Storage ──
 function lsave(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
 function lload(){
-  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];}}catch(e){}
+  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{}},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};}}catch(e){}
 }
 window._onRemoteData=function(r){
   db.technicians=r.technicians||[];db.fixtures=r.fixtures||[];db.outages=r.outages||[];
   db.inventory=r.inventory||[];db.orders=r.orders||[];db.usageLog=r.usageLog||[];
-  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];lsave();refreshPage();checkScheduledReport();
+  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};lsave();refreshPage();checkScheduledReport();
 };
 async function save(){
   lsave();
@@ -968,18 +1057,48 @@ function setSyncState(s,m){document.getElementById('sdot').className='sdot '+s;d
 function updSyncTime(){document.getElementById('stime').textContent='Last sync: '+new Date().toLocaleTimeString();}
 window.addEventListener('syncStatus',e=>{const{state,msg}=e.detail;setSyncState(state,msg);if(state==='ok')updSyncTime();});
 
+// ══════════════════════════════════════════════════
+// PERMISSION SYSTEM
+// 👑 master  — full access, only 1
+// 🔑 admin   — manage crew/fixtures/inventory/schedule
+// 👤 user    — report outages, replacements, receive bulbs
+// ══════════════════════════════════════════════════
+function curRole(){
+  const t=getCurTech();
+  if(!t) return 'user';
+  return t.userRole||'user';
+}
+function isMaster(){ return curRole()==='master'; }
+function isAdmin(){  return curRole()==='admin' || isMaster(); }
+function isUser(){   return true; } // everyone can do basic actions
+
+// Show/hide elements based on role
+function applyPermissions(){
+  const master = isMaster();
+  const admin  = isAdmin();
+  // Master-only buttons
+  document.querySelectorAll('[data-perm="master"]').forEach(el=>{
+    el.style.display = master ? '' : 'none';
+  });
+  // Admin+ buttons
+  document.querySelectorAll('[data-perm="admin"]').forEach(el=>{
+    el.style.display = admin ? '' : 'none';
+  });
+}
+
 // ── Navigation ──
 function go(page){
   stopCamera();stopGsScanner&&stopGsScanner();
-  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings'].forEach(p=>{
+  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule'].forEach(p=>{
     document.getElementById('pg-'+p).style.display=p===page?'':'none';
     document.getElementById('nav-'+p)?.classList.toggle('active',p===page);
   });
   _curPage=page;
-  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings})[page]?.();
+  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule})[page]?.();
+  applyPermissions();
   if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
   ['dashboard','fixtures','inventory','scan'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
-  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings'].includes(page)?' active':'');
+  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','schedule'].includes(page)?' active':'');
 }
 function refreshPage(){go(_curPage);}
 function showMobileMenu(){
@@ -1079,9 +1198,9 @@ function renderFix(){
           <button class="btn br bsm" onclick="openOutModal('${f.id}')">🔴</button>
           ${f.status==='out'?`<button class="btn bg bsm" onclick="openRepModal('${f.id}')">✅</button>`:''}
           <button class="btn bgh bsm" onclick="viewFixture('${f.id}')">👁</button>
-          <button class="btn bgh bsm" onclick="editFixture('${f.id}')">✏️</button>
+          <button class="btn bgh bsm" data-perm="admin" onclick="editFixture('${f.id}')">✏️</button>
           <button class="btn bgh bsm" onclick="markMaintDone('${f.id}')">🔧</button>
-          <button class="btn bgh bsm" onclick="requirePin(()=>deleteFixture('${f.id}'))">🗑️</button>
+          <button class="btn bgh bsm" data-perm="master" onclick="requirePin(()=>deleteFixture('${f.id}'))">🗑️</button>
         </div></td>
       </tr>`).join('');
 }
@@ -1143,6 +1262,7 @@ function markMaintDone(id){
   f.lastMaint=Date.now();save();renderFix();toast('Maintenance logged for '+f.id,'success');
 }
 function deleteFixture(id){
+  if(!isMaster()){toast('Master admin only','error');return;}
   const f=db.fixtures.find(x=>x.id===id);if(!f)return;
   if(!confirm('Delete fixture "'+f.name+'"?\n\nThis also removes its outage history.'))return;
   db.fixtures=db.fixtures.filter(x=>x.id!==id);
@@ -1164,7 +1284,7 @@ function renderInv(){
         <td>${i.threshold}</td><td>${i.totalReceived}</td><td>${i.totalUsed}</td>
         <td class="dim">${avgLife}</td>
         <td>${low?'<span class="badge blow"><span class="bd pulse"></span>LOW</span>':'<span class="badge bok"><span class="bd"></span>OK</span>'}</td>
-        <td><button class="btn bgh bsm" onclick="requirePin(()=>deleteInvRow('${i.bulbType.replace(/'/g,"\\'")}'))">🗑️</button></td>
+        <td><button class="btn bgh bsm" data-perm="master" onclick="requirePin(()=>deleteInvRow('${i.bulbType.replace(/'/g,"\\'")}'))">🗑️</button></td>
       </tr>`;}).join('');
   document.getElementById('ordersTbl').innerHTML=!db.orders.length
     ?'<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:28px">No orders yet</td></tr>'
@@ -1275,6 +1395,7 @@ function deleteInvRow(t){
   save();renderInv();toast(t+' removed','info');
 }
 function clearAllInventory(){
+  if(!isMaster()){toast('Master admin only','error');return;}
   if(!confirm('Clear ALL inventory, orders and usage history?'))return;
   db.inventory=[];db.orders=[];db.usageLog=[];save();renderInv();toast('Inventory cleared','info');
 }
@@ -1344,11 +1465,15 @@ function renderCrew(){
           <div class="dim">${t.role||'Technician'}</div>
           <div class="dim" style="color:${t.email?'var(--blue)':'var(--red)'}">${t.email||'No email set'}</div>
           <div class="dim" style="color:${t.passwordHash?'var(--green)':'var(--red)'}">${t.passwordHash?'🔒 Password set':'⚠️ No password'}</div>
+          <div class="dim" style="color:${t.userRole==='master'?'var(--amber)':t.userRole==='admin'?'var(--blue)':'var(--dim2)'}">
+            ${t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User'}
+          </div>
+          ${t.canSchedule?'<div class="dim" style="color:var(--amber)">📅 Can edit schedule</div>':''}
         </div>
         <div class="row gap6">
-          <button class="btn bgh bsm" onclick="editTech('${t.id}')">✏️</button>
-          <button class="btn bgh bsm" onclick="adminResetPassword('${t.id}')" title="Admin: reset password">🔑</button>
-          <button class="btn bgh bsm" onclick="requirePin(()=>removeTech('${t.id}'))">✕</button>
+          <button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️</button>
+          <button class="btn bgh bsm" data-perm="admin" onclick="adminResetPassword('${t.id}')" title="Admin: reset password">🔑</button>
+          <button class="btn bgh bsm" data-perm="admin" onclick="requirePin(()=>removeTech('${t.id}'))">✕</button>
         </div>
       </div>`).join('');
   document.getElementById('crewStats').innerHTML=!db.technicians.length?''
@@ -1368,6 +1493,27 @@ function renderCrew(){
 // ── Settings ──
 function renderSettings(){
   const s=db.settings||{};
+  // Show/hide claim master panel
+  const claimPanel=document.getElementById('claimMasterPanel');
+  if(claimPanel){
+    const hasMaster=db.technicians.some(t=>t.userRole==='master');
+    claimPanel.style.display=(!hasMaster&&getCurTech())?'':'none';
+  }
+  // Render role management list (master only)
+  const roleList=document.getElementById('roleMgmtList');
+  if(roleList&&isMaster()){
+    roleList.innerHTML=db.technicians.filter(t=>t.userRole!=='master').map(t=>`
+      <div class="row jbet" style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div class="row gap8">
+          <span style="font-size:20px">${t.avatar||'👤'}</span>
+          <div><div class="fw7">${t.name}</div><div class="dim">${t.role||'Technician'}</div></div>
+        </div>
+        <select onchange="setUserRole('${t.id}',this.value)" style="width:auto;padding:5px 8px;font-size:11px">
+          <option value="user" ${(t.userRole||'user')==='user'?'selected':''}>👤 Regular User</option>
+          <option value="admin" ${t.userRole==='admin'?'selected':''}>🔑 User Admin</option>
+        </select>
+      </div>`).join('') || '<p class="dim">No other crew members yet.</p>';
+  }
   document.getElementById('maintInterval').value=s.maintInterval||90;
   document.getElementById('reportDay').value=s.reportDay||1;
   const np=document.getElementById('notifStatus');
@@ -1376,6 +1522,26 @@ function renderSettings(){
   else if(Notification.permission==='denied'){np.innerHTML='<span class="badge bout">Blocked — enable in browser settings</span>';}
   else{np.innerHTML='<span class="badge blow">Not yet enabled</span>';}
 }
+function claimMasterAdmin(){
+  const t=getCurTech();
+  if(!t){toast('Log in first','error');return;}
+  const hasMaster=db.technicians.some(x=>x.userRole==='master');
+  if(hasMaster){toast('A master admin already exists','error');return;}
+  if(!confirm('Make '+t.name+' the Master Admin?\n\nThis gives full system access including data reset and deletion.'))return;
+  t.userRole='master';
+  save();applyPermissions();renderSettings();updTechUI();
+  toast('👑 '+t.name+' is now Master Admin','success');
+}
+
+function setUserRole(techId, role){
+  if(!isMaster()){toast('Master admin only','error');return;}
+  const t=db.technicians.find(x=>x.id===techId);
+  if(!t||t.userRole==='master')return;
+  t.userRole=role;
+  save();renderSettings();
+  toast(t.name+' is now '+role,'success');
+}
+
 function savePin(){
   const cur=document.getElementById('currentPin').value;
   const nw=document.getElementById('newPin').value;
@@ -1439,7 +1605,7 @@ function getCurTech(){return _techId?db.technicians.find(t=>t.id===_techId)||nul
 function loadTech(){try{_techId=localStorage.getItem(TECH_KEY)||null;}catch(e){}updTechUI();}
 function setTech(id){
   _techId=id;try{localStorage.setItem(TECH_KEY,id);}catch(e){}
-  updTechUI();closeM('whoAmI');
+  updTechUI();closeM('whoAmI');applyPermissions();
   const t=db.technicians.find(x=>x.id===id);if(t)toast('Welcome, '+t.name+'! 👋','success');
   renderDash();
 }
@@ -1447,7 +1613,7 @@ function updTechUI(){
   const t=getCurTech();
   document.getElementById('techChip').textContent=t?t.avatar+' '+t.name:'— Select —';
   const banner=document.getElementById('whoBanner');
-  if(t){banner.style.display='';document.getElementById('bannerAv').textContent=t.avatar||'👤';document.getElementById('bannerName').textContent=t.name;document.getElementById('bannerRole').textContent=t.role||'Technician';}
+  if(t){banner.style.display='';document.getElementById('bannerAv').textContent=t.avatar||'👤';document.getElementById('bannerName').textContent=t.name;const roleLabel=t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 '+t.role||'Technician';document.getElementById('bannerRole').textContent=roleLabel;}
   else banner.style.display='none';
 }
 function buildTechGrid(cid,key){
@@ -1470,7 +1636,7 @@ function openM(id){
 }
 function closeM(id){document.getElementById('m-'+id).style.display='none';if(id==='markReplaced')stopRepCamera&&stopRepCamera();}
 function mOut(e,id){if(e.target===document.getElementById('m-'+id))closeM(id);}
-function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw','globalScan','addUsedBulb'].forEach(closeM);}
+function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw','globalScan','addUsedBulb','editSchedule'].forEach(closeM);}
 function buildWhoGrid(){
   const el=document.getElementById('whoGrid');
   if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians yet.</p>';return;}
@@ -1520,6 +1686,7 @@ function simpleHash(str){
   return hash.toString(36);
 }
 function addTech(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
   const name=document.getElementById('tn').value.trim();
   const role=document.getElementById('tr').value.trim();
   const av=document.getElementById('ta').value.trim()||'👤';
@@ -1529,9 +1696,13 @@ function addTech(){
   if(!name){toast('Name required','error');return;}
   if(!pw){toast('Password is required','error');return;}
   if(pw!==pw2){toast('Passwords do not match','error');return;}
-  db.technicians.push({id:'t'+Date.now(),name,role,avatar:av,email,passwordHash:simpleHash(pw)});
+  const canSched=document.getElementById('tcanschedule').checked;
+  const userRole=document.getElementById('tuserrole').value;
+  db.technicians.push({id:'t'+Date.now(),name,role,avatar:av,email,passwordHash:simpleHash(pw),canSchedule:canSched,userRole});
   save();closeM('addTech');renderCrew();
   ['tn','tr','ta','tem','tpw','tpw2'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tcanschedule').checked=false;
+  document.getElementById('tuserrole').value='user';
   toast(name+' added to crew','success');
 }
 function editTech(id){
@@ -1541,15 +1712,22 @@ function editTech(id){
   document.getElementById('etr').value=t.role||'';
   document.getElementById('eta').value=t.avatar||'👤';
   document.getElementById('etem').value=t.email||'';
+  document.getElementById('etcanschedule').checked=t.canSchedule||false;
+  document.getElementById('etuserrole').value=t.userRole||'user';
   openM('editTech');
 }
 function saveTechEdit(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
   const id=document.getElementById('etech-id').value;
   const t=db.technicians.find(x=>x.id===id);if(!t)return;
   t.name=document.getElementById('etn').value.trim()||t.name;
   t.role=document.getElementById('etr').value.trim();
   t.avatar=document.getElementById('eta').value.trim()||'👤';
   t.email=document.getElementById('etem').value.trim();
+  t.canSchedule=document.getElementById('etcanschedule').checked;
+  const newUserRole=document.getElementById('etuserrole').value;
+  // Prevent changing master admin role
+  if(t.userRole!=='master') t.userRole=newUserRole;
   const newPw=document.getElementById('etpw').value;
   const newPw2=document.getElementById('etpw2').value;
   if(newPw){
@@ -1606,6 +1784,7 @@ function editFixture(id){
   openM('editFixture');
 }
 function saveFixtureEdit(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
   const id=document.getElementById('efix-id').value;
   const f=db.fixtures.find(x=>x.id===id);if(!f)return;
   f.name=document.getElementById('efna').value.trim()||f.name;
@@ -1618,6 +1797,7 @@ function saveFixtureEdit(){
 }
 
 function addFixture(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
   const id=document.getElementById('fid').value.trim().toUpperCase();
   const nam=document.getElementById('fna').value.trim();
   const loc=document.getElementById('flo').value.trim();
@@ -2003,6 +2183,7 @@ function submitReplaced(){
   save();closeM('markReplaced');toast('Fixture '+f.id+(deduct?' replaced — 1 bulb deducted':' marked resolved — no bulb deducted'),'success');refreshPage();
 }
 function receiveBulbs(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
   const type=document.getElementById('btype').value.trim();
   const qty=parseInt(document.getElementById('bqty').value)||0;
   const sup=document.getElementById('bsup').value.trim();
@@ -2082,6 +2263,7 @@ function exportCSV(type='history'){
 
 // ── Reset ──
 function resetAllData(){
+  if(!isMaster()){toast('Master admin only','error');return;}
   if(!confirm('RESET EVERYTHING?\n\nWipes all data from ALL devices.'))return;
   if(prompt('Type RESET to confirm:')!=='RESET'){toast('Reset cancelled','info');return;}
   db={fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{}};
@@ -2321,8 +2503,201 @@ function ago(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return'just no
 function fmtDur(ms){const m=Math.round(ms/60000);if(m<60)return m+' min';return Math.floor(m/60)+'h '+m%60+'m';}
 function toast(msg,type='info'){const c=document.getElementById('toasts');const el=document.createElement('div');el.className='toast '+type;el.innerHTML=(type==='success'?'✅':type==='error'?'🔴':'💡')+' '+msg;c.appendChild(el);setTimeout(()=>el.remove(),3000);}
 
+// ══════════════════════════════════════════════════
+// SCHEDULE
+// ══════════════════════════════════════════════════
+let _schedSelectedKey = null;
+
+function canEditSchedule(){
+  const t = getCurTech();
+  return t && t.canSchedule === true;
+}
+
+function getSundaysOfYear(year){
+  const sundays = [];
+  const d = new Date(year, 0, 1);
+  // Find first Sunday
+  d.setDate(d.getDate() + (7 - d.getDay()) % 7);
+  while(d.getFullYear() === year){
+    sundays.push(new Date(d));
+    d.setDate(d.getDate() + 7);
+  }
+  return sundays;
+}
+
+function schedKey(date){
+  // YYYY-MM-DD key
+  return date.toISOString().slice(0,10);
+}
+
+function renderSchedule(){
+  const yearSel = document.getElementById('schedYear');
+  const now = new Date();
+  const curYear = now.getFullYear();
+
+  // Populate year selector if empty
+  if(!yearSel.options.length){
+    [curYear, curYear+1].forEach(y=>{
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if(y === curYear) opt.selected = true;
+      yearSel.appendChild(opt);
+    });
+  }
+
+  const year = parseInt(yearSel.value) || curYear;
+  const sundays = getSundaysOfYear(year);
+
+  // Show/hide edit button based on permissions
+  const canEdit = canEditSchedule();
+  document.getElementById('schedNoPerms').style.display = canEdit ? 'none' : '';
+
+  // Filter to rest of year if current year
+  const filtered = year === curYear
+    ? sundays.filter(s => s >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7))
+    : sundays;
+
+  const grid = document.getElementById('schedGrid');
+  if(!filtered.length){ grid.innerHTML='<p class="dim">No Sundays to show.</p>'; return; }
+
+  // Group by month
+  const byMonth = {};
+  filtered.forEach(s=>{
+    const mo = s.toLocaleString('en',{month:'long',year:'numeric'});
+    if(!byMonth[mo]) byMonth[mo]=[];
+    byMonth[mo].push(s);
+  });
+
+  grid.innerHTML = Object.entries(byMonth).map(([month, dates])=>`
+    <div style="margin-bottom:20px">
+      <div style="font-family:var(--head);font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${month}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+        ${dates.map(d=>{
+          const key = schedKey(d);
+          const entry = db.schedules[key] || null;
+          const isToday = schedKey(d) === schedKey(now);
+          const isPast = d < now;
+          const assignedTechs = entry ? (entry.crew||[]).map(id=>db.technicians.find(t=>t.id===id)).filter(Boolean) : [];
+          return `<div style="background:${isToday?'var(--aglow)':isPast?'var(--s1)':'var(--s2)'};border:1px solid ${isToday?'rgba(240,165,0,.4)':isPast?'var(--border)':'var(--border2)'};border-radius:8px;padding:14px;transition:border-color .18s;${!isPast&&canEdit?'cursor:pointer':''}"
+            ${canEdit&&!isPast?`onclick="openScheduleEdit('${key}',this)"`:''}
+          >
+            <div class="row jbet mb8">
+              <div>
+                <div style="font-weight:900;font-size:15px">${d.toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'})}</div>
+                ${isToday?'<span style="font-size:10px;color:var(--amber);font-family:var(--mono);letter-spacing:1px">THIS SUNDAY</span>':''}
+              </div>
+              ${entry&&assignedTechs.length?`<span class="badge bok">${assignedTechs.length} crew</span>`:(isPast?'<span class="badge" style="background:var(--s3);color:var(--dim);border:1px solid var(--border)">Past</span>':'<span class="badge blow">Unscheduled</span>')}
+            </div>
+            ${assignedTechs.length
+              ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${entry.notes?'8px':'0'}">
+                  ${assignedTechs.map(t=>`
+                    <div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px">
+                      <span>${t.avatar||'👤'}</span>
+                      <span>${t.name.split(' ')[0]}</span>
+                      ${entry.roles&&entry.roles[t.id]?`<span style="color:var(--dim2);font-size:10px;font-family:var(--mono)">· ${entry.roles[t.id]}</span>`:''}
+                    </div>`).join('')}
+                </div>`
+              : (!isPast&&canEdit?`<div class="dim" style="font-size:12px">Tap to assign crew</div>`:`<div class="dim" style="font-size:12px">No crew assigned</div>`)
+            }
+            ${entry&&entry.notes?`<div style="font-size:11px;color:var(--dim2);font-family:var(--mono);margin-top:4px;font-style:italic">${entry.notes}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`
+  ).join('');
+}
+
+let _schedEditKey = null;
+
+function openScheduleEdit(key, el){
+  if(!canEditSchedule()){ toast('You need scheduler permission to edit the schedule','error'); return; }
+  _schedEditKey = key;
+  const date = new Date(key+'T12:00:00');
+  document.getElementById('schedModalTitle').textContent = '📅 ' + date.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('schedModalDate').textContent = date.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+  const entry = db.schedules[key] || {crew:[],roles:{},notes:''};
+  document.getElementById('schedNotes').value = entry.notes||'';
+
+  // Build crew assignment grid
+  const grid = document.getElementById('schedCrewGrid');
+  grid.innerHTML = db.technicians.map(t=>{
+    const assigned = (entry.crew||[]).includes(t.id);
+    const role = entry.roles&&entry.roles[t.id] ? entry.roles[t.id] : '';
+    return `<div id="schedcrew-${t.id}" style="background:${assigned?'var(--aglow)':'var(--s2)'};border:1px solid ${assigned?'rgba(240,165,0,.4)':'var(--border)'};border-radius:8px;padding:12px;transition:all .18s">
+      <div class="row gap8 mb8" style="cursor:pointer" onclick="toggleSchedCrew('${t.id}')">
+        <span style="font-size:22px">${t.avatar||'👤'}</span>
+        <div>
+          <div style="font-weight:700;font-size:13px">${t.name}</div>
+          <div class="dim">${t.role||'Technician'}</div>
+        </div>
+        <div style="margin-left:auto">
+          <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${assigned?'var(--amber)':'var(--border2)'};background:${assigned?'var(--amber)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:12px">${assigned?'✓':''}</div>
+        </div>
+      </div>
+      <div id="schedrole-wrap-${t.id}" style="display:${assigned?'':'none'}">
+        <input type="text" id="schedrole-${t.id}" placeholder="Role for this day (e.g. Head Tech)" value="${role}" style="font-size:11px;padding:5px 8px">
+      </div>
+    </div>`;
+  }).join('');
+
+  openM('editSchedule');
+}
+
+function toggleSchedCrew(techId){
+  const wrap = document.getElementById('schedcrew-'+techId);
+  const roleWrap = document.getElementById('schedrole-wrap-'+techId);
+  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{},notes:''};
+  const idx = (entry.crew||[]).indexOf(techId);
+  const isNowAssigned = idx === -1;
+
+  if(isNowAssigned){
+    if(!entry.crew) entry.crew = [];
+    entry.crew.push(techId);
+  } else {
+    entry.crew.splice(idx,1);
+    if(entry.roles) delete entry.roles[techId];
+  }
+  db.schedules[_schedEditKey] = entry;
+
+  // Update UI
+  wrap.style.background = isNowAssigned ? 'var(--aglow)' : 'var(--s2)';
+  wrap.style.border = isNowAssigned ? '1px solid rgba(240,165,0,.4)' : '1px solid var(--border)';
+  roleWrap.style.display = isNowAssigned ? '' : 'none';
+  const dot = wrap.querySelector('div[style*="border-radius:50%"]');
+  if(dot){ dot.style.border = isNowAssigned?'2px solid var(--amber)':'2px solid var(--border2)'; dot.style.background = isNowAssigned?'var(--amber)':'transparent'; dot.textContent = isNowAssigned?'✓':''; }
+}
+
+function saveScheduleEntry(){
+  if(!canEditSchedule()){ toast('No permission','error'); return; }
+  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{},notes:''};
+  entry.notes = document.getElementById('schedNotes').value.trim();
+  // Save roles for each assigned crew member
+  if(!entry.roles) entry.roles = {};
+  (entry.crew||[]).forEach(id=>{
+    const roleEl = document.getElementById('schedrole-'+id);
+    if(roleEl) entry.roles[id] = roleEl.value.trim();
+  });
+  db.schedules[_schedEditKey] = entry;
+  save();
+  closeM('editSchedule');
+  renderSchedule();
+  toast('Schedule saved','success');
+}
+
 // ── BOOT ──
-lload();loadTech();go('dashboard');
+lload();
+// If no master admin exists yet, the first technician added becomes master
+// after claiming it via the settings page
+loadTech();
+go('dashboard');
+// Check if master admin needs to be claimed
+setTimeout(()=>{
+  const hasMaster=db.technicians.some(t=>t.userRole==='master');
+  if(!hasMaster&&db.technicians.length>0&&getCurTech()){
+    toast('💡 No master admin set — go to Settings to claim master admin','info');
+  }
+},1500);
 
 // Show "Add to Home Screen" tip once on mobile
 if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
