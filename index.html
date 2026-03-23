@@ -657,6 +657,7 @@ textarea{resize:vertical;min-height:70px;}
           <option value="pulled">Pulled</option>
           <option value="disposed">Disposed</option>
         </select>
+        <button class="btn bgh bsm" data-perm="master" onclick="requirePin(clearBulbRegistry)" style="border-color:var(--red);color:var(--red)">🗑️ Clear Registry</button>
       </div>
     </div>
     <div class="panel"><div class="pb" style="padding:0"><table class="tbl">
@@ -2879,6 +2880,15 @@ function invTab(tab,btn){
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   if(tab==='used')renderUsedBulbs();
   if(tab==='registry')renderBulbRegistry();
+}
+
+function clearBulbRegistry(){
+  if(!confirm('Clear the entire Bulb Registry?\n\nThis removes all bulb label history. Fixtures will lose their current bulb records. This cannot be undone.')) return;
+  db.bulbRegistry=[];
+  // Also clear currentBulbId from all fixtures
+  db.fixtures.forEach(f=>{f.currentBulbId=null;f.currentBulbType=null;});
+  save();renderBulbRegistry();renderFix();
+  toast('Bulb Registry cleared','info');
 }
 
 function renderBulbRegistry(){
