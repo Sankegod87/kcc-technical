@@ -307,6 +307,20 @@ textarea{resize:vertical;min-height:70px;}
 @media(min-width:769px){
   #bottomNav { display:none !important; }
 }
+/* Login screen */
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes lsSlideUp { from{transform:translateY(30px);opacity:0} to{transform:none;opacity:1} }
+#loginScreen > div > div:last-of-type { animation: lsSlideUp .4s ease-out; }
+.ls-user-btn {
+  background:var(--s2); border:1px solid var(--border2); border-radius:8px;
+  padding:12px 8px; cursor:pointer; text-align:center;
+  font-family:var(--head); font-size:13px; font-weight:700; color:var(--dim2);
+  transition:all .18s; display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.ls-user-btn:hover { border-color:var(--amber); color:var(--amber); background:var(--aglow); transform:translateY(-2px); }
+.ls-user-btn .ls-av { font-size:28px; }
+.ls-role-tag { font-size:9px; font-family:var(--mono); letter-spacing:1px; padding:1px 6px; border-radius:10px; margin-top:2px; }
+
 /* Schedule hover */
 #schedGrid [onclick]:hover {
   border-color: var(--amber) !important;
@@ -318,6 +332,72 @@ textarea{resize:vertical;min-height:70px;}
 <body>
 <div id="toasts"></div>
 <div id="printArea"></div>
+
+<!-- ═══════════════════════════════════════
+     FULL SCREEN LOGIN
+     ═══════════════════════════════════════ -->
+<div id="loginScreen" style="
+  position:fixed;inset:0;z-index:1000;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  animation:fadeIn .3s;
+">
+  <!-- Noise overlay -->
+  <div style="position:absolute;inset:0;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.35"></div>
+
+  <div style="width:100%;max-width:420px;position:relative">
+
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:36px">
+      <div style="font-size:52px;filter:drop-shadow(0 0 20px var(--amber));animation:flicker 8s infinite;margin-bottom:12px">💡</div>
+      <div style="font-family:var(--head);font-weight:900;font-size:32px;letter-spacing:4px;text-transform:uppercase;color:var(--amber);line-height:1">Stage Light</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);letter-spacing:4px;text-transform:uppercase;margin-top:4px">Tracker</div>
+    </div>
+
+    <!-- Login card -->
+    <div style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;overflow:hidden">
+
+      <!-- Step 1 — pick user -->
+      <div id="ls-step1">
+        <div style="padding:20px 20px 0;font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:12px">Select your name</div>
+        <div id="ls-userGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;padding:0 20px 20px"></div>
+        <div style="padding:0 20px 20px;border-top:1px solid var(--border);padding-top:14px;margin-top:4px" id="ls-noUsers" style="display:none">
+          <p style="font-family:var(--mono);font-size:12px;color:var(--dim2);margin-bottom:12px">No crew members yet. The app needs at least one technician added first.</p>
+        </div>
+      </div>
+
+      <!-- Step 2 — enter password -->
+      <div id="ls-step2" style="display:none;padding:24px">
+        <button onclick="lsBack()" style="background:none;border:none;color:var(--dim2);cursor:pointer;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px;margin-bottom:20px;padding:0">← Back</button>
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:44px" id="ls-avatar">👤</div>
+          <div style="font-family:var(--head);font-size:22px;font-weight:900;margin-top:8px" id="ls-name">—</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:2px" id="ls-role">—</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);display:block;margin-bottom:6px">Password</label>
+          <input type="password" id="ls-pw" placeholder="Enter your password"
+            style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:14px;padding:12px 14px"
+            onkeydown="if(event.key==='Enter')lsSubmit()">
+        </div>
+        <div id="ls-err" style="display:none;color:var(--red);font-family:var(--mono);font-size:11px;margin-bottom:10px">❌ Incorrect password. Try again.</div>
+        <button onclick="lsSubmit()" style="width:100%;background:var(--amber);color:#000;border:none;border-radius:6px;padding:13px;font-family:var(--head);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .18s" onmouseover="this.style.background='var(--amber2)'" onmouseout="this.style.background='var(--amber)'">
+          Log In
+        </button>
+        <div style="text-align:center;margin-top:12px">
+          <button onclick="lsForgot()" style="background:none;border:none;color:var(--dim2);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline">Forgot password?</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Version tag -->
+    <div style="text-align:center;margin-top:16px;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px">
+      Stage Light Tracker · <span id="ls-syncStatus">Connecting…</span>
+    </div>
+  </div>
+</div>
 
 <!-- Floating Scan Button (visible on all pages) -->
 <button id="fabScan" onclick="openGlobalScanner()" style="
@@ -411,7 +491,8 @@ textarea{resize:vertical;min-height:70px;}
   <span id="stime"></span>
   <div id="techBadge">
     <span class="dim">Logged in as:</span>
-    <span class="tchip" id="techChip" onclick="openM('whoAmI')">— Select —</span>
+    <span class="tchip" id="techChip">— Not logged in —</span>
+    <button id="logoutBtn" onclick="lsLogout()" style="display:none;background:none;border:1px solid var(--border2);border-radius:20px;padding:3px 10px;color:var(--dim2);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--mono)" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--dim2)';this.style.borderColor='var(--border2)'">Sign Out</button>
   </div>
 </div>
 
@@ -426,9 +507,9 @@ textarea{resize:vertical;min-height:70px;}
       <div style="font-size:20px;font-weight:900;font-family:var(--head)" id="bannerName">—</div>
       <div class="dim" id="bannerRole">—</div>
     </div>
-    <div style="margin-left:auto;display:flex;gap:8px">
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn bgh bsm" onclick="openM('changeMyPw')">🔑 Change Password</button>
-      <button class="btn bgh bsm" onclick="openM('whoAmI')">Switch</button>
+      <button class="btn bgh bsm" onclick="lsLogout()" style="border-color:var(--red);color:var(--red)">⏏️ Sign Out</button>
     </div>
   </div>
   <div class="stats" id="statsRow"></div>
@@ -712,9 +793,18 @@ textarea{resize:vertical;min-height:70px;}
       </div>
 
       <!-- Notes -->
-      <div class="fg">
+      <div class="fg mb14">
         <label>Notes / Special Instructions</label>
         <textarea id="schedNotes" placeholder="e.g. Full production, extra hands needed..." style="min-height:60px"></textarea>
+      </div>
+
+      <!-- Email option -->
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bglow);border:1px solid rgba(61,155,233,.3);border-radius:6px">
+        <input type="checkbox" id="schedSendEmail" checked style="width:16px;height:16px;margin-top:2px;accent-color:var(--blue);flex-shrink:0">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--blue)">📧 Email assigned crew members</div>
+          <div class="dim">Each person on the schedule will receive a personal email with the date, their role, and any notes. Only crew members with an email address set will receive it.</div>
+        </div>
       </div>
     </div>
     <div class="mf">
@@ -1023,8 +1113,9 @@ textarea{resize:vertical;min-height:70px;}
 const LS_KEY   = 'slt_db_v6';
 const TECH_KEY = 'slt_tech_id';
 const PIN_KEY  = 'slt_pin';
-const EJSID    = 'service_pjzebxk';
-const EJTPL    = 'template_ebt36uu';
+const EJSID      = 'service_pjzebxk';
+const EJTPL      = 'template_ebt36uu';  // Alerts (low stock + outage)
+const EJTPL_SCHED = 'template_ondy8ll'; // Schedule notifications
 
 let db = { fixtures:[], outages:[], inventory:[], orders:[], usageLog:[], technicians:[], settings:{} };
 let _techId=null, _selTech={}, _curFix=null, _curPage='dashboard';
@@ -1056,6 +1147,129 @@ async function save(){
 function setSyncState(s,m){document.getElementById('sdot').className='sdot '+s;document.getElementById('stxt').textContent=m;}
 function updSyncTime(){document.getElementById('stime').textContent='Last sync: '+new Date().toLocaleTimeString();}
 window.addEventListener('syncStatus',e=>{const{state,msg}=e.detail;setSyncState(state,msg);if(state==='ok')updSyncTime();});
+
+// ══════════════════════════════════════════════════
+// LOGIN SCREEN
+// ══════════════════════════════════════════════════
+let _lsSelectedId = null;
+
+function showLoginScreen(){
+  const screen = document.getElementById('loginScreen');
+  screen.style.display = 'flex';
+  lsBack(); // reset to step 1
+  buildLsGrid();
+}
+
+function hideLoginScreen(){
+  const screen = document.getElementById('loginScreen');
+  screen.style.animation = 'none';
+  screen.style.opacity = '0';
+  screen.style.transition = 'opacity .25s';
+  setTimeout(()=>{ screen.style.display='none'; screen.style.opacity=''; screen.style.transition=''; },250);
+}
+
+function buildLsGrid(){
+  const grid = document.getElementById('ls-userGrid');
+  const noUsers = document.getElementById('ls-noUsers');
+  if(!db.technicians.length){
+    grid.innerHTML = '';
+    if(noUsers) noUsers.style.display = '';
+    return;
+  }
+  if(noUsers) noUsers.style.display = 'none';
+  grid.innerHTML = db.technicians.map(t=>{
+    const roleColor = t.userRole==='master'?'var(--amber)':t.userRole==='admin'?'var(--blue)':'var(--dim2)';
+    const roleLabel = t.userRole==='master'?'👑 Master':t.userRole==='admin'?'🔑 Admin':'👤 User';
+    return `<div class="ls-user-btn" onclick="lsSelectUser('${t.id}')">
+      <div class="ls-av">${t.avatar||'👤'}</div>
+      <div>${t.name.split(' ')[0]}</div>
+      <div class="ls-role-tag" style="background:rgba(0,0,0,.3);color:${roleColor}">${roleLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function lsSelectUser(id){
+  const t = db.technicians.find(x=>x.id===id);
+  if(!t) return;
+  // If no password set, log in directly
+  if(!t.passwordHash){
+    lsLogin(id);
+    return;
+  }
+  _lsSelectedId = id;
+  document.getElementById('ls-step1').style.display = 'none';
+  document.getElementById('ls-step2').style.display = '';
+  document.getElementById('ls-avatar').textContent = t.avatar||'👤';
+  document.getElementById('ls-name').textContent = t.name;
+  const roleLabel = t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User';
+  document.getElementById('ls-role').textContent = (t.role||'Technician')+' · '+roleLabel;
+  document.getElementById('ls-pw').value = '';
+  document.getElementById('ls-err').style.display = 'none';
+  setTimeout(()=>document.getElementById('ls-pw').focus(), 100);
+}
+
+function lsBack(){
+  _lsSelectedId = null;
+  document.getElementById('ls-step1').style.display = '';
+  document.getElementById('ls-step2').style.display = 'none';
+}
+
+function lsSubmit(){
+  const t = db.technicians.find(x=>x.id===_lsSelectedId);
+  if(!t) return;
+  const pw = document.getElementById('ls-pw').value;
+  if(simpleHash(pw) !== t.passwordHash){
+    document.getElementById('ls-err').style.display = '';
+    document.getElementById('ls-pw').value = '';
+    document.getElementById('ls-pw').focus();
+    // Shake animation
+    const card = document.getElementById('ls-step2');
+    card.style.animation = 'none';
+    card.style.transform = 'translateX(-8px)';
+    setTimeout(()=>{ card.style.transition='transform .1s'; card.style.transform='translateX(8px)'; },80);
+    setTimeout(()=>{ card.style.transform='translateX(-4px)'; },160);
+    setTimeout(()=>{ card.style.transform='translateX(0)'; card.style.transition=''; },240);
+    return;
+  }
+  lsLogin(t.id);
+}
+
+function lsLogin(id){
+  _techId = id;
+  try{ localStorage.setItem(TECH_KEY, id); }catch(e){}
+  updTechUI();
+  applyPermissions();
+  hideLoginScreen();
+  const t = db.technicians.find(x=>x.id===id);
+  if(t) toast('Welcome back, '+t.name+'! 👋','success');
+  renderDash();
+  // Check master admin claim
+  setTimeout(()=>{
+    const hasMaster=db.technicians.some(t=>t.userRole==='master');
+    if(!hasMaster&&getCurTech()) toast('💡 No master admin set — go to Settings','info');
+  },1000);
+}
+
+function lsForgot(){
+  alert('Ask your Master Admin or User Admin to reset your password on the Crew page.');
+}
+
+function lsLogout(){
+  _techId = null;
+  try{ localStorage.removeItem(TECH_KEY); }catch(e){}
+  updTechUI();
+  applyPermissions();
+  buildLsGrid();
+  showLoginScreen();
+}
+
+// Update login screen sync status
+window.addEventListener('syncStatus', e=>{
+  const el = document.getElementById('ls-syncStatus');
+  if(el) el.textContent = e.detail.msg;
+  // Rebuild grid when Firebase loads data (technicians might have arrived)
+  if(e.detail.state==='ok') buildLsGrid();
+});
 
 // ══════════════════════════════════════════════════
 // PERMISSION SYSTEM
@@ -1611,7 +1825,10 @@ function setTech(id){
 }
 function updTechUI(){
   const t=getCurTech();
-  document.getElementById('techChip').textContent=t?t.avatar+' '+t.name:'— Select —';
+  const chip=document.getElementById('techChip');
+  const logoutBtn=document.getElementById('logoutBtn');
+  if(chip) chip.textContent=t?t.avatar+' '+t.name:'— Not logged in —';
+  if(logoutBtn) logoutBtn.style.display=t?'':'none';
   const banner=document.getElementById('whoBanner');
   if(t){banner.style.display='';document.getElementById('bannerAv').textContent=t.avatar||'👤';document.getElementById('bannerName').textContent=t.name;const roleLabel=t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 '+t.role||'Technician';document.getElementById('bannerRole').textContent=roleLabel;}
   else banner.style.display='none';
@@ -2204,8 +2421,18 @@ async function sendLowStockAlerts(bulbType,stock,threshold,techName){
   if(!recipients.length)return;
   const time=new Date().toLocaleString('en-CA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   for(const rec of recipients){
-    try{await emailjs.send(EJSID,EJTPL,{to_email:rec.email,to_name:rec.name,bulb_type:bulbType,current_stock:stock,threshold,technician:techName,time});}
-    catch(e){console.warn('Email failed',e);}
+    try{
+      await emailjs.send(EJSID,EJTPL,{
+        to_email: rec.email,
+        to_name:  rec.name,
+        subject:  '⚠️ Low Stock Alert — '+bulbType,
+        message:  'Bulb type '+bulbType+' is running low and may need reordering.\n\n'+
+                  'Current stock:  '+stock+' remaining\n'+
+                  'Threshold:      '+threshold+'\n'+
+                  'Logged by:      '+techName+'\n'+
+                  'Time:           '+time
+      });
+    }catch(e){console.warn('Email failed',e);}
   }
   toast('📧 Low stock alert sent to '+recipients.length+' crew member'+(recipients.length>1?'s':''),'info');
 }
@@ -2214,9 +2441,20 @@ async function sendOutageAlerts(fixtureName,fixtureId,bulbType,techName){
   if(!recipients.length)return;
   const time=new Date().toLocaleString('en-CA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   for(const rec of recipients){
-    try{await emailjs.send(EJSID,EJTPL,{to_email:rec.email,to_name:rec.name,bulb_type:'OUTAGE ALERT — '+fixtureName+' ('+fixtureId+')',current_stock:'N/A',threshold:'N/A',technician:techName,time});}
-    catch(e){console.warn('Email failed',e);}
+    try{
+      await emailjs.send(EJSID,EJTPL,{
+        to_email: rec.email,
+        to_name:  rec.name,
+        subject:  '🔴 Fixture Out — '+fixtureName+' ('+fixtureId+')',
+        message:  'A fixture has been reported out and needs attention.\n\n'+
+                  'Fixture:      '+fixtureName+' ('+fixtureId+')\n'+
+                  'Bulb Type:    '+bulbType+'\n'+
+                  'Reported by:  '+techName+'\n'+
+                  'Time:         '+time
+      });
+    }catch(e){console.warn('Email failed',e);}
   }
+  toast('📧 Outage alert sent to '+recipients.length+' crew member'+(recipients.length>1?'s':''),'info');
 }
 async function sendWeeklyReport(){
   const recipients=db.technicians.filter(t=>t.email&&t.email.includes('@'));
@@ -2227,8 +2465,14 @@ async function sendWeeklyReport(){
   const lows=db.inventory.filter(i=>i.inStock<=i.threshold);
   const summary=`WEEKLY REPORT\n\nOutages this week: ${week.length}\nResolved: ${resolved.length}\nCurrently out: ${activeOuts.length}\nLow stock items: ${lows.length}\n\nLow stock:\n${lows.map(i=>'• '+i.bulbType+': '+i.inStock+' left').join('\n')||'None'}\n\nActive outages:\n${activeOuts.map(o=>'• '+o.fixtureName+' ('+o.fixtureId+')').join('\n')||'None'}`;
   for(const rec of recipients){
-    try{await emailjs.send(EJSID,EJTPL,{to_email:rec.email,to_name:rec.name,bulb_type:'WEEKLY SUMMARY',current_stock:summary,threshold:'—',technician:'Automated Report',time:new Date().toLocaleDateString()});}
-    catch(e){console.warn('Email failed',e);}
+    try{
+      await emailjs.send(EJSID,EJTPL,{
+        to_email: rec.email,
+        to_name:  rec.name,
+        subject:  '📊 Weekly Report — Stage Light Tracker',
+        message:  summary
+      });
+    }catch(e){console.warn('Email failed',e);}
   }
   toast('📧 Weekly report sent to '+recipients.length+' crew members','success');
 }
@@ -2672,7 +2916,6 @@ function saveScheduleEntry(){
   if(!canEditSchedule()){ toast('No permission','error'); return; }
   const entry = db.schedules[_schedEditKey] || {crew:[],roles:{},notes:''};
   entry.notes = document.getElementById('schedNotes').value.trim();
-  // Save roles for each assigned crew member
   if(!entry.roles) entry.roles = {};
   (entry.crew||[]).forEach(id=>{
     const roleEl = document.getElementById('schedrole-'+id);
@@ -2683,21 +2926,71 @@ function saveScheduleEntry(){
   closeM('editSchedule');
   renderSchedule();
   toast('Schedule saved','success');
+
+  // Send individual emails if checkbox is ticked
+  const sendEmails = document.getElementById('schedSendEmail')?.checked;
+  if(sendEmails && entry.crew && entry.crew.length){
+    sendScheduleEmails(_schedEditKey, entry);
+  }
+}
+
+async function sendScheduleEmails(dateKey, entry){
+  // Format the date nicely
+  const date = new Date(dateKey+'T12:00:00');
+  const dateStr = date.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const savedBy = getCurTech()?.name || 'Scheduler';
+  let sent = 0, skipped = 0;
+
+  for(const techId of (entry.crew||[])){
+    const t = db.technicians.find(x=>x.id===techId);
+    if(!t) continue;
+    if(!t.email || !t.email.includes('@')){ skipped++; continue; }
+
+    const roleForDay = entry.roles?.[techId] || t.role || 'Crew';
+    const allCrew = (entry.crew||[])
+      .map(id=>db.technicians.find(x=>x.id===id))
+      .filter(Boolean)
+      .map(x=>x.name)
+      .join(', ');
+
+    try{
+      await emailjs.send(EJSID, EJTPL_SCHED, {
+        to_email:     t.email,
+        to_name:      t.name,
+        date:         dateStr,
+        role:         roleForDay,
+        crew:         allCrew,
+        notes:        entry.notes ? 'Notes: ' + entry.notes : '',
+        scheduled_by: savedBy
+      });
+      sent++;
+    } catch(e){
+      console.warn('Schedule email failed for '+t.name, e);
+    }
+  }
+
+  if(sent > 0)   toast('📧 Schedule emails sent to '+sent+' crew member'+(sent>1?'s':''),'success');
+  if(skipped > 0) toast(skipped+' crew member'+(skipped>1?'s have':' has')+' no email address set','info');
 }
 
 // ── BOOT ──
 lload();
-// If no master admin exists yet, the first technician added becomes master
-// after claiming it via the settings page
 loadTech();
-go('dashboard');
-// Check if master admin needs to be claimed
-setTimeout(()=>{
-  const hasMaster=db.technicians.some(t=>t.userRole==='master');
-  if(!hasMaster&&db.technicians.length>0&&getCurTech()){
-    toast('💡 No master admin set — go to Settings to claim master admin','info');
-  }
-},1500);
+go('dashboard'); // render app behind login screen
+applyPermissions();
+// Show login screen — hide it only if already logged in from localStorage
+if(getCurTech()){
+  hideLoginScreen();
+  const t=getCurTech();
+  if(t) toast('Welcome back, '+t.name+'! 👋','success');
+  setTimeout(()=>{
+    const hasMaster=db.technicians.some(t=>t.userRole==='master');
+    if(!hasMaster&&db.technicians.length>0) toast('💡 No master admin set — go to Settings','info');
+  },1200);
+} else {
+  // Show login — Firebase will call buildLsGrid() when data arrives
+  buildLsGrid();
+}
 
 // Show "Add to Home Screen" tip once on mobile
 if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
