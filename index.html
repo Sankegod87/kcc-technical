@@ -1135,6 +1135,40 @@ textarea{resize:vertical;min-height:70px;}
   </div>
 </div>
 
+<div id="m-editInv" class="mover" style="display:none" onclick="mOut(event,'editInv')">
+  <div class="modal">
+    <div class="mh"><span class="mt">✏️ Edit Bulb Stock</span><button class="xb" onclick="closeM('editInv')">✕</button></div>
+    <div class="mb">
+      <div class="fg mb12">
+        <label>Bulb Type</label>
+        <input id="ei-type" disabled style="opacity:.6">
+      </div>
+      <div class="grid2">
+        <div class="fg">
+          <label>Current Stock</label>
+          <input id="ei-stock" type="number" min="0" placeholder="0">
+        </div>
+        <div class="fg">
+          <label>Low Stock Threshold</label>
+          <input id="ei-threshold" type="number" min="0" placeholder="3">
+        </div>
+        <div class="fg">
+          <label>Total Received</label>
+          <input id="ei-received" type="number" min="0" placeholder="0">
+        </div>
+        <div class="fg">
+          <label>Total Used</label>
+          <input id="ei-used" type="number" min="0" placeholder="0">
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('editInv')">Cancel</button>
+      <button class="btn ba" onclick="saveInvEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <div id="m-receiveBulbs" class="mover" style="display:none" onclick="mOut(event,'receiveBulbs')">
   <div class="modal">
     <div class="mh"><span class="mt">📦 Receive Bulb Batch</span><button class="xb" onclick="closeM('receiveBulbs')">✕</button></div>
@@ -1608,7 +1642,10 @@ function renderInv(){
         <td>${i.threshold}</td><td>${i.totalReceived}</td><td>${i.totalUsed}</td>
         <td class="dim">${avgLife}</td>
         <td>${low?'<span class="badge blow"><span class="bd pulse"></span>LOW</span>':'<span class="badge bok"><span class="bd"></span>OK</span>'}</td>
-        <td><button class="btn bgh bsm" data-perm="master" onclick="requirePin(()=>deleteInvRow('${i.bulbType.replace(/'/g,"\\'")}'))">🗑️</button></td>
+        <td><div class="row gap6">
+          <button class="btn bgh bsm" data-perm="admin" onclick="openEditInv('${i.bulbType.replace(/'/g,"\\'")}')">✏️</button>
+          <button class="btn bgh bsm" data-perm="master" onclick="requirePin(()=>deleteInvRow('${i.bulbType.replace(/'/g,"\\'")}'))">🗑️</button>
+        </div></td>
       </tr>`;}).join('');
   document.getElementById('ordersTbl').innerHTML=!db.orders.length
     ?'<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:28px">No orders yet</td></tr>'
@@ -1712,6 +1749,34 @@ function editUsedBulbCond(id){
   toast('Condition updated to: '+nxt+(nxt==='blown'?' — permanently blocked in registry':''),'info');
 }
 
+function openEditInv(bulbType){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const i=db.inventory.find(x=>x.bulbType===bulbType);
+  if(!i)return;
+  document.getElementById('ei-type').value=i.bulbType;
+  document.getElementById('ei-stock').value=i.inStock;
+  document.getElementById('ei-threshold').value=i.threshold;
+  document.getElementById('ei-received').value=i.totalReceived;
+  document.getElementById('ei-used').value=i.totalUsed;
+  openM('editInv');
+}
+function saveInvEdit(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const bulbType=document.getElementById('ei-type').value;
+  const i=db.inventory.find(x=>x.bulbType===bulbType);
+  if(!i)return;
+  const newStock=parseInt(document.getElementById('ei-stock').value);
+  const newThreshold=parseInt(document.getElementById('ei-threshold').value);
+  const newReceived=parseInt(document.getElementById('ei-received').value);
+  const newUsed=parseInt(document.getElementById('ei-used').value);
+  if(isNaN(newStock)||isNaN(newThreshold)){toast('Stock and threshold are required','error');return;}
+  i.inStock=newStock;
+  i.threshold=newThreshold;
+  if(!isNaN(newReceived)) i.totalReceived=newReceived;
+  if(!isNaN(newUsed)) i.totalUsed=newUsed;
+  save();closeM('editInv');renderInv();
+  toast(bulbType+' updated','success');
+}
 function deleteInvRow(t){
   if(!confirm('Remove "'+t+'" from inventory?'))return;
   db.inventory=db.inventory.filter(i=>i.bulbType!==t);
@@ -1959,7 +2024,7 @@ function openM(id){
 }
 function closeM(id){document.getElementById('m-'+id).style.display='none';if(id==='markReplaced')stopRepCamera&&stopRepCamera();}
 function mOut(e,id){if(e.target===document.getElementById('m-'+id))closeM(id);}
-function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw','globalScan','addUsedBulb','editSchedule'].forEach(closeM);}
+function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw','globalScan','addUsedBulb','editSchedule','editInv'].forEach(closeM);}
 function buildWhoGrid(){
   const el=document.getElementById('whoGrid');
   if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians yet.</p>';return;}
