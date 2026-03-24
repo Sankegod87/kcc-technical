@@ -94,6 +94,15 @@ initFirebase();
   --text:#bfcbde;--dim:#4e637e;--dim2:#7a8fa8;
   --mono:'IBM Plex Mono',monospace;--head:'Barlow Condensed',sans-serif;
 }
+body.light-mode {
+  --bg:#f0f2f5;--s1:#ffffff;--s2:#e8edf3;--s3:#dde3ec;--border:#c8d3e0;--border2:#b0bece;
+  --amber:#d4920a;--amber2:#e8a810;--aglow:rgba(212,146,10,.12);--aglow2:rgba(212,146,10,.06);
+  --red:#c0392b;--rglow:rgba(192,57,43,.1);--green:#1a9e5c;--gglow:rgba(26,158,92,.1);
+  --blue:#2471a3;--bglow:rgba(36,113,163,.1);--purple:#7d3c98;--pglow:rgba(125,60,152,.1);
+  --text:#1a2332;--dim:#5a6a7a;--dim2:#4a5a6a;
+}
+body.light-mode header { background:rgba(240,242,245,.97); }
+body.light-mode #loginScreen, body.light-mode #homeScreen { background:var(--bg); }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--head);font-size:15px;min-height:100vh;overflow-x:hidden;}
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.35;}
@@ -536,6 +545,8 @@ textarea{resize:vertical;min-height:70px;}
     <button class="nb" onclick="go('history')"   id="nav-history"  ><span>📋</span><span class="nl"> History</span></button>
     <button class="nb" onclick="go('stats')"     id="nav-stats"    ><span>📈</span><span class="nl"> Stats</span></button>
     <button class="nb" onclick="go('scan')"      id="nav-scan"     ><span>📷</span><span class="nl"> Scan</span></button>
+    <button class="nb" onclick="go('showlog')"  id="nav-showlog" ><span>🎭</span><span class="nl"> Shows</span></button>
+    <button class="nb" onclick="go('checklist')" id="nav-checklist"><span>✅</span><span class="nl"> Checklist</span></button>
     <button class="nb" onclick="go('crew')"      id="nav-crew"     ><span>👷</span><span class="nl"> Crew</span></button>
     <button class="nb" onclick="go('schedule')"  id="nav-schedule" ><span>📅</span><span class="nl"> Schedule</span></button>
     <button class="nb" onclick="go('settings')"  id="nav-settings" ><span>⚙️</span><span class="nl"> Settings</span></button>
@@ -558,6 +569,8 @@ textarea{resize:vertical;min-height:70px;}
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('scan');hideMobileMenu()">📷 Scan</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('history');hideMobileMenu()">📋 History</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('stats');hideMobileMenu()">📈 Stats</button>
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('showlog');hideMobileMenu()">🎭 Shows</button>
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('checklist');hideMobileMenu()">✅ Checklist</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('crew');hideMobileMenu()">👷 Crew</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('settings');hideMobileMenu()">⚙️ Settings</button>
   </div>
@@ -599,6 +612,10 @@ textarea{resize:vertical;min-height:70px;}
   <div class="grid2 mb14">
     <div class="panel"><div class="ph"><span class="pt">🔧 Maintenance Due</span></div><div class="pb" id="maintDue"></div></div>
     <div class="panel"><div class="ph"><span class="pt">⚡ Recent Activity</span></div><div class="pb" id="recentAct"></div></div>
+  </div>
+  <div class="grid2 mb14">
+    <div class="panel"><div class="ph"><span class="pt">⏳ Bulbs Approaching End of Life</span></div><div class="pb" id="predictiveAlerts"></div></div>
+    <div class="panel"><div class="ph"><span class="pt">✅ Pre-Show Checklist</span></div><div class="pb"><p class="dim" style="margin-bottom:10px">Quick access to run a pre-show fixture check.</p><button class="btn ba" onclick="go('checklist')">▶ Open Checklist</button></div></div>
   </div>
   <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
     <button class="btn bgh bsm" onclick="exportCSV()">⬇️ Export CSV</button>
@@ -756,6 +773,11 @@ textarea{resize:vertical;min-height:70px;}
     <button class="btn ba" data-perm="admin" onclick="openM('addTech')">+ Add Technician</button>
   </div>
   <div class="tcards" id="crewCards"></div>
+  <!-- Availability panel -->
+  <div class="panel mb14">
+    <div class="ph row jbet"><span class="pt">📅 Sunday Availability</span><span class="dim" style="font-size:11px">Next 4 Sundays</span></div>
+    <div class="pb" id="availPanel"></div>
+  </div>
   <div class="panel">
     <div class="ph"><span class="pt">📊 Activity by Technician</span></div>
     <div class="pb" style="padding:0"><table class="tbl">
@@ -787,10 +809,47 @@ textarea{resize:vertical;min-height:70px;}
   <div id="schedGrid"></div>
 </div>
 
+<!-- ── SHOW LOG ── -->
+<div id="pg-showlog" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Show / Event Log</h2>
+      <div class="dim" style="margin-top:4px">Track what happened each production</div>
+    </div>
+    <button class="btn ba" data-perm="admin" onclick="openM_addShow()">+ New Show</button>
+  </div>
+  <div id="showLogList"></div>
+</div>
+
+<!-- ── CHECKLIST ── -->
+<div id="pg-checklist" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Pre-Show Checklist</h2>
+      <div class="dim" style="margin-top:4px">Tap each fixture to confirm it's working before the show</div>
+    </div>
+    <div class="row gap8">
+      <button class="btn bgh bsm" onclick="resetChecklist()">↺ Reset</button>
+      <button class="btn ba" onclick="startChecklist()">▶ Start Check</button>
+    </div>
+  </div>
+  <div id="checklistProgress" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+    <div class="row jbet mb8">
+      <div class="fw7">Check Progress</div>
+      <div id="checklistCount" class="dim"></div>
+    </div>
+    <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
+      <div id="checklistBar" style="height:100%;background:var(--green);transition:width .3s;width:0%"></div>
+    </div>
+  </div>
+  <div id="checklistGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px"></div>
+</div>
+
 <!-- ── SETTINGS ── -->
 <div id="pg-settings" style="display:none">
   <div class="row jbet mb14">
     <h2 class="fw9 tu ls2" style="font-size:14px">Settings</h2>
+    <button class="btn bgh themeToggleBtn" onclick="toggleTheme()">☀️ Light Mode</button>
   </div>
   <div class="grid2">
     <div class="panel">
@@ -925,6 +984,7 @@ textarea{resize:vertical;min-height:70px;}
         <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="tem" type="email" placeholder="jane@example.com"></div>
         <div class="fg"><label>Password *</label><input id="tpw" type="password" placeholder="Set a password"></div>
         <div class="fg"><label>Confirm Password *</label><input id="tpw2" type="password" placeholder="Confirm password"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes / Training</label><textarea id="tnotes" placeholder="e.g. Trained on camera only, prefers lighting..." style="min-height:60px"></textarea></div>
         <div class="fg" style="grid-column:1/-1"><div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px"><input type="checkbox" id="tcanschedule" style="width:16px;height:16px;accent-color:var(--amber)"><div><div style="font-size:13px;font-weight:700;color:var(--amber)">Can edit schedule</div><div class="dim">Allow this technician to create and edit Sunday schedules</div></div></div></div>
       </div>
     </div>
@@ -951,6 +1011,7 @@ textarea{resize:vertical;min-height:70px;}
         </div>
         <div class="fg"><label>Avatar Emoji</label><input id="eta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
         <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="etem" type="email" placeholder="jane@example.com"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes / Training</label><textarea id="etnotes" placeholder="e.g. Trained on camera only, prefers lighting..." style="min-height:60px"></textarea></div>
         <div class="fg" style="grid-column:1/-1"><div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:10px"><input type="checkbox" id="etcanschedule" style="width:16px;height:16px;accent-color:var(--amber)"><div><div style="font-size:13px;font-weight:700;color:var(--amber)">Can edit schedule</div><div class="dim">Allow this technician to create and edit Sunday schedules</div></div></div></div>
         <div class="fg" style="grid-column:1/-1"><div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:4px"><div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:10px">🔑 Change Password</div><div class="fgrid"><div class="fg"><label>New Password (leave blank to keep current)</label><input id="etpw" type="password" placeholder="New password"></div><div class="fg"><label>Confirm New Password</label><input id="etpw2" type="password" placeholder="Confirm new password"></div></div></div></div>
       </div>
@@ -1147,6 +1208,27 @@ textarea{resize:vertical;min-height:70px;}
   </div>
 </div>
 
+<div id="m-addShow" class="mover" style="display:none" onclick="mOut(event,'addShow')">
+  <div class="modal">
+    <div class="mh"><span class="mt">🎭 Log a Show</span><button class="xb" onclick="closeM('addShow')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg"><label>Show / Event Name *</label><input id="sh-name" placeholder="e.g. Easter Sunday 2026"></div>
+        <div class="fg"><label>Date</label><input id="sh-date" type="date"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="sh-notes" placeholder="How did the show go? Any issues?" style="min-height:80px"></textarea></div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Link outages from this show</label>
+          <div id="sh-outages" style="margin-top:6px;display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addShow')">Cancel</button>
+      <button class="btn ba" onclick="saveShow()">Save Show</button>
+    </div>
+  </div>
+</div>
+
 <div id="m-editInv" class="mover" style="display:none" onclick="mOut(event,'editInv')">
   <div class="modal">
     <div class="mh"><span class="mt">✏️ Edit Bulb Stock</span><button class="xb" onclick="closeM('editInv')">✕</button></div>
@@ -1218,12 +1300,12 @@ let _charts={};
 // ── Storage ──
 function lsave(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
 function lload(){
-  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{}},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};}}catch(e){}
+  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];}}catch(e){}
 }
 window._onRemoteData=function(r){
   db.technicians=r.technicians||[];db.fixtures=r.fixtures||[];db.outages=r.outages||[];
   db.inventory=r.inventory||[];db.orders=r.orders||[];db.usageLog=r.usageLog||[];
-  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};lsave();refreshPage();checkScheduleEmails();
+  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};db.availability=r.availability||{};db.checklistState=r.checklistState||{};db.shows=r.shows||[];lsave();refreshPage();checkScheduleEmails();
 };
 async function save(){
   lsave();
@@ -1459,16 +1541,16 @@ function applyPermissions(){
 // ── Navigation ──
 function go(page){
   stopCamera();stopGsScanner&&stopGsScanner();
-  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule'].forEach(p=>{
+  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule','checklist','showlog'].forEach(p=>{
     document.getElementById('pg-'+p).style.display=p===page?'':'none';
     document.getElementById('nav-'+p)?.classList.toggle('active',p===page);
   });
   _curPage=page;
-  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule})[page]?.();
+  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule,checklist:renderChecklist,showlog:renderShowLog})[page]?.();
   applyPermissions();
   if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
   ['dashboard','fixtures','inventory','schedule'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
-  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan'].includes(page)?' active':'');
+  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan','checklist','showlog'].includes(page)?' active':'');
 }
 function refreshPage(){go(_curPage);}
 function showMobileMenu(){
@@ -1505,6 +1587,18 @@ function renderDash(){
         <div><div class="fw7" style="font-size:14px">${i.bulbType}</div><div class="dim">${i.inStock} left · threshold ${i.threshold}</div></div>
         <span class="badge blow"><span class="bd pulse"></span>LOW</span>
       </div>`).join('');
+  // Predictive bulb lifespan warnings
+  const predictions=checkPredictiveAlerts();
+  const predEl=document.getElementById('predictiveAlerts');
+  if(predEl){
+    predEl.innerHTML=!predictions.length
+      ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ No bulbs approaching end of life</p>'
+      :predictions.map(p=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
+          <div><div class="fw7" style="font-size:14px">${p.fixtureName}</div>
+          <div class="dim">Bulb ${p.bulbId} · ${p.daysIn}d in / avg ${p.avg}d · ${p.bulbType}</div></div>
+          <span class="badge blow">⚠️ Near EOL</span>
+        </div>`).join('');
+  }
   document.getElementById('maintDue').innerHTML=!maintDue.length
     ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ No maintenance due</p>'
     :maintDue.slice(0,5).map(f=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
@@ -1587,6 +1681,8 @@ function viewFixture(id){
       <div><div class="dim mb8">STATUS</div>${f.status==='ok'?'<span class="badge bok"><span class="bd"></span>OK</span>':'<span class="badge bout"><span class="bd pulse"></span>OUT</span>'}</div>
       <div><div class="dim mb8">TOTAL OUTAGES</div><div class="fw7" style="font-size:24px;color:var(--red)">${outs.length}</div></div>
       <div><div class="dim mb8">AVG DOWNTIME</div><div class="fw7">${avgDown?fmtDur(avgDown):'—'}</div></div>
+      <div><div class="dim mb8">FIXTURE AGE</div><div class="fw7">${f.addedAt?Math.floor((Date.now()-f.addedAt)/86400000)+' days':'—'}</div></div>
+      <div><div class="dim mb8">LAST MAINTENANCE</div><div class="fw7" style="color:${f.lastMaint?'var(--green)':'var(--red)'}">${f.lastMaint?ago(f.lastMaint):'Never'}</div></div>
     </div>
     ${(()=>{
       const reg=db.bulbRegistry.find(b=>b.installedIn===id&&b.status==='installed');
@@ -1619,6 +1715,18 @@ function viewFixture(id){
         </tr>`).join('')}</tbody>
       </table>
     </div>
+    <!-- Maintenance Log -->
+    <div class="ph" style="border-radius:6px 6px 0 0;margin-bottom:0;margin-top:14px"><span class="pt">🔧 Maintenance Log</span></div>
+    <div style="border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden;margin-bottom:14px">
+      <table class="tbl">
+        <thead><tr><th>Date</th><th>By</th><th>Notes</th></tr></thead>
+        <tbody>${!(f.maintLog&&f.maintLog.length)?'<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:16px">No maintenance logged yet</td></tr>':[...f.maintLog].reverse().map(m=>`<tr>
+          <td class="dim mono" style="font-size:10px">${fmtD(m.date)}</td>
+          <td>${m.tech||'—'}</td>
+          <td class="dim">${m.notes||'—'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
     <div class="mf" style="border:none;padding:14px 0 0 0">
       <button class="btn br" onclick="closeM('viewFixture');openOutModal('${f.id}')">🔴 Report Outage</button>
       ${f.status==='out'?`<button class="btn bg" onclick="closeM('viewFixture');openRepModal('${f.id}')">✅ Mark Replaced</button>`:''}
@@ -1629,7 +1737,19 @@ function viewFixture(id){
 }
 function markMaintDone(id){
   const f=db.fixtures.find(x=>x.id===id);if(!f)return;
-  f.lastMaint=Date.now();save();renderFix();toast('Maintenance logged for '+f.id,'success');
+  const t=getCurTech();
+  const notes=prompt('Maintenance notes (optional):','')||'';
+  f.lastMaint=Date.now();
+  if(!f.maintLog) f.maintLog=[];
+  f.maintLog.push({
+    date:Date.now(),
+    tech:t?t.name:'Unknown',
+    techId:t?t.id:null,
+    notes
+  });
+  save();renderFix();
+  if(_curPage==='fixtures') renderFix();
+  toast('✅ Maintenance logged for '+f.id,'success');
 }
 function deleteFixture(id){
   if(!isMaster()){toast('Master admin only','error');return;}
@@ -1857,6 +1977,7 @@ function renderStats(){
 
 // ── Crew ──
 function renderCrew(){
+  renderAvailability();
   document.getElementById('crewCards').innerHTML=!db.technicians.length
     ?'<p class="dim">No technicians yet.</p>'
     :db.technicians.map(t=>`<div class="tcard">
@@ -1864,12 +1985,14 @@ function renderCrew(){
         <div style="flex:1;min-width:0">
           <div class="fw7" style="font-size:14px">${t.name}</div>
           <div class="dim">${t.role||'Technician'}</div>
+          ${t.notes?`<div class="dim" style="font-size:11px;font-style:italic;margin-top:2px">📝 ${t.notes}</div>`:''}
           <div class="dim" style="color:${t.email?'var(--blue)':'var(--red)'}">${t.email||'No email set'}</div>
           <div class="dim" style="color:${t.passwordHash?'var(--green)':'var(--red)'}">${t.passwordHash?'🔒 Password set':'⚠️ No password'}</div>
           <div class="dim" style="color:${t.userRole==='master'?'var(--amber)':t.userRole==='admin'?'var(--blue)':'var(--dim2)'}">
             ${t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User'}
           </div>
           ${t.canSchedule?'<div class="dim" style="color:var(--amber)">📅 Can edit schedule</div>':''}
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" id="avail-${t.id}"></div>
         </div>
         <div class="row gap6">
           <button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️</button>
@@ -1993,7 +2116,7 @@ function requestNotifPermission(){
 }
 function sendNotif(title,body){
   if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-    try{new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💡</text></svg>'});}catch(e){}
+    try{new Notification(title,{body,icon:'icon-192.png'});}catch(e){}
   }
 }
 
@@ -2036,7 +2159,7 @@ function openM(id){
 }
 function closeM(id){document.getElementById('m-'+id).style.display='none';if(id==='markReplaced')stopRepCamera&&stopRepCamera();}
 function mOut(e,id){if(e.target===document.getElementById('m-'+id))closeM(id);}
-function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw','globalScan','addUsedBulb','editSchedule','editInv'].forEach(closeM);}
+function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw','globalScan','addUsedBulb','editSchedule','editInv','addShow'].forEach(closeM);}
 function buildWhoGrid(){
   const el=document.getElementById('whoGrid');
   if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians yet.</p>';return;}
@@ -2098,11 +2221,13 @@ function addTech(){
   if(pw!==pw2){toast('Passwords do not match','error');return;}
   const canSched=document.getElementById('tcanschedule').checked;
   const userRole=document.getElementById('tuserrole').value;
-  db.technicians.push({id:'t'+Date.now(),name,role,avatar:av,email,passwordHash:simpleHash(pw),canSchedule:canSched,userRole});
+  const techNotes=document.getElementById('tnotes').value.trim();
+  db.technicians.push({id:'t'+Date.now(),name,role,avatar:av,email,passwordHash:simpleHash(pw),canSchedule:canSched,userRole,notes:techNotes});
   save();closeM('addTech');renderCrew();
   ['tn','tr','ta','tem','tpw','tpw2'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('tcanschedule').checked=false;
   document.getElementById('tuserrole').value='user';
+  document.getElementById('tnotes').value='';
   toast(name+' added to crew','success');
 }
 function editTech(id){
@@ -2114,6 +2239,7 @@ function editTech(id){
   document.getElementById('etem').value=t.email||'';
   document.getElementById('etcanschedule').checked=t.canSchedule||false;
   document.getElementById('etuserrole').value=t.userRole||'user';
+  document.getElementById('etnotes').value=t.notes||'';
   openM('editTech');
 }
 function saveTechEdit(){
@@ -2125,6 +2251,7 @@ function saveTechEdit(){
   t.avatar=document.getElementById('eta').value.trim()||'👤';
   t.email=document.getElementById('etem').value.trim();
   t.canSchedule=document.getElementById('etcanschedule').checked;
+  t.notes=document.getElementById('etnotes').value.trim();
   const newUserRole=document.getElementById('etuserrole').value;
   // Prevent changing master admin role
   if(t.userRole!=='master') t.userRole=newUserRole;
@@ -2760,8 +2887,7 @@ function gsAction(action){
   } else if(action==='scanIn'){
     closeGlobalScanner();
     openM('receiveBulbs');
-    document.getElementById('btype').value=code;
-    toast('📦 Fill in quantity to receive','info');
+    toast('📦 Enter bulb type and quantity to receive','info');
   }
 }
 function gsSubmitToField(){
@@ -2805,18 +2931,15 @@ function smartHandleCode(code){
     else openOutModal(fixture.id);
     return;
   }
-  // Check if it looks like a bulb label (contains BLB, BULB, or matches inventory type)
-  const isBulbLabel=code.includes('BLB')||code.includes('BULB');
-  const invMatch=db.inventory.find(i=>i.bulbType.toUpperCase()===code);
-  if(isBulbLabel||invMatch){
-    // Open receive bulbs with type pre-filled
-    openM('receiveBulbs');
-    if(invMatch) document.getElementById('btype').value=invMatch.bulbType;
-    else document.getElementById('btype').value=code;
-    toast('📦 Bulb scanned — fill in quantity to receive','info');
+  // Check if it's a known bulb label in the registry
+  const regMatch=db.bulbRegistry.find(b=>b.bulbId===code);
+  if(regMatch){
+    const statusLabel={in_stock:'📦 In Stock',installed:'💡 Installed in '+regMatch.installedIn,pulled:'♻️ Available',disposed:'💀 Blown / Disposed'}[regMatch.status]||regMatch.status;
+    toast('🏷️ Bulb '+code+' — '+regMatch.bulbType+' · '+statusLabel,'info');
+    document.getElementById('manualId').value=code;
     return;
   }
-  // Unknown code — show options
+  // Unknown code — just show it in the manual field, let the tech decide what to do
   document.getElementById('manualId').value=code;
   toast('❓ Unknown code "'+code+'" — use buttons below to act on it','info');
 }
@@ -3168,8 +3291,290 @@ async function sendScheduleEmails(dateKey, entry){
   if(skipped > 0) toast(skipped+' crew member'+(skipped>1?'s have':' has')+' no email address set','info');
 }
 
+// ══════════════════════════════════════════════════
+// SHOW / EVENT LOG
+// ══════════════════════════════════════════════════
+function renderShowLog(){
+  const el=document.getElementById('showLogList');if(!el)return;
+  const sorted=[...db.shows].sort((a,b)=>b.date-a.date);
+  if(!sorted.length){
+    el.innerHTML='<div class="panel"><div class="pb" style="text-align:center;padding:40px;color:var(--dim)">No shows logged yet — click "+ New Show" to add one.</div></div>';
+    return;
+  }
+  el.innerHTML=sorted.map(s=>{
+    const linkedOuts=db.outages.filter(o=>s.outageIds&&s.outageIds.includes(o.id));
+    return`<div class="panel mb14">
+      <div class="ph row jbet">
+        <div>
+          <span class="pt">${s.name}</span>
+          <span class="dim" style="margin-left:10px;font-size:11px">${new Date(s.date).toLocaleDateString('en-CA',{weekday:'short',month:'long',day:'numeric',year:'numeric'})}</span>
+        </div>
+        <div class="row gap8">
+          <span class="badge ${linkedOuts.length?'blow':'bok'}">${linkedOuts.length} outage${linkedOuts.length!==1?'s':''}</span>
+          <button class="btn bgh bsm" data-perm="admin" onclick="deleteShow('${s.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="pb">
+        ${s.notes?`<div class="note-box mb12">📝 ${s.notes}</div>`:''}
+        ${linkedOuts.length?`<div class="fw7 mb8" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2)">Outages This Show</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${linkedOuts.map(o=>`<div class="row jbet" style="padding:8px 10px;background:var(--s2);border-radius:6px">
+              <div><div class="fw7">${o.fixtureName}</div><div class="dim">${fmtD(o.timestamp)} · by ${o.reportedBy}</div></div>
+              <span class="badge ${o.resolved?'bok':'bout'}">${o.resolved?'Resolved':'Pending'}</span>
+            </div>`).join('')}
+          </div>`:'<p class="dim">No outages linked to this show.</p>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openM_addShow(){
+  // Pre-populate date with today
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('sh-date').value=today;
+  document.getElementById('sh-name').value='';
+  document.getElementById('sh-notes').value='';
+  // Show recent unlinked outages to link
+  const linked=db.shows.flatMap(s=>s.outageIds||[]);
+  const recent=[...db.outages].filter(o=>!linked.includes(o.id)).sort((a,b)=>b.timestamp-a.timestamp).slice(0,10);
+  document.getElementById('sh-outages').innerHTML=!recent.length
+    ?'<p class="dim" style="font-size:12px">No recent outages to link</p>'
+    :recent.map(o=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;cursor:pointer">
+        <input type="checkbox" value="${o.id}" style="accent-color:var(--amber)">
+        <div><div style="font-size:13px;font-weight:600">${o.fixtureName}</div><div class="dim">${fmtD(o.timestamp)} · ${o.resolved?'✅ Resolved':'🔴 Pending'}</div></div>
+      </label>`).join('');
+  openM('addShow');
+}
+
+function saveShow(){
+  const name=document.getElementById('sh-name').value.trim();
+  const dateVal=document.getElementById('sh-date').value;
+  const notes=document.getElementById('sh-notes').value.trim();
+  if(!name){toast('Show name required','error');return;}
+  const checked=[...document.querySelectorAll('#sh-outages input:checked')].map(el=>el.value);
+  db.shows.push({
+    id:'SH-'+Date.now(),
+    name,
+    date:dateVal?new Date(dateVal).getTime():Date.now(),
+    notes,
+    outageIds:checked,
+    createdAt:Date.now(),
+    createdBy:getCurTech()?.name||'Unknown'
+  });
+  save();closeM('addShow');renderShowLog();
+  toast('Show "'+name+'" logged','success');
+}
+
+function deleteShow(id){
+  if(!confirm('Delete this show log?'))return;
+  db.shows=db.shows.filter(s=>s.id!==id);
+  save();renderShowLog();toast('Show deleted','info');
+}
+
+// ══════════════════════════════════════════════════
+// DARK / LIGHT MODE
+// ══════════════════════════════════════════════════
+function initTheme(){
+  const saved=localStorage.getItem('slt_theme')||'dark';
+  if(saved==='light') document.body.classList.add('light-mode');
+  updateThemeBtn();
+}
+function toggleTheme(){
+  document.body.classList.toggle('light-mode');
+  const isLight=document.body.classList.contains('light-mode');
+  localStorage.setItem('slt_theme',isLight?'light':'dark');
+  updateThemeBtn();
+}
+function updateThemeBtn(){
+  const isLight=document.body.classList.contains('light-mode');
+  const btns=document.querySelectorAll('.themeToggleBtn');
+  btns.forEach(b=>{ b.textContent=isLight?'🌙 Dark Mode':'☀️ Light Mode'; });
+}
+
+// ══════════════════════════════════════════════════
+// PRE-SHOW CHECKLIST
+// ══════════════════════════════════════════════════
+let _checklistActive=false;
+
+function renderChecklist(){
+  const grid=document.getElementById('checklistGrid');
+  const progressEl=document.getElementById('checklistProgress');
+  if(!db.fixtures.length){
+    grid.innerHTML='<p class="dim">No fixtures added yet.</p>';
+    return;
+  }
+  const state=db.checklistState||{};
+  const checked=Object.values(state).filter(v=>v==='ok').length;
+  const flagged=Object.values(state).filter(v=>v==='issue').length;
+  const total=db.fixtures.length;
+  const done=checked+flagged;
+
+  if(done>0){
+    progressEl.style.display='';
+    document.getElementById('checklistCount').textContent=done+' / '+total+' checked';
+    document.getElementById('checklistBar').style.width=Math.round(done/total*100)+'%';
+  } else {
+    progressEl.style.display='none';
+  }
+
+  grid.innerHTML=db.fixtures.map(f=>{
+    const s=state[f.id]||'pending';
+    const colors={pending:'var(--s2)',ok:'var(--gglow)',issue:'var(--rglow)'};
+    const borders={pending:'var(--border2)',ok:'rgba(40,201,122,.4)',issue:'rgba(224,60,60,.4)'};
+    const icons={pending:'⬜',ok:'✅',issue:'🔴'};
+    return`<div style="background:${colors[s]};border:1px solid ${borders[s]};border-radius:8px;padding:14px;transition:all .2s">
+      <div class="row jbet mb8">
+        <div>
+          <div class="fw7" style="font-size:14px">${f.name}</div>
+          <div class="dim">${f.id} · ${f.location||'No location'}</div>
+          <div class="dim" style="margin-top:2px">${f.bulbType}</div>
+        </div>
+        <div style="font-size:28px">${icons[s]}</div>
+      </div>
+      <div class="row gap8">
+        <button class="btn bg bsm" style="flex:1;justify-content:center" onclick="checkFixture('${f.id}','ok')">✅ OK</button>
+        <button class="btn br bsm" style="flex:1;justify-content:center" onclick="checkFixture('${f.id}','issue')">🔴 Issue</button>
+        ${s!=='pending'?`<button class="btn bgh bsm" onclick="checkFixture('${f.id}','pending')">↺</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function startChecklist(){
+  db.checklistState={};
+  save();renderChecklist();
+  toast('Checklist started — check each fixture','info');
+}
+
+function resetChecklist(){
+  if(!confirm('Reset checklist? All checks will be cleared.'))return;
+  db.checklistState={};
+  save();renderChecklist();
+}
+
+function checkFixture(fixtureId, status){
+  if(!db.checklistState) db.checklistState={};
+  db.checklistState[fixtureId]=status;
+  save();renderChecklist();
+  // If issue reported, offer to log outage
+  if(status==='issue'){
+    const f=db.fixtures.find(x=>x.id===fixtureId);
+    if(f&&f.status!=='out'){
+      if(confirm('Report this as an outage for '+f.name+'?')) openOutModal(fixtureId);
+    }
+  }
+  // Check if all done
+  const total=db.fixtures.length;
+  const done=Object.values(db.checklistState).filter(v=>v!=='pending').length;
+  if(done===total){
+    const issues=Object.values(db.checklistState).filter(v=>v==='issue').length;
+    if(issues===0) toast('✅ All '+total+' fixtures checked — all good!','success');
+    else toast('⚠️ Checklist complete — '+issues+' issue'+(issues>1?'s':'')+' found','error');
+  }
+}
+
+// ══════════════════════════════════════════════════
+// CREW AVAILABILITY
+// ══════════════════════════════════════════════════
+function renderAvailability(){
+  const panel=document.getElementById('availPanel');
+  if(!panel)return;
+  const now=new Date();
+  const sundays=[];
+  for(let i=1;i<=4;i++){
+    const d=new Date(now);
+    const daysUntil=(7-d.getDay())%7||7;
+    d.setDate(d.getDate()+daysUntil+(i-1)*7);
+    sundays.push(d);
+  }
+  const curTech=getCurTech();
+  panel.innerHTML=`
+    <div style="overflow-x:auto">
+      <table class="tbl" style="min-width:400px">
+        <thead><tr>
+          <th>Technician</th>
+          ${sundays.map(s=>`<th style="text-align:center;white-space:nowrap">${s.toLocaleDateString('en-CA',{month:'short',day:'numeric'})}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${db.technicians.map(t=>`<tr>
+            <td><div class="row gap8"><span style="font-size:18px">${t.avatar||'👤'}</span><div><div class="fw7">${t.name.split(' ')[0]}</div></div></div></td>
+            ${sundays.map(s=>{
+              const key=schedKey(s);
+              const av=(db.availability[t.id]||{})[key];
+              const isMe=curTech&&curTech.id===t.id;
+              const icon=av==='yes'?'✅':av==='no'?'❌':'❓';
+              const bg=av==='yes'?'var(--gglow)':av==='no'?'var(--rglow)':'transparent';
+              return`<td style="text-align:center">
+                ${isMe
+                  ? `<button onclick="setAvailability('${t.id}','${key}')" style="background:${bg};border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px" title="Tap to toggle">${icon}</button>`
+                  : `<span style="font-size:16px">${icon}</span>`
+                }
+              </td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="dim" style="margin-top:10px;font-size:11px">✅ Available &nbsp; ❌ Unavailable &nbsp; ❓ Not responded &nbsp; — Tap your own row to toggle</div>`;
+}
+
+function setAvailability(techId,dateKey){
+  if(!getCurTech()||getCurTech().id!==techId){toast('You can only set your own availability','error');return;}
+  if(!db.availability) db.availability={};
+  if(!db.availability[techId]) db.availability[techId]={};
+  const cur=db.availability[techId][dateKey]||'unknown';
+  const next=cur==='yes'?'no':cur==='no'?'unknown':'yes';
+  db.availability[techId][dateKey]=next;
+  save();renderAvailability();
+}
+
+// ══════════════════════════════════════════════════
+// BULB LIFESPAN TRACKING
+// ══════════════════════════════════════════════════
+function getBulbLifespanStats(){
+  // Returns avg lifespan in days per bulb type based on registry history
+  const stats={};
+  db.bulbRegistry.forEach(b=>{
+    const installs=b.history.filter(h=>h.event==='installed');
+    const blown=b.history.find(h=>h.event==='blown');
+    if(installs.length&&blown){
+      const lastInstall=installs[installs.length-1];
+      const days=Math.round((blown.timestamp-lastInstall.timestamp)/86400000);
+      if(days>0){
+        if(!stats[b.bulbType]) stats[b.bulbType]={total:0,count:0,min:days,max:days};
+        stats[b.bulbType].total+=days;
+        stats[b.bulbType].count++;
+        if(days<stats[b.bulbType].min) stats[b.bulbType].min=days;
+        if(days>stats[b.bulbType].max) stats[b.bulbType].max=days;
+      }
+    }
+  });
+  Object.keys(stats).forEach(k=>{
+    stats[k].avg=Math.round(stats[k].total/stats[k].count);
+  });
+  return stats;
+}
+
+function checkPredictiveAlerts(){
+  // Warn if a currently installed bulb is approaching average lifespan
+  const stats=getBulbLifespanStats();
+  const warnings=[];
+  db.bulbRegistry.filter(b=>b.status==='installed').forEach(b=>{
+    const s=stats[b.bulbType];
+    if(!s||!b.installedAt) return;
+    const daysIn=Math.round((Date.now()-b.installedAt)/86400000);
+    const threshold=Math.round(s.avg*0.85); // warn at 85% of avg lifespan
+    if(daysIn>=threshold){
+      const f=db.fixtures.find(x=>x.id===b.installedIn);
+      warnings.push({bulbId:b.bulbId,fixtureName:f?f.name:b.installedIn,daysIn,avg:s.avg,bulbType:b.bulbType});
+    }
+  });
+  return warnings;
+}
+
 // ── BOOT ──
 lload();
+initTheme();
 loadTech();
 go('dashboard'); // render app behind login screen
 applyPermissions();
