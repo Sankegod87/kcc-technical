@@ -87,12 +87,13 @@ initFirebase();
 
 <style>
 :root {
-  --bg:#080b10;--s1:#0e1219;--s2:#151b26;--s3:#1c2433;--border:#1f2d42;--border2:#2a3d55;
-  --amber:#f0a500;--amber2:#ffc23e;--aglow:rgba(240,165,0,.14);--aglow2:rgba(240,165,0,.06);
-  --red:#e03c3c;--rglow:rgba(224,60,60,.13);--green:#28c97a;--gglow:rgba(40,201,122,.12);
-  --blue:#3d9be9;--bglow:rgba(61,155,233,.12);--purple:#a855f7;--pglow:rgba(168,85,247,.12);
-  --text:#bfcbde;--dim:#4e637e;--dim2:#7a8fa8;
+  --bg:#080b10;--s1:#0d1117;--s2:#161b22;--s3:#1c2433;--border:#21262d;--border2:#30363d;
+  --amber:#f0a500;--amber2:#ffc23e;--aglow:rgba(240,165,0,.12);--aglow2:rgba(240,165,0,.05);
+  --red:#e03c3c;--rglow:rgba(224,60,60,.1);--green:#28c97a;--gglow:rgba(40,201,122,.1);
+  --blue:#3d9be9;--bglow:rgba(61,155,233,.1);--purple:#a855f7;--pglow:rgba(168,85,247,.1);
+  --text:#c9d1d9;--dim:#484f58;--dim2:#8b949e;
   --mono:'IBM Plex Mono',monospace;--head:'Barlow Condensed',sans-serif;
+  --radius:10px;--radius-sm:6px;
 }
 body.light-mode {
   --bg:#f0f2f5;--s1:#ffffff;--s2:#e8edf3;--s3:#dde3ec;--border:#c8d3e0;--border2:#b0bece;
@@ -105,24 +106,24 @@ body.light-mode header { background:rgba(240,242,245,.97); }
 body.light-mode #loginScreen, body.light-mode #homeScreen { background:var(--bg); }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--head);font-size:15px;min-height:100vh;overflow-x:hidden;}
-body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.35;}
-header{position:sticky;top:0;z-index:100;background:rgba(8,11,16,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);height:54px;display:flex;align-items:center;padding:0 16px;gap:14px;}
+
+header{position:sticky;top:0;z-index:100;background:rgba(8,11,16,.98);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;padding:0 20px;gap:14px;}
 .logo{display:flex;align-items:center;gap:10px;flex-shrink:0;}
 .logo-bulb{font-size:20px;filter:drop-shadow(0 0 10px var(--amber));animation:flicker 8s infinite;}
 @keyframes flicker{0%,95%,100%{opacity:1}96%,98%{opacity:.6}97%,99%{opacity:.9}}
 .logo-text{font-family:var(--head);font-weight:900;font-size:18px;letter-spacing:3px;text-transform:uppercase;color:var(--amber);line-height:1;}
 .logo-sub{font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:3px;text-transform:uppercase;}
 nav{margin-left:auto;display:flex;gap:2px;flex-wrap:wrap;}
-.nb{background:none;border:none;color:var(--dim2);font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 8px;border-radius:5px;cursor:pointer;transition:all .18s;white-space:nowrap;}
-.nb:hover{color:var(--text);background:var(--s2);}.nb.active{color:var(--amber);background:var(--aglow);}
-#syncBar{background:var(--s1);border-bottom:1px solid var(--border);padding:4px 16px;display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;color:var(--dim2);flex-wrap:wrap;}
+.nb{background:none;border:none;color:var(--dim2);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:4px 10px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.nb:hover{color:var(--text);}.nb.active{color:var(--amber);}
+#syncBar{background:var(--bg);border-bottom:1px solid var(--border);padding:3px 20px;display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;color:var(--dim2);flex-wrap:wrap;}
 .sdot{width:6px;height:6px;border-radius:50%;background:var(--dim);display:inline-block;margin-right:6px;}
 .sdot.ok{background:var(--green);box-shadow:0 0 8px var(--green);}.sdot.syncing{background:var(--amber);animation:pulse 1s infinite;}.sdot.error{background:var(--red);}.sdot.local{background:var(--blue);}
 #techBadge{margin-left:auto;display:flex;align-items:center;gap:8px;}
 .tchip{background:var(--aglow);border:1px solid rgba(240,165,0,.3);border-radius:20px;padding:3px 10px;color:var(--amber);font-size:10px;font-weight:600;cursor:pointer;}
 main{max-width:1200px;margin:0 auto;padding:20px 16px;}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;}
-.sc{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s;}
+.sc{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s;}
 .sc:hover{transform:translateY(-1px);}
 .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
 .sc.ca::before{background:linear-gradient(90deg,var(--amber),var(--amber2));box-shadow:0 0 14px var(--amber);}
@@ -133,22 +134,22 @@ main{max-width:1200px;margin:0 auto;padding:20px 16px;}
 .sc-label{font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
 .sc-val{font-family:var(--head);font-size:34px;font-weight:900;line-height:1;}
 .sc.ca .sc-val{color:var(--amber);}.sc.cr .sc-val{color:var(--red);}.sc.cg .sc-val{color:var(--green);}.sc.cb .sc-val{color:var(--blue);}.sc.cp .sc-val{color:var(--purple);}
-.panel{background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;}
-.ph{padding:11px 16px;background:var(--s2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
-.pt{font-family:var(--head);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;}
+.panel{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px;}
+.ph{padding:10px 16px;background:transparent;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.pt{font-family:var(--head);font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim2);}
 .pb{padding:16px;}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:6px;border:none;cursor:pointer;font-family:var(--head);font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;transition:all .18s;white-space:nowrap;}
-.ba{background:var(--amber);color:#000;}.ba:hover{background:var(--amber2);box-shadow:0 0 22px rgba(240,165,0,.45);transform:translateY(-1px);}
-.br{background:var(--red);color:#fff;}.br:hover{box-shadow:0 0 22px rgba(224,60,60,.45);transform:translateY(-1px);}
-.bg{background:var(--green);color:#000;}.bg:hover{box-shadow:0 0 22px rgba(40,201,122,.45);transform:translateY(-1px);}
-.bb{background:var(--blue);color:#fff;}.bb:hover{box-shadow:0 0 22px rgba(61,155,233,.45);transform:translateY(-1px);}
-.bp{background:var(--purple);color:#fff;}.bp:hover{box-shadow:0 0 22px rgba(168,85,247,.45);transform:translateY(-1px);}
-.bgh{background:transparent;border:1px solid var(--border2);color:var(--dim2);}.bgh:hover{border-color:var(--amber);color:var(--amber);}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-family:var(--head);font-weight:700;font-size:12px;letter-spacing:.5px;text-transform:uppercase;transition:all .15s;white-space:nowrap;}
+.ba{background:var(--amber);color:#000;}.ba:hover{background:var(--amber2);}
+.br{background:var(--red);color:#fff;}.br:hover{opacity:.85;}
+.bg{background:var(--green);color:#000;}.bg:hover{opacity:.85;}
+.bb{background:var(--blue);color:#fff;}.bb:hover{opacity:.85;}
+.bp{background:var(--purple);color:#fff;}.bp:hover{opacity:.85;}
+.bgh{background:transparent;border:1px solid var(--border2);color:var(--dim2);}.bgh:hover{border-color:var(--dim2);color:var(--text);}
 .bsm{padding:5px 10px;font-size:11px;}
 .tbl{width:100%;border-collapse:collapse;font-size:13px;}
-.tbl th{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);}
-.tbl td{padding:10px 12px;border-bottom:1px solid rgba(31,45,66,.6);vertical-align:middle;}
-.tbl tr:last-child td{border-bottom:none;}.tbl tr:hover td{background:rgba(240,165,0,.025);}
+.tbl th{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}.tbl tr:hover td{background:rgba(255,255,255,.02);}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;}
 .bok{background:var(--gglow);color:var(--green);border:1px solid rgba(40,201,122,.3);}
 .bout{background:var(--rglow);color:var(--red);border:1px solid rgba(224,60,60,.3);}
@@ -173,10 +174,10 @@ textarea{resize:vertical;min-height:70px;}
 .tab:hover{color:var(--text);}.tab.active{color:var(--amber);border-bottom-color:var(--amber);}
 .mover{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:14px;animation:fin .18s;}
 @keyframes fin{from{opacity:0}to{opacity:1}}
-.modal{background:var(--s1);border:1px solid var(--border2);border-radius:10px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;animation:sup .2s;}
+.modal{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;animation:sup .2s;box-shadow:0 24px 64px rgba(0,0,0,.6);}
 .modal.wide{max-width:720px;}
 @keyframes sup{from{transform:translateY(18px);opacity:0}to{transform:none;opacity:1}}
-.mh{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--s2);}
+.mh{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:transparent;}
 .mt{font-family:var(--head);font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;}
 .mb{padding:18px;}.mf{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
 .xb{background:none;border:none;color:var(--dim2);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:4px;}
@@ -543,18 +544,24 @@ textarea{resize:vertical;min-height:70px;}
     <div><div class="logo-text">Stage Light</div><div class="logo-sub">Tracker</div></div>
   </div>
   <nav>
-    <button class="nb active" onclick="go('dashboard')" id="nav-dashboard"><span>📊</span><span class="nl"> Dashboard</span></button>
-    <button class="nb" onclick="go('fixtures')"  id="nav-fixtures" ><span>🎭</span><span class="nl"> Fixtures</span></button>
-    <button class="nb" onclick="go('inventory')" id="nav-inventory"><span>📦</span><span class="nl"> Inventory</span></button>
-    <button class="nb" onclick="go('history')"   id="nav-history"  ><span>📋</span><span class="nl"> History</span></button>
-    <button class="nb" onclick="go('stats')"     id="nav-stats"    ><span>📈</span><span class="nl"> Stats</span></button>
-    <button class="nb" onclick="go('scan')"      id="nav-scan"     ><span>📷</span><span class="nl"> Scan</span></button>
-    <button class="nb" onclick="go('nfc')"      id="nav-nfc"     ><span>📡</span><span class="nl"> NFC</span></button>
-    <button class="nb" onclick="go('showlog')"  id="nav-showlog" ><span>🎭</span><span class="nl"> Shows</span></button>
-    <button class="nb" onclick="go('checklist')" id="nav-checklist"><span>✅</span><span class="nl"> Checklist</span></button>
-    <button class="nb" onclick="go('crew')"      id="nav-crew"     ><span>👷</span><span class="nl"> Crew</span></button>
-    <button class="nb" onclick="go('schedule')"  id="nav-schedule" ><span>📅</span><span class="nl"> Schedule</span></button>
-    <button class="nb" onclick="go('settings')"  id="nav-settings" ><span>⚙️</span><span class="nl"> Settings</span></button>
+    <button class="nb active" onclick="go('dashboard')" id="nav-dashboard">Dashboard</button>
+    <button class="nb" onclick="go('schedule')"  id="nav-schedule">Schedule</button>
+    <button class="nb" onclick="go('checklist')" id="nav-checklist">Checklist</button>
+    <button class="nb" onclick="go('fixtures')"  id="nav-fixtures">Fixtures</button>
+    <button class="nb" onclick="go('crew')"      id="nav-crew">Crew</button>
+    <div style="position:relative;display:inline-block" id="moreNavWrap">
+      <button class="nb" onclick="toggleMoreNav()" id="nav-more">More ▾</button>
+      <div id="moreNavDrop" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:var(--s2);border:1px solid var(--border);border-radius:var(--radius);padding:6px;min-width:160px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+        <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('scan');closeMoreNav()" id="nav-scan">📷 Scan</button>
+        <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('inventory');closeMoreNav()" id="nav-inventory">📦 Inventory</button>
+        <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('stats');closeMoreNav()" id="nav-stats">📈 Stats</button>
+        <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('showlog');closeMoreNav()" id="nav-showlog">🎭 Shows</button>
+        <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('history');closeMoreNav()" id="nav-history">📋 History</button>
+        <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('nfc');closeMoreNav()" id="nav-nfc">📡 NFC</button>
+        <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+        <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('settings');closeMoreNav()" id="nav-settings">⚙️ Settings</button>
+      </div>
+    </div>
   </nav>
 </header>
 
@@ -598,33 +605,39 @@ textarea{resize:vertical;min-height:70px;}
 
 <!-- ── DASHBOARD ── -->
 <div id="pg-dashboard">
-  <div id="whoBanner" style="display:none" class="who-banner mb16">
-    <span style="font-size:34px" id="bannerAv">👤</span>
-    <div>
-      <div class="dim mb8" style="letter-spacing:1px">ACTIVE TECHNICIAN</div>
-      <div style="font-size:20px;font-weight:900;font-family:var(--head)" id="bannerName">—</div>
+  <!-- Welcome strip -->
+  <div id="whoBanner" style="display:none;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius)" class="row">
+    <span style="font-size:28px" id="bannerAv">👤</span>
+    <div style="flex:1">
+      <div style="font-size:16px;font-weight:700" id="bannerName">—</div>
       <div class="dim" id="bannerRole">—</div>
     </div>
-    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn bgh bsm" onclick="openM('changeMyPw')">🔑 Change Password</button>
-      <button class="btn bgh bsm" onclick="lsLogout()" style="border-color:var(--red);color:var(--red)">⏏️ Sign Out</button>
+    <button class="btn bgh bsm" onclick="lsLogout()">Sign Out</button>
+  </div>
+
+  <!-- Key stats row -->
+  <div class="stats" id="statsRow" style="margin-bottom:16px"></div>
+
+  <!-- Active Outages — main focus -->
+  <div class="panel">
+    <div class="ph row jbet">
+      <span class="pt">Active Outages</span>
+      <button class="btn ba bsm" onclick="go('fixtures')">View All →</button>
     </div>
+    <div class="pb" id="activeOut"></div>
   </div>
-  <div class="stats" id="statsRow"></div>
-  <div class="grid2 mb14">
-    <div class="panel"><div class="ph"><span class="pt">🔴 Active Outages</span></div><div class="pb" id="activeOut"></div></div>
-    <div class="panel"><div class="ph"><span class="pt">📦 Low Stock</span></div><div class="pb" id="lowStock"></div></div>
+
+  <!-- Pre-show checklist quick launch -->
+  <div class="panel">
+    <div class="ph row jbet">
+      <span class="pt">Pre-Show Checklist</span>
+      <button class="btn ba bsm" onclick="go('checklist')">Open →</button>
+    </div>
+    <div class="pb" id="checklistSnap"></div>
   </div>
-  <div class="grid2 mb14">
-    <div class="panel"><div class="ph"><span class="pt">🔧 Maintenance Due</span></div><div class="pb" id="maintDue"></div></div>
-    <div class="panel"><div class="ph"><span class="pt">⚡ Recent Activity</span></div><div class="pb" id="recentAct"></div></div>
-  </div>
-  <div class="grid2 mb14">
-    <div class="panel"><div class="ph"><span class="pt">⏳ Bulbs Approaching End of Life</span></div><div class="pb" id="predictiveAlerts"></div></div>
-    <div class="panel"><div class="ph"><span class="pt">✅ Pre-Show Checklist</span></div><div class="pb"><p class="dim" style="margin-bottom:10px">Quick access to run a pre-show fixture check.</p><button class="btn ba" onclick="go('checklist')">▶ Open Checklist</button></div></div>
-  </div>
-  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
-    <button class="btn bgh bsm" onclick="exportCSV()">⬇️ Export CSV</button>
+
+  <!-- Admin-only actions -->
+  <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px">
     <button class="btn bgh bsm" data-perm="master" onclick="requirePin(resetAllData)" style="border-color:var(--red);color:var(--red)">⚠️ Reset All Data</button>
   </div>
 </div>
@@ -1657,6 +1670,7 @@ function applyPermissions(){
 // ── Navigation ──
 function go(page){
   stopCamera();stopGsScanner&&stopGsScanner();
+  closeMoreNav&&closeMoreNav();
   ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule','checklist','showlog','nfc'].forEach(p=>{
     document.getElementById('pg-'+p).style.display=p===page?'':'none';
     document.getElementById('nav-'+p)?.classList.toggle('active',p===page);
@@ -1667,8 +1681,22 @@ function go(page){
   if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
   ['dashboard','fixtures','inventory','schedule'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
   const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan','checklist','showlog','nfc'].includes(page)?' active':'');
+  const navMore=document.getElementById('nav-more');if(navMore)navMore.className='nb'+(['inventory','stats','showlog','history','nfc','settings','scan'].includes(page)?' active':'');
 }
 function refreshPage(){go(_curPage);}
+function toggleMoreNav(){
+  const drop=document.getElementById('moreNavDrop');
+  if(drop) drop.style.display=drop.style.display==='none'?'':'none';
+}
+function closeMoreNav(){
+  const drop=document.getElementById('moreNavDrop');
+  if(drop) drop.style.display='none';
+}
+// Close dropdown when clicking outside
+document.addEventListener('click',e=>{
+  const wrap=document.getElementById('moreNavWrap');
+  if(wrap&&!wrap.contains(e.target)) closeMoreNav();
+});
 function showMobileMenu(){
   document.getElementById('mobileMoreMenu').style.display='';
   document.getElementById('mobileMoreOverlay').style.display='';
@@ -1684,43 +1712,58 @@ function renderDash(){
   const lows=db.inventory.filter(i=>i.inStock<=i.threshold);
   const total=db.inventory.reduce((s,i)=>s+i.inStock,0);
   const maintDue=getMaintDue();
+  const okFix=db.fixtures.filter(f=>f.status==='ok').length;
   document.getElementById('statsRow').innerHTML=`
+    <div class="sc ${actOuts.length?'cr':'cg'}"><div class="sc-label">Active Outages</div><div class="sc-val">${actOuts.length}</div></div>
     <div class="sc ca"><div class="sc-label">Fixtures</div><div class="sc-val">${db.fixtures.length}</div></div>
-    <div class="sc cr"><div class="sc-label">Active Outages</div><div class="sc-val">${actOuts.length}</div></div>
-    <div class="sc cg"><div class="sc-label">Bulbs In Stock</div><div class="sc-val">${total}</div></div>
-    <div class="sc cb"><div class="sc-label">Low Stock Types</div><div class="sc-val">${lows.length}</div></div>
-    <div class="sc cp"><div class="sc-label">Maintenance Due</div><div class="sc-val">${maintDue.length}</div></div>
-    <div class="sc cb"><div class="sc-label">Used Bulbs Available</div><div class="sc-val">${db.usedBulbs.filter(b=>b.status==='available').length}</div></div>`;
+    <div class="sc ${lows.length?'cr':'cg'}"><div class="sc-label">Low Stock</div><div class="sc-val">${lows.length}</div></div>
+    <div class="sc cb"><div class="sc-label">Crew</div><div class="sc-val">${db.technicians.length}</div></div>`;
   document.getElementById('activeOut').innerHTML=!actOuts.length
-    ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ All fixtures operational</p>'
-    :actOuts.map(o=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
-        <div><div class="fw7" style="font-size:14px">${o.fixtureName}</div><div class="dim">${o.fixtureId} · ${ago(o.timestamp)} · by ${o.reportedBy}</div></div>
-        <button class="btn bg bsm" onclick="openRepModal('${o.fixtureId}')">Replace</button>
+    ?'<div style="display:flex;align-items:center;gap:10px;padding:6px 0;color:var(--green)"><span style="font-size:20px">✅</span><span>All fixtures operational</span></div>'
+    :actOuts.map(o=>`<div class="row jbet" style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div class="fw7">${o.fixtureName}</div>
+          <div class="dim">${ago(o.timestamp)} · ${o.reportedBy}</div>
+        </div>
+        <button class="btn bg bsm" onclick="openRepModal('${o.fixtureId}')">Fix</button>
       </div>`).join('');
-  document.getElementById('lowStock').innerHTML=!lows.length
-    ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ Stock levels OK</p>'
-    :lows.map(i=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
-        <div><div class="fw7" style="font-size:14px">${i.bulbType}</div><div class="dim">${i.inStock} left · threshold ${i.threshold}</div></div>
-        <span class="badge blow"><span class="bd pulse"></span>LOW</span>
-      </div>`).join('');
-  // Predictive bulb lifespan warnings
-  const predictions=checkPredictiveAlerts();
-  const predEl=document.getElementById('predictiveAlerts');
-  if(predEl){
-    predEl.innerHTML=!predictions.length
-      ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ No bulbs approaching end of life</p>'
-      :predictions.map(p=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
-          <div><div class="fw7" style="font-size:14px">${p.fixtureName}</div>
-          <div class="dim">Bulb ${p.bulbId} · ${p.daysIn}d in / avg ${p.avg}d · ${p.bulbType}</div></div>
-          <span class="badge blow">⚠️ Near EOL</span>
-        </div>`).join('');
+  // Checklist snapshot
+  const clSnap=document.getElementById('checklistSnap');
+  if(clSnap){
+    const stations=typeof getScheduleRoles==='function'?getScheduleRoles():[];
+    const state=db.checklistState||{};
+    const fixDone=db.fixtures.filter(f=>state['fix_'+f.id]==='ok').length;
+    const fixTotal=db.fixtures.length;
+    const stationRows=stations.map(r=>{
+      const tasks=(typeof getChecklistTasks==='function'?getChecklistTasks():{})[r.name]||[];
+      const done=tasks.filter((_,i)=>state['task_'+r.name+'_'+i]).length;
+      const total=tasks.length;
+      if(!total) return '';
+      const pct=Math.round(done/total*100);
+      return`<div class="row jbet" style="padding:7px 0;border-bottom:1px solid var(--border)">
+        <div class="row gap8"><span>${r.icon}</span><span style="font-size:13px">${r.name}</span></div>
+        <div class="row gap8">
+          <div style="width:80px;background:var(--border);border-radius:4px;height:6px;overflow:hidden"><div style="height:100%;background:${pct===100?'var(--green)':'var(--amber)'};width:${pct}%"></div></div>
+          <span class="dim" style="font-size:11px;min-width:32px;text-align:right">${done}/${total}</span>
+        </div>
+      </div>`;
+    }).filter(Boolean).join('');
+    clSnap.innerHTML=`
+      <div class="row jbet" style="padding:7px 0;border-bottom:1px solid var(--border)">
+        <div class="row gap8"><span>💡</span><span style="font-size:13px">Fixtures</span></div>
+        <div class="row gap8">
+          <div style="width:80px;background:var(--border);border-radius:4px;height:6px;overflow:hidden"><div style="height:100%;background:${fixDone===fixTotal&&fixTotal>0?'var(--green)':'var(--amber)'};width:${fixTotal?Math.round(fixDone/fixTotal*100):0}%"></div></div>
+          <span class="dim" style="font-size:11px;min-width:32px;text-align:right">${fixDone}/${fixTotal}</span>
+        </div>
+      </div>
+      ${stationRows||'<div class="dim" style="padding:6px 0;font-size:12px">No station tasks set up yet</div>'}`;
   }
-  document.getElementById('maintDue').innerHTML=!maintDue.length
+  document.getElementById('maintDue') && (document.getElementById('maintDue').innerHTML=!maintDue.length
     ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ No maintenance due</p>'
     :maintDue.slice(0,5).map(f=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
         <div><div class="fw7" style="font-size:14px">${f.name}</div><div class="dim">${f.id} · due ${f.dueStr}</div></div>
         <span class="maint-badge">DUE</span>
-      </div>`).join('');
+      </div>`).join(''));
   const recent=[...db.outages].sort((a,b)=>b.timestamp-a.timestamp).slice(0,6);
   document.getElementById('recentAct').innerHTML=!recent.length
     ?'<p class="dim">No activity yet.</p>'
