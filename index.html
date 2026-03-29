@@ -412,9 +412,9 @@ textarea{resize:vertical;min-height:70px;}
 
     </div>
 
-    <!-- This Sunday preview (if scheduled) -->
-    <div id="hs-sunday" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
-      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:8px">THIS SUNDAY</div>
+    <!-- This Sunday preview — always shown -->
+    <div id="hs-sunday" style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:8px">📅 THIS SUNDAY</div>
       <div id="hs-sunday-content"></div>
     </div>
 
@@ -1437,7 +1437,20 @@ function lload(){
 window._onRemoteData=function(r){
   db.technicians=r.technicians||[];db.fixtures=r.fixtures||[];db.outages=r.outages||[];
   db.inventory=r.inventory||[];db.orders=r.orders||[];db.usageLog=r.usageLog||[];
-  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};db.availability=r.availability||{};db.checklistState=r.checklistState||{};db.shows=r.shows||[];lsave();refreshPage();checkScheduleEmails();
+  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};db.availability=r.availability||{};db.checklistState=r.checklistState||{};db.shows=r.shows||[];
+  lsave();
+  // If a session was resumed and the tech now exists in Firebase data, keep them logged in
+  if(_techId){
+    const stillExists = db.technicians.some(t=>t.id===_techId);
+    if(!stillExists){
+      // Tech no longer in DB — log out
+      _techId=null;
+      try{localStorage.removeItem(TECH_KEY);}catch(e){}
+      buildLsGrid();showLoginScreen();return;
+    }
+    updTechUI();applyPermissions();
+  }
+  refreshPage();checkScheduleEmails();
 };
 async function save(){
   lsave();
@@ -1585,17 +1598,23 @@ function showHomeScreen(){
     sundayContent.innerHTML =
       '<div style="font-size:13px;font-weight:700;margin-bottom:6px">'+dateStr+'</div>' +
       (myEntry
-        ? '<div style="color:var(--green);font-size:13px;margin-bottom:8px">✅ You are scheduled · <strong>'+(stationIcon[myRole]||'')+(myRole||'')+'</strong></div>'
-        : '<div style="color:var(--dim2);font-size:12px;margin-bottom:8px">You are not on the roster this week</div>') +
+        ? '<div style="color:var(--green);font-size:13px;margin-bottom:8px">✅ You are on the roster · <strong>'+(stationIcon[myRole]||'')+(myRole||'No station set')+'</strong></div>'
+        : '<div style="color:var(--red);font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">🚫</span> You are <strong>not scheduled</strong> this week</div>') +
       '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
       entry.crew.map(id=>{
         const cr=db.technicians.find(x=>x.id===id);
         if(!cr) return '';
         const role=entry.roles?.[id]||'';
-        return '<div style="background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;font-family:var(--mono)">'+(cr.avatar||'👤')+' '+cr.name.split(' ')[0]+(role?' · '+(stationIcon[role]||role):'')+'</div>';
+        const isMe = id === t.id;
+        return '<div style="background:var(--s1);border:1px solid '+(isMe?'rgba(240,165,0,.5)':'var(--border)')+';border-radius:20px;padding:3px 10px;font-size:11px;font-family:var(--mono);'+(isMe?'color:var(--amber);font-weight:700':'')+'">'+
+          (cr.avatar||'👤')+' '+cr.name.split(' ')[0]+(role?' · '+(stationIcon[role]||role):'')+'</div>';
       }).join('') + '</div>';
   } else {
-    sundayEl.style.display = 'none';
+    sundayEl.style.display = '';
+    const dateStr = sun.toLocaleDateString('en-CA',{month:'long',day:'numeric'});
+    sundayContent.innerHTML =
+      '<div style="font-size:13px;font-weight:700;margin-bottom:6px">'+dateStr+'</div>' +
+      '<div style="color:var(--dim2);font-size:12px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">📋</span> No roster set yet for this Sunday</div>';
   }
 
   document.getElementById('homeScreen').style.display = 'flex';
@@ -1634,8 +1653,15 @@ function lsLogout(){
 window.addEventListener('syncStatus', e=>{
   const el = document.getElementById('ls-syncStatus');
   if(el) el.textContent = e.detail.msg;
-  // Rebuild grid when Firebase loads data (technicians might have arrived)
-  if(e.detail.state==='ok') buildLsGrid();
+  if(e.detail.state==='ok'){
+    // Rebuild login grid in case technicians just arrived from Firebase
+    buildLsGrid();
+    // If a session is already active, refresh home screen Sunday preview with fresh data
+    if(_techId && getCurTech()){
+      const hs = document.getElementById('homeScreen');
+      if(hs && hs.style.display !== 'none') showHomeScreen();
+    }
+  }
 });
 
 // ══════════════════════════════════════════════════
@@ -4144,10 +4170,23 @@ loadTech();
 go('dashboard');
 handleURLScan(); // render app behind login screen
 applyPermissions();
-// Always show login screen on load — require login every session
-_techId = null;
-try{ localStorage.removeItem(TECH_KEY); }catch(e){}
-buildLsGrid();
+// Resume session if the saved tech ID still exists in the database
+(function(){
+  const savedId = (()=>{ try{ return localStorage.getItem(TECH_KEY); }catch(e){ return null; } })();
+  const techExists = savedId && db.technicians.some(t => t.id === savedId);
+  if(techExists){
+    // Already loaded by loadTech() — just show home screen, skip login
+    updTechUI();
+    renderDash();
+    showHomeScreen();
+  } else {
+    // No valid saved session — show login
+    _techId = null;
+    try{ localStorage.removeItem(TECH_KEY); }catch(e){}
+    buildLsGrid();
+    showLoginScreen();
+  }
+})();
 
 // Show "Add to Home Screen" tip once on mobile
 if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
