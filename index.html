@@ -4144,20 +4144,10 @@ loadTech();
 go('dashboard');
 handleURLScan(); // render app behind login screen
 applyPermissions();
-// Show login screen — hide it only if already logged in from localStorage
-if(getCurTech()){
-  hideLoginScreen();
-  renderDash();
-  showHomeScreen();
-  checkScheduleEmails();
-  setTimeout(()=>{
-    const hasMaster=db.technicians.some(t=>t.userRole==='master');
-    if(!hasMaster&&db.technicians.length>0) toast('💡 No master admin set — go to Settings','info');
-  },1200);
-} else {
-  // Show login — Firebase will call buildLsGrid() when data arrives
-  buildLsGrid();
-}
+// Always show login screen on load — require login every session
+_techId = null;
+try{ localStorage.removeItem(TECH_KEY); }catch(e){}
+buildLsGrid();
 
 // Show "Add to Home Screen" tip once on mobile
 if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
