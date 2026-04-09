@@ -2183,6 +2183,7 @@ function renderCrew(){
         <div class="row gap6">
           <button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="adminResetPassword('${t.id}')" title="Admin: reset password">🔑</button>
+          <button class="btn bgh bsm" data-perm="admin" onclick="resendWelcomeEmail('${t.id}')" title="Resend welcome email">📧</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="requirePin(()=>removeTech('${t.id}'))">✕</button>
         </div>
       </div>`).join('');
@@ -2415,13 +2416,15 @@ function addTech(){
   const userRole=document.getElementById('tuserrole').value;
   const techNotes=document.getElementById('tnotes').value.trim();
   const techTraining=getSelectedTraining('t');
-  db.technicians.push({id:'t'+Date.now(),name,role,avatar:av,email,passwordHash:simpleHash(pw),canSchedule:canSched,userRole,notes:techNotes,training:techTraining});
+  const newTech = {id:'t'+Date.now(),name,role,avatar:av,email,passwordHash:simpleHash(pw),canSchedule:canSched,userRole,notes:techNotes,training:techTraining};
+  db.technicians.push(newTech);
   save();closeM('addTech');renderCrew();
   ['tn','tr','ta','tem','tpw','tpw2'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('tcanschedule').checked=false;
   document.getElementById('tuserrole').value='user';
   document.getElementById('tnotes').value='';
   toast(name+' added to crew','success');
+  sendWelcomeEmail(newTech, pw);
 }
 function editTech(id){
   const t=db.technicians.find(x=>x.id===id);if(!t)return;
@@ -4161,6 +4164,103 @@ function checkPredictiveAlerts(){
     }
   });
   return warnings;
+}
+
+// ════════════════════════════════════════════════
+// WELCOME EMAIL
+// ════════════════════════════════════════════════
+async function sendWelcomeEmail(tech, password) {
+  if (!tech.email || !tech.email.includes('@')) {
+    toast('⚠️ No email set for ' + tech.name + ' — welcome email skipped', 'info');
+    return;
+  }
+
+  const appUrl = window.location.origin + window.location.pathname;
+
+  const roleLabel = tech.userRole === 'master'
+    ? '👑 Master Admin — full system access'
+    : tech.userRole === 'admin'
+    ? '🔑 User Admin — manage crew, fixtures, inventory & schedule'
+    : '👤 Regular User — report outages & replacements';
+
+  const pin = password ? password.slice(-4) : '????';
+
+  const canScheduleNote = tech.canSchedule
+    ? 'Scheduling:  ✅ You can edit the Sunday schedule\n'
+    : '';
+
+  const trainingNote = (tech.training && tech.training.length)
+    ? 'Skills:      ' + tech.training.join(', ') + '\n'
+    : '';
+
+  const message =
+    'Hi ' + tech.name.split(' ')[0] + ',\n\n' +
+    'Welcome to the Stage Light Tracker crew! Your account is ready to go.\n\n' +
+
+    '════════════════════════════\n' +
+    'YOUR LOGIN INFO\n' +
+    '════════════════════════════\n' +
+    'App Link:    ' + appUrl + '\n' +
+    'Your Name:   ' + tech.name + '\n' +
+    'PIN:         ' + pin + '  (last 4 digits of your phone number)\n\n' +
+
+    '════════════════════════════\n' +
+    'YOUR ROLE & ACCESS\n' +
+    '════════════════════════════\n' +
+    'Title:       ' + (tech.role || 'Technician') + '\n' +
+    'Access:      ' + roleLabel + '\n' +
+    canScheduleNote +
+    trainingNote +
+    '\n' +
+
+    '════════════════════════════\n' +
+    'HOW TO LOG IN\n' +
+    '════════════════════════════\n' +
+    '1. Open the app at the link above\n' +
+    '2. Select your name from the crew list\n' +
+    '3. Enter your password to log in\n' +
+    '4. Check the Schedule tab for your upcoming shifts\n' +
+    '5. Add the app to your home screen for quick access\n\n' +
+
+    '════════════════════════════\n' +
+    'YOUR SCHEDULE\n' +
+    '════════════════════════════\n' +
+    'Your shifts are listed under the Schedule tab.\n' +
+    'Every Thursday you will receive an email with the upcoming Sunday roster.\n\n' +
+
+    'If you have any trouble logging in, reach out to your crew lead.\n\n' +
+    'Welcome aboard! 🎉\n' +
+    '— Stage Light Tracker';
+
+  try {
+    await emailjs.send(EJSID, EJTPL, {
+      to_email: tech.email,
+      to_name:  tech.name,
+      subject:  '🎉 Welcome to Stage Light Tracker — Your Account is Ready',
+      message:  message
+    });
+    toast('📧 Welcome email sent to ' + tech.name, 'success');
+  } catch(e) {
+    console.warn('Welcome email failed:', e);
+    toast('⚠️ Welcome email failed for ' + tech.name + ' — check EmailJS settings', 'info');
+  }
+}
+
+// ════════════════════════════════════════════════
+// RESEND WELCOME EMAIL (existing user)
+// ════════════════════════════════════════════════
+function resendWelcomeEmail(techId) {
+  if (!isAdmin()) { toast('Admin permission required', 'error'); return; }
+  const t = db.technicians.find(x => x.id === techId);
+  if (!t) return;
+  if (!t.email || !t.email.includes('@')) {
+    toast('⚠️ ' + t.name + ' has no email address set — edit their profile first', 'error');
+    return;
+  }
+  // Prompt admin for the user's current password so it can be included in the email
+  const pw = prompt('Enter ' + t.name + '\'s current password to include in the welcome email.\n(Leave blank to omit password from email)');
+  if (pw === null) return; // cancelled
+  sendWelcomeEmail(t, pw || null);
 }
 
 // ── BOOT ──
