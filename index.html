@@ -993,474 +993,935 @@ textarea{resize:vertical;min-height:70px;}
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════ ATTENDANCE PAGE ═══════════════════════════════════════ -->
+<!-- ═══════════════════════ ATTENDANCE PAGE ═══════════════════════ -->
 <div id="pg-attendance" style="display:none">
 <style>
-.att-session-bar{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
-.att-slabel{font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;}
-.att-sval{font-family:var(--head);font-weight:700;font-size:15px;}
-.att-pill{background:var(--aglow);border:1px solid rgba(240,165,0,.35);border-radius:20px;padding:3px 12px;font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:600;display:flex;align-items:center;gap:6px;}
-.att-ldot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.4s infinite;}
-.att-panels{display:grid;grid-template-columns:1fr 310px;gap:14px;align-items:start;}
-@media(max-width:780px){.att-panels{grid-template-columns:1fr;}}
-.att-si{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;}
-.att-si:focus{border-color:var(--amber);}
-.att-si::placeholder{color:var(--dim);}
-.att-prog-bar{height:4px;background:var(--s3);border-radius:3px;overflow:hidden;}
-.att-prog-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--amber));transition:width .5s ease;}
-.att-tbl{width:100%;border-collapse:collapse;}
-.att-tbl th{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);}
-.att-tbl td{border-bottom:1px solid var(--border);}
-.att-tbl tr:last-child td{border-bottom:none;}
-.att-tbl tbody tr:hover td{background:rgba(255,255,255,.018);}
-.att-c{padding:10px 14px;vertical-align:middle;}
-.att-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex-shrink:0;border:2px solid transparent;font-family:var(--head);}
-.att-sbtn{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;border:1.5px solid transparent;cursor:pointer;transition:all .12s;background:transparent;white-space:nowrap;}
-.att-sbtn.sp{border-color:rgba(40,201,122,.3);color:var(--dim2);}
-.att-sbtn.sp:hover,.att-sbtn.sp.on{background:var(--gglow);border-color:var(--green);color:var(--green);}
-.att-sbtn.sa{border-color:rgba(224,60,60,.3);color:var(--dim2);}
-.att-sbtn.sa:hover,.att-sbtn.sa.on{background:var(--rglow);border-color:var(--red);color:var(--red);}
-.att-sbtn.sl{border-color:rgba(249,115,22,.3);color:var(--dim2);}
-.att-sbtn.sl:hover,.att-sbtn.sl.on{background:rgba(249,115,22,.1);border-color:#f97316;color:#f97316;}
-.att-sbtn.se{border-color:rgba(61,155,233,.3);color:var(--dim2);}
-.att-sbtn.se:hover,.att-sbtn.se.on{background:var(--bglow);border-color:var(--blue);color:var(--blue);}
-.att-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;}
-.att-pp{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;}
-.att-pp.hi{background:var(--gglow);color:var(--green);border:1px solid rgba(40,201,122,.3);}
-.att-pp.mi{background:var(--aglow);color:var(--amber);border:1px solid rgba(240,165,0,.3);}
-.att-pp.lo{background:var(--rglow);color:var(--red);border:1px solid rgba(224,60,60,.3);}
-.att-hl{padding:0;list-style:none;}
-.att-hi{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:13px;}
-.att-hi:last-child{border-bottom:none;}
-.att-hw{font-weight:700;font-size:13px;}
-.att-hd{font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:2px;}
-.att-ht{font-family:var(--mono);font-size:10px;color:var(--dim);flex-shrink:0;}
-.att-spark{display:flex;gap:2px;align-items:flex-end;height:20px;}
-.att-spk{width:5px;border-radius:2px 2px 0 0;background:var(--s3);}
-.att-spk.present{background:var(--green);}.att-spk.absent{background:var(--red);}.att-spk.late{background:#f97316;}.att-spk.excused{background:var(--blue);}
-.att-tab{background:none;border:none;color:var(--dim2);font-family:var(--head);font-weight:700;font-size:11px;letter-spacing:.5px;text-transform:uppercase;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;}
-.att-tab.on{background:var(--aglow);color:var(--amber);border:1px solid rgba(240,165,0,.3);}
-.att-tc{display:none;}.att-tc.on{display:block;}
-.att-mo{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
-.att-mo.open{opacity:1;pointer-events:all;}
-.att-mb{background:var(--s1);border:1px solid var(--border2);border-radius:14px;width:min(480px,95vw);max-height:82vh;overflow-y:auto;padding:24px;transform:scale(.95);transition:transform .2s;}
-.att-mo.open .att-mb{transform:scale(1);}
-.att-fi{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;}
-.att-fi:focus{border-color:var(--amber);}
-@media(max-width:600px){.att-nc{display:none;}}
-</style>
 
-<div style="max-width:1100px;margin:0 auto;">
-  <div class="att-session-bar">
-    <div><div class="att-slabel">Session</div><div class="att-sval" id="att-sessionName">—</div></div>
-    <div><div class="att-slabel">Type</div><div class="att-sval" id="att-sessionType">—</div></div>
-    <div><div class="att-slabel">Calltime</div><div class="att-sval" id="att-sessionCalltime">—</div></div>
-    <div class="att-pill"><span class="att-ldot"></span> LIVE CHECK-IN</div>
+:root {
+  --bg:#080b10;--s1:#0d1117;--s2:#161b22;--s3:#1c2433;
+  --border:#21262d;--border2:#30363d;
+  --amber:#f0a500;--amber2:#ffc23e;--aglow:rgba(240,165,0,.12);--aglow2:rgba(240,165,0,.05);
+  --red:#e03c3c;--rglow:rgba(224,60,60,.1);
+  --green:#28c97a;--gglow:rgba(40,201,122,.1);
+  --blue:#3d9be9;--bglow:rgba(61,155,233,.1);
+  --purple:#a855f7;--pglow:rgba(168,85,247,.1);
+  --orange:#f97316;--oglow:rgba(249,115,22,.1);
+  --text:#c9d1d9;--dim:#484f58;--dim2:#8b949e;
+  --mono:'IBM Plex Mono',monospace;
+  --head:'Barlow Condensed',sans-serif;
+  --radius:10px;--radius-sm:6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--head);font-size:15px;min-height:100vh;overflow-x:hidden;}
+
+/* ── HEADER ── */
+header{position:sticky;top:0;z-index:100;background:rgba(8,11,16,.98);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;padding:0 20px;gap:14px;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-bulb{font-size:20px;filter:drop-shadow(0 0 10px var(--amber));animation:flicker 8s infinite;}
+@keyframes flicker{0%,95%,100%{opacity:1}96%,98%{opacity:.6}97%,99%{opacity:.9}}
+.logo-text{font-family:var(--head);font-weight:900;font-size:18px;letter-spacing:3px;text-transform:uppercase;color:var(--amber);line-height:1;}
+.logo-sub{font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:3px;text-transform:uppercase;}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.clock{font-family:var(--mono);font-size:12px;color:var(--dim2);}
+.clock span{color:var(--amber);}
+
+/* ── MAIN ── */
+main{max-width:1100px;margin:0 auto;padding:20px 16px;}
+
+/* ── SESSION BAR ── */
+.att2-session-bar{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.att2-session-label{font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;}
+.att2-session-val{font-family:var(--head);font-weight:700;font-size:15px;color:var(--text);}
+.att2-session-pill{background:var(--aglow);border:1px solid rgba(240,165,0,.35);border-radius:20px;padding:3px 12px;font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:600;display:flex;align-items:center;gap:6px;}
+.att2-live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.4s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.att2-session-bar select, .att2-session-bar input[type=text]{background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-family:var(--head);font-size:13px;padding:6px 10px;outline:none;}
+.att2-session-bar select:focus, .att2-session-bar input:focus{border-color:var(--amber);}
+
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
+.sc{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s;}
+.sc:hover{transform:translateY(-2px);}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.sc.ca::before{background:linear-gradient(90deg,var(--amber),var(--amber2));box-shadow:0 0 14px var(--amber);}
+.sc.cg::before{background:var(--green);box-shadow:0 0 14px var(--green);}
+.sc.cr::before{background:var(--red);box-shadow:0 0 14px var(--red);}
+.sc.co::before{background:var(--orange);box-shadow:0 0 14px var(--orange);}
+.sc.cb::before{background:var(--blue);box-shadow:0 0 14px var(--blue);}
+.sc-label{font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.sc-val{font-family:var(--head);font-size:34px;font-weight:900;line-height:1;}
+.sc.ca .sc-val{color:var(--amber);}
+.sc.cg .sc-val{color:var(--green);}
+.sc.cr .sc-val{color:var(--red);}
+.sc.co .sc-val{color:var(--orange);}
+.sc.cb .sc-val{color:var(--blue);}
+.sc-sub{font-family:var(--mono);font-size:9px;color:var(--dim2);margin-top:4px;}
+
+/* ── PANELS ── */
+.panels{display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start;}
+@media(max-width:780px){.panels{grid-template-columns:1fr;}}
+.panel{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.ph{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.pt{font-family:var(--head);font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim2);}
+.ph-actions{margin-left:auto;display:flex;gap:6px;}
+.pb{padding:0;}
+
+/* ── ATTENDANCE TABLE ── */
+.att2-table{width:100%;border-collapse:collapse;}
+.att2-table th{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);}
+.att2-table td{padding:0;border-bottom:1px solid var(--border);}
+.att2-table tr:last-child td{border-bottom:none;}
+.att2-row{display:contents;}
+.att2-cell{padding:11px 14px;vertical-align:middle;}
+.att2-name{display:flex;align-items:center;gap:10px;}
+.att2-avatar{width:32px;height:32px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0;border:2px solid var(--border2);font-family:var(--head);}
+.att2-nametext{font-weight:700;font-size:14px;}
+.att2-role{font-family:var(--mono);font-size:10px;color:var(--dim2);}
+.att2-table tr{transition:background .1s;cursor:pointer;}
+.att2-table tr:hover td .att2-cell{background:rgba(255,255,255,.025);}
+
+/* Status buttons */
+.att2-status-btns{display:flex;gap:4px;align-items:center;}
+.sb{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;border:1.5px solid transparent;cursor:pointer;transition:all .12s;background:transparent;white-space:nowrap;}
+.sb:hover{filter:brightness(1.15);}
+.sb.active{font-weight:700;}
+.sb-p{border-color:rgba(40,201,122,.4);color:var(--dim2);}
+.sb-p.active,.sb-p:hover{background:var(--gglow);border-color:var(--green);color:var(--green);}
+.sb-a{border-color:rgba(224,60,60,.4);color:var(--dim2);}
+.sb-a.active,.sb-a:hover{background:var(--rglow);border-color:var(--red);color:var(--red);}
+.sb-l{border-color:rgba(249,115,22,.4);color:var(--dim2);}
+.sb-l.active,.sb-l:hover{background:var(--oglow);border-color:var(--orange);color:var(--orange);}
+.sb-e{border-color:rgba(61,155,233,.4);color:var(--dim2);}
+.sb-e.active,.sb-e:hover{background:var(--bglow);border-color:var(--blue);color:var(--blue);}
+.dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.att2-time{font-family:var(--mono);font-size:10px;color:var(--dim2);min-width:50px;}
+
+/* ── HISTORY / SIDEBAR ── */
+.att2-hist-list{padding:0;list-style:none;}
+.att2-hist-item{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:13px;}
+.att2-hist-item:last-child{border-bottom:none;}
+.att2-hist-icon{font-size:16px;width:24px;text-align:center;flex-shrink:0;}
+.att2-hist-detail{flex:1;min-width:0;}
+.att2-hist-who{font-weight:700;font-size:13px;}
+.att2-hist-what{font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:2px;}
+.att2-hist-time{font-family:var(--mono);font-size:10px;color:var(--dim);flex-shrink:0;}
+
+/* Notes column */
+.att2-note{font-family:var(--mono);font-size:10px;color:var(--dim2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+.att2-note:hover{color:var(--amber);}
+
+/* ── SEARCH ── */
+.att2-search-wrap{padding:10px 14px;border-bottom:1px solid var(--border);}
+.att2-search-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;}
+.att2-search-input:focus{border-color:var(--amber);}
+.att2-search-input::placeholder{color:var(--dim);}
+
+/* ── PROGRESS BAR ── */
+.att2-prog-wrap{padding:12px 16px;border-bottom:1px solid var(--border);}
+.att2-prog-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-family:var(--mono);font-size:10px;}
+.att2-prog-bar{height:5px;background:var(--s3);border-radius:3px;overflow:hidden;}
+.att2-prog-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--amber));transition:width .5s ease;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-family:var(--head);font-weight:700;font-size:12px;letter-spacing:.5px;text-transform:uppercase;transition:all .15s;white-space:nowrap;}
+.ba{background:var(--amber);color:#000;}.ba:hover{background:var(--amber2);}
+.bg{background:var(--green);color:#000;}.bg:hover{opacity:.85;}
+.bgh{background:transparent;border:1px solid var(--border2);color:var(--dim2);}.bgh:hover{border-color:var(--dim2);color:var(--text);}
+.bsm{padding:5px 10px;font-size:11px;}
+.br{background:var(--red);color:#fff;}.br:hover{opacity:.85;}
+
+/* ── MODAL ── */
+.att2-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.att2-modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:14px;width:min(480px,95vw);max-height:80vh;overflow-y:auto;padding:24px;transform:scale(.95);transition:transform .2s;}
+.att2-modal-overlay.open .modal{transform:scale(1);}
+.att2-modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.att2-modal-title{font-family:var(--head);font-weight:900;font-size:20px;letter-spacing:1px;}
+.att2-modal-close{background:none;border:none;color:var(--dim2);font-size:20px;cursor:pointer;line-height:1;padding:4px;}
+.att2-modal-close:hover{color:var(--text);}
+.att2-form-row{margin-bottom:14px;}
+.att2-form-label{font-family:var(--mono);font-size:10px;color:var(--dim2);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+.att2-form-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;}
+.att2-form-input:focus{border-color:var(--amber);}
+.att2-form-row select.att2-form-input{cursor:pointer;}
+
+/* ── HISTORY TAB ── */
+.att2-tab-bar{display:flex;gap:2px;padding:10px 14px;border-bottom:1px solid var(--border);}
+.att2-tab{background:none;border:none;color:var(--dim2);font-family:var(--head);font-weight:700;font-size:11px;letter-spacing:.5px;text-transform:uppercase;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all .15s;}
+.att2-tab.active{background:var(--aglow);color:var(--amber);border:1px solid rgba(240,165,0,.3);}
+.att2-tab-content{display:none;}.att2-tab-content.active{display:block;}
+
+/* ── TOAST ── */
+.att2-toast-stack{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 16px;font-family:var(--mono);font-size:12px;display:flex;align-items:center;gap:8px;animation:slideIn .2s ease;min-width:220px;}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+.toast.success{border-color:rgba(40,201,122,.5);color:var(--green);}
+.toast.error{border-color:rgba(224,60,60,.5);color:var(--red);}
+.toast.info{border-color:rgba(61,155,233,.5);color:var(--blue);}
+
+/* ── MINI SPARKLINE ── */
+.att2-sparkline{display:flex;gap:2px;align-items:flex-end;height:22px;}
+.att2-spark-bar{width:5px;border-radius:2px 2px 0 0;background:var(--s3);transition:height .3s;}
+.att2-spark-bar.present{background:var(--green);}
+.att2-spark-bar.absent{background:var(--red);}
+.att2-spark-bar.late{background:var(--orange);}
+.att2-spark-bar.excused{background:var(--blue);}
+
+/* ── PERCENT PILL ── */
+.att2-pct-pill{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;}
+.att2-pct-high{background:var(--gglow);color:var(--green);border:1px solid rgba(40,201,122,.3);}
+.att2-pct-mid{background:var(--aglow);color:var(--amber);border:1px solid rgba(240,165,0,.3);}
+.att2-pct-low{background:var(--rglow);color:var(--red);border:1px solid rgba(224,60,60,.3);}
+
+/* ── EXPORT ROW ── */
+.att2-export-bar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .att2-status-btns{flex-wrap:wrap;}
+  .att2-note{display:none;}
+}
+
+</style>
+<div style="max-width:1100px;margin:0 auto;padding:20px 16px;">
+
+
+  <!-- SESSION BAR -->
+  <div class="att2-session-bar">
+    <div>
+      <div class="att2-session-label">Session</div>
+      <div class="att2-session-val" id="sessionName">Sunday Service — Apr 13, 2025</div>
+    </div>
+    <div>
+      <div class="att2-session-label">Type</div>
+      <div class="att2-session-val" id="sessionType">🎛 Production</div>
+    </div>
+    <div>
+      <div class="att2-session-label">Calltime</div>
+      <div class="att2-session-val" id="sessionCalltime">8:00 AM</div>
+    </div>
+    <div class="att2-session-pill"><span class="att2-live-dot"></span> LIVE CHECK-IN OPEN</div>
     <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn bgh bsm" onclick="attOpenPicker()">&#128203; Sessions</button>
-      <button class="btn ba bsm" onclick="attMarkAll()">&#10004; Mark All Present</button>
-      <button class="btn bgh bsm" onclick="attNewSession()">&#65291; New Session</button>
+      <button class="btn bgh bsm" onclick="att2OpenSessionPicker()">📋 Sessions</button>
+      <button class="btn ba bsm" onclick="att2MarkAllPresent()">✔ Mark All Present</button>
     </div>
   </div>
-  <div class="stats" style="margin-bottom:16px;">
-    <div class="sc ca"><div class="sc-label">Total Crew</div><div class="sc-val" id="att-total">—</div></div>
-    <div class="sc cg"><div class="sc-label">Present</div><div class="sc-val" id="att-present">0</div><div class="sc-sub" id="att-pct">—</div></div>
-    <div class="sc cr"><div class="sc-label">Absent</div><div class="sc-val" id="att-absent">0</div></div>
-    <div class="sc" style="border-top-color:#f97316"><div class="sc-label">Late</div><div class="sc-val" id="att-late" style="color:#f97316">0</div></div>
-    <div class="sc cb"><div class="sc-label">Excused</div><div class="sc-val" id="att-excused">0</div></div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="sc ca">
+      <div class="sc-label">Total Crew</div>
+      <div class="sc-val" id="statTotal">0</div>
+      <div class="sc-sub">scheduled</div>
+    </div>
+    <div class="sc cg">
+      <div class="sc-label">Present</div>
+      <div class="sc-val" id="statPresent">0</div>
+      <div class="sc-sub" id="statPresentPct">—%</div>
+    </div>
+    <div class="sc cr">
+      <div class="sc-label">Absent</div>
+      <div class="sc-val" id="statAbsent">0</div>
+      <div class="sc-sub">not checked in</div>
+    </div>
+    <div class="sc co">
+      <div class="sc-label">Late</div>
+      <div class="sc-val" id="statLate">0</div>
+      <div class="sc-sub">after calltime</div>
+    </div>
+    <div class="sc cb">
+      <div class="sc-label">Excused</div>
+      <div class="sc-val" id="statExcused">0</div>
+      <div class="sc-sub">approved absence</div>
+    </div>
   </div>
-  <div class="att-panels">
+
+  <!-- PANELS -->
+  <div class="panels">
+
+    <!-- LEFT: ROSTER -->
     <div class="panel">
-      <div class="ph"><span class="pt">&#127917; Crew Roster</span>
-        <div style="margin-left:auto"><button class="btn bgh bsm" onclick="attExportCSV()">&#8595; CSV</button></div>
-      </div>
-      <div style="padding:10px 14px;border-bottom:1px solid var(--border)">
-        <input class="att-si" id="att-search" placeholder="Search name or role..." oninput="attRenderTable()">
-      </div>
-      <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-bottom:5px;">
-          <span style="color:var(--dim2)">Check-in Progress</span><span id="att-prog-txt" style="color:var(--amber)">0 / 0</span>
+      <div class="ph">
+        <span class="pt">🎭 Crew Roster</span>
+        <div class="ph-actions">
+          <button class="btn bgh bsm" onclick="att2ExportCSV()">⬇ CSV</button>
         </div>
-        <div class="att-prog-bar"><div class="att-prog-fill" id="att-prog-fill" style="width:0%"></div></div>
       </div>
-      <table class="att-tbl">
-        <thead><tr><th>Crew Member</th><th>Status</th><th>Time</th><th class="att-nc">Note</th><th>Att%</th></tr></thead>
-        <tbody id="att-tbody"></tbody>
-      </table>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border)">
-        <button class="btn bgh bsm" onclick="attExportCSV()">&#8595; Export CSV</button>
-        <button class="btn br bsm" onclick="attClear()">&#10005; Clear Session</button>
+      <div class="att2-search-wrap">
+        <input class="att2-search-input" id="searchInput" placeholder="Search crew member or role…" oninput="att2RenderTable()">
+      </div>
+      <div class="att2-prog-wrap">
+        <div class="att2-prog-label">
+          <span style="color:var(--dim2)">Check-in Progress</span>
+          <span id="progText" style="color:var(--amber)">0 / 0</span>
+        </div>
+        <div class="att2-prog-bar"><div class="att2-prog-fill" id="progFill" style="width:0%"></div></div>
+      </div>
+      <div class="pb">
+        <table class="att2-table">
+          <thead>
+            <tr>
+              <th>Crew Member</th>
+              <th>Status</th>
+              <th>Time</th>
+              <th>Note</th>
+              <th>Att%</th>
+            </tr>
+          </thead>
+          <tbody id="rosterBody"></tbody>
+        </table>
+      </div>
+      <div class="att2-export-bar">
+        <button class="btn bgh bsm" onclick="att2ExportCSV()">⬇ Export CSV</button>
+        <button class="btn bgh bsm" onclick="att2PrintRoster()">🖨 Print Roster</button>
+        <button class="btn br bsm" onclick="att2ClearSession()">✕ Clear Session</button>
       </div>
     </div>
+
+    <!-- RIGHT SIDEBAR -->
     <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <!-- Activity Feed -->
       <div class="panel">
-        <div class="ph"><span class="pt">&#128225; Live Activity</span></div>
-        <ul class="att-hl" id="att-feed">
-          <li class="att-hi" style="color:var(--dim2);font-family:var(--mono);font-size:11px;justify-content:center;">No activity yet</li>
+        <div class="ph"><span class="pt">📡 Live Activity</span></div>
+        <ul class="att2-hist-list" id="activityFeed">
+          <li class="att2-hist-item" style="color:var(--dim2);font-family:var(--mono);font-size:11px;justify-content:center;">No activity yet</li>
         </ul>
       </div>
+
+      <!-- Per-Member Stats -->
       <div class="panel">
-        <div class="ph"><span class="pt">&#128202; Season Attendance</span></div>
-        <div style="display:flex;gap:2px;padding:8px 12px;border-bottom:1px solid var(--border)">
-          <button class="att-tab on" id="att-t1" onclick="attTab('att-tc-hist','att-t1')">History</button>
-          <button class="att-tab" id="att-t2" onclick="attTab('att-tc-str','att-t2')">Streaks</button>
+        <div class="ph"><span class="pt">📊 Season Attendance</span></div>
+        <div class="att2-tab-bar">
+          <button class="att2-tab active" onclick="att2SwitchTab('history','att2-tab-history',this)">History</button>
+          <button class="att2-tab" onclick="att2SwitchTab('history','att2-tab-streaks',this)">Streaks</button>
         </div>
-        <div id="att-tc-hist" class="att-tc on"><ul class="att-hl" id="att-hist"></ul></div>
-        <div id="att-tc-str" class="att-tc"><ul class="att-hl" id="att-streak"></ul></div>
+        <div id="att2-tab-history" class="att2-tab-content active">
+          <ul class="att2-hist-list" id="historyList"></ul>
+        </div>
+        <div id="att2-tab-streaks" class="att2-tab-content">
+          <ul class="att2-hist-list" id="streakList"></ul>
+        </div>
       </div>
+
+    </div>
+  </div>
+
+
+</div>
+
+
+<!-- New Session Modal -->
+<div class="att2-modal-overlay" id="modalNewSession">
+  <div class="modal">
+    <div class="att2-modal-header">
+      <span class="att2-modal-title">＋ New Session</span>
+      <button class="att2-modal-close" onclick="att2CloseModal('modalNewSession')">✕</button>
+    </div>
+    <div class="att2-form-row">
+      <div class="att2-form-label">Session Name</div>
+      <input class="att2-form-input" id="ns_name" placeholder="e.g. Sunday Service — Apr 20">
+    </div>
+    <div class="att2-form-row">
+      <div class="att2-form-label">Type</div>
+      <select class="att2-form-input" id="ns_type">
+        <option value="Production">🎛 Production</option>
+        <option value="Rehearsal">🎤 Rehearsal</option>
+        <option value="Training">📚 Training</option>
+        <option value="Special Event">🌟 Special Event</option>
+        <option value="Setup">🔧 Setup / Strike</option>
+      </select>
+    </div>
+    <div class="att2-form-row">
+      <div class="att2-form-label">Call Time</div>
+      <input class="att2-form-input" id="ns_calltime" type="time" value="08:00">
+    </div>
+    <div class="att2-form-row">
+      <div class="att2-form-label">Notes</div>
+      <input class="att2-form-input" id="ns_notes" placeholder="Optional session notes…">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="btn ba" style="flex:1" onclick="att2CreateSession()">Create Session</button>
+      <button class="btn bgh" onclick="att2CloseModal('modalNewSession')">Cancel</button>
     </div>
   </div>
 </div>
 
-<!-- Attendance Modals -->
-<div class="att-mo" id="att-mo-new">
-  <div class="att-mb">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-      <span style="font-family:var(--head);font-weight:900;font-size:20px;">New Session</span>
-      <button style="background:none;border:none;color:var(--dim2);font-size:20px;cursor:pointer" onclick="attCloseModal('att-mo-new')">&#10005;</button>
+<!-- Session Picker Modal -->
+<div class="att2-modal-overlay" id="modalSessions">
+  <div class="modal">
+    <div class="att2-modal-header">
+      <span class="att2-modal-title">📋 Sessions</span>
+      <button class="att2-modal-close" onclick="att2CloseModal('modalSessions')">✕</button>
     </div>
-    <div style="margin-bottom:14px"><div style="font-family:var(--mono);font-size:10px;color:var(--dim2);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Session Name</div><input class="att-fi" id="att-ns-name" placeholder="e.g. Sunday Service"></div>
-    <div style="margin-bottom:14px"><div style="font-family:var(--mono);font-size:10px;color:var(--dim2);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Type</div>
-      <select class="att-fi" id="att-ns-type">
-        <option value="Production">Production</option><option value="Rehearsal">Rehearsal</option>
-        <option value="Training">Training</option><option value="Special Event">Special Event</option><option value="Setup">Setup / Strike</option>
-      </select></div>
-    <div style="margin-bottom:18px"><div style="font-family:var(--mono);font-size:10px;color:var(--dim2);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Call Time</div><input class="att-fi" id="att-ns-time" type="time" value="08:00"></div>
-    <div style="display:flex;gap:8px"><button class="btn ba" style="flex:1" onclick="attCreateSession()">Create Session</button><button class="btn bgh" onclick="attCloseModal('att-mo-new')">Cancel</button></div>
+    <ul class="att2-hist-list" id="sessionPickerList" style="max-height:360px;overflow-y:auto;"></ul>
   </div>
 </div>
 
-<div class="att-mo" id="att-mo-pick">
-  <div class="att-mb">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-      <span style="font-family:var(--head);font-weight:900;font-size:20px;">Sessions</span>
-      <button style="background:none;border:none;color:var(--dim2);font-size:20px;cursor:pointer" onclick="attCloseModal('att-mo-pick')">&#10005;</button>
+<!-- Note Modal -->
+<div class="att2-modal-overlay" id="modalNote">
+  <div class="modal">
+    <div class="att2-modal-header">
+      <span class="att2-modal-title">📝 Add Note</span>
+      <button class="att2-modal-close" onclick="att2CloseModal('modalNote')">✕</button>
     </div>
-    <ul class="att-hl" id="att-pick-list" style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;"></ul>
+    <div class="att2-form-row">
+      <div class="att2-form-label">Note for <span id="noteForName" style="color:var(--amber)"></span></div>
+      <input class="att2-form-input" id="noteInput" placeholder="e.g. Left early, sick, traffic…">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="btn ba" style="flex:1" onclick="att2SaveNote()">Save Note</button>
+      <button class="btn bgh" onclick="att2CloseModal('modalNote')">Cancel</button>
+    </div>
   </div>
 </div>
 
-<div class="att-mo" id="att-mo-note">
-  <div class="att-mb">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-      <span style="font-family:var(--head);font-weight:900;font-size:20px;">Note</span>
-      <button style="background:none;border:none;color:var(--dim2);font-size:20px;cursor:pointer" onclick="attCloseModal('att-mo-note')">&#10005;</button>
-    </div>
-    <div style="margin-bottom:18px">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Note for <span id="att-note-name" style="color:var(--amber)"></span></div>
-      <input class="att-fi" id="att-note-inp" placeholder="e.g. Left early, sick..." onkeydown="if(event.key==='Enter')attSaveNote()">
-    </div>
-    <div style="display:flex;gap:8px"><button class="btn ba" style="flex:1" onclick="attSaveNote()">Save</button><button class="btn bgh" onclick="attCloseModal('att-mo-note')">Cancel</button></div>
-  </div>
-</div>
+<!-- Toast Stack -->
+<div class="att2-toast-stack" id="toastStack"></div>
 
-</div><!-- end pg-attendance -->
 
-</main>
+<div class="att2-toast-stack" id="att2-toastStack"></div>
+</div><!-- /pg-attendance -->
 
 <script>
-// ════════════════════════════════════════════════
-// ATTENDANCE MODULE — reads directly from db.technicians
-// ════════════════════════════════════════════════
-(function(){
-const ATT_KEY = 'slt_att_v2';
-const AV_COLORS = ['#f0a500','#28c97a','#3d9be9','#a855f7','#e03c3c','#f97316','#06b6d4','#ec4899'];
-const ST_LABELS = {present:'Present',absent:'Absent',late:'Late',excused:'Excused'};
-const ST_ICONS  = {present:'✓',absent:'✗',late:'⧖',excused:'~'};
-const ST_COLORS = {present:'var(--green)',absent:'var(--red)',late:'#f97316',excused:'var(--blue)'};
 
-let attSessions=[], attData={}, attCurId=null, attLog=[], attNoteTarget=null;
+// ══════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════
+const STATUSES = ['present','absent','late','excused'];
+const STATUS_LABELS = {present:'Present',absent:'Absent',late:'Late',excused:'Excused'};
+const STATUS_ICONS  = {present:'✓',absent:'✗',late:'⧖',excused:'~'};
+const AVATAR_COLORS = ['#f0a500','#28c97a','#3d9be9','#a855f7','#e03c3c','#f97316','#06b6d4','#ec4899'];
 
-function attLoadLocal(){
-  try{const d=JSON.parse(localStorage.getItem(ATT_KEY)||'null');if(!d)return;
-    attSessions=d.sessions||[];attData=d.attendance||{};attCurId=d.currentSessionId||null;attLog=d.activityLog||[];}catch(e){}
-}
-function attSaveLocal(){
-  try{localStorage.setItem(ATT_KEY,JSON.stringify({sessions:attSessions,attendance:attData,currentSessionId:attCurId,activityLog:attLog}));}catch(e){}
-}
-async function attSaveFirebase(){
-  if(!window._saveToFirebase||!window.db)return;
-  const merged=Object.assign({},window.db,{attendance:{sessions:attSessions,attendance:attData,currentSessionId:attCurId,activityLog:attLog}});
-  await window._saveToFirebase(merged);
-}
-function attSave(){attSaveLocal();attSaveFirebase();}
+// Seed demo crew (mirrors typical SLT roster)
+let attDb = JSON.parse(localStorage.getItem('slt_att_db') || 'null') || {
+  sessions: [
+    { id:'sess_1', name:'Sunday Service — Apr 6, 2025',  type:'Production', calltime:'8:00 AM', notes:'Palm Sunday', date: Date.now()-7*86400000 },
+    { id:'sess_2', name:'Sunday Service — Mar 30, 2025', type:'Production', calltime:'8:00 AM', notes:'',            date: Date.now()-14*86400000 },
+    { id:'sess_3', name:'Good Friday Rehearsal',         type:'Rehearsal',  calltime:'7:00 PM', notes:'All hands',   date: Date.now()-10*86400000 },
+  ],
+  crew: [], // populated from db.technicians
+  // attendance[sessionId][crewId] = {status, time, note}
+  attendance: {
+    'sess_1': {
+      'c1':{status:'present',time:'7:48 AM',note:''},
+      'c2':{status:'present',time:'8:02 AM',note:''},
+      'c3':{status:'late',   time:'8:19 AM',note:'Traffic on 401'},
+      'c4':{status:'present',time:'7:55 AM',note:''},
+      'c5':{status:'absent', time:'',       note:'Sick'},
+      'c6':{status:'excused',time:'',       note:'Vacation approved'},
+      'c7':{status:'present',time:'8:00 AM',note:''},
+      'c8':{status:'present',time:'7:58 AM',note:''},
+    },
+    'sess_2': {
+      'c1':{status:'present',time:'7:50 AM',note:''},
+      'c2':{status:'present',time:'8:00 AM',note:''},
+      'c3':{status:'present',time:'7:45 AM',note:''},
+      'c4':{status:'absent', time:'',       note:'No show'},
+      'c5':{status:'present',time:'8:05 AM',note:''},
+      'c6':{status:'present',time:'7:52 AM',note:''},
+      'c7':{status:'late',   time:'8:30 AM',note:''},
+      'c8':{status:'present',time:'7:55 AM',note:''},
+    },
+    'sess_3': {
+      'c1':{status:'present',time:'6:52 PM',note:''},
+      'c2':{status:'present',time:'7:00 PM',note:''},
+      'c3':{status:'present',time:'6:58 PM',note:''},
+      'c4':{status:'excused',time:'',       note:'Work conflict'},
+      'c5':{status:'present',time:'7:03 PM',note:''},
+      'c6':{status:'present',time:'6:55 PM',note:''},
+      'c7':{status:'absent', time:'',       note:''},
+      'c8':{status:'present',time:'6:50 PM',note:''},
+    },
+  },
+  currentSessionId: null,
+  activityLog: [],
+};
 
-function attGetCrew(){
-  if(window.db&&Array.isArray(window.db.technicians)&&window.db.technicians.length){
-    return window.db.technicians.map((t,i)=>({id:t.id,name:t.name||'Unknown',role:t.role||t.title||'Technician',color:i%AV_COLORS.length}));
+// Make sure currentSession exists or pick first
+// Sync crew from index.html's db.technicians (plain variable, not window.db)
+function att2SyncCrew() {
+  if (typeof db !== 'undefined' && Array.isArray(db.technicians) && db.technicians.length) {
+    attDb.crew = db.technicians.map((t, i) => ({
+      id: t.id,
+      name: t.name || 'Unknown',
+      role: t.role || t.title || 'Technician',
+      color: i % AVATAR_COLORS.length
+    }));
   }
-  return [];
+}
+att2SyncCrew();
+
+if (!attDb.currentSessionId || !attDb.sessions.find(s=>s.id===attDb.currentSessionId)) {
+  const todayLabel = att2FormatDateLabel(new Date());
+  const todayId = 'sess_today';
+  if (!attDb.sessions.find(s=>s.id===todayId)) {
+    attDb.sessions.unshift({ id:todayId, name:`Sunday Service — ${todayLabel}`, type:'Production', calltime:'8:00 AM', notes:'', date:Date.now() });
+    attDb.attendance[todayId] = {};
+  }
+  attDb.currentSessionId = todayId;
 }
 
-function attEnsureSession(){
-  if(!attCurId||!attSessions.find(s=>s.id===attCurId)){
-    if(attSessions.length>0){attCurId=attSessions[0].id;}
-    else{
-      const id='sess_'+Date.now();
-      const name='Sunday Service — '+new Date().toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'});
-      attSessions.unshift({id,name,type:'Production',calltime:'8:00 AM',date:Date.now()});
-      attData[id]={};attCurId=id;
+let _noteTargetId = null;
+
+function att2Save() {
+  localStorage.setItem('slt_att_db', JSON.stringify(db));
+}
+
+function att2FormatDateLabel(d) {
+  return d.toLocaleDateString('en-CA', { month:'short', day:'numeric', year:'numeric' });
+}
+
+// ══════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════
+function att2UpdateClock() {
+  const n = new Date();
+  document.getElementById('clockTime').textContent = n.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('clockDate').textContent = n.toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});
+}
+setInterval(updateClock, 1000);
+att2UpdateClock();
+
+// ══════════════════════════════════════════
+// CURRENT SESSION
+// ══════════════════════════════════════════
+function att2CurrentSession() { return attDb.sessions.find(s=>s.id===attDb.currentSessionId)||attDb.sessions[0]; }
+
+function att2SetSession(id) {
+  attDb.currentSessionId = id;
+  if (!attDb.attendance[id]) attDb.attendance[id] = {};
+  att2Save();
+  att2RenderSessionBar();
+  att2RenderStats();
+  att2RenderTable();
+  att2CloseModal('modalSessions');
+}
+
+function att2RenderSessionBar() {
+  const s = att2CurrentSession();
+  if (!s) return;
+  document.getElementById('sessionName').textContent = s.name;
+  const typeIcons = {Production:'🎛',Rehearsal:'🎤',Training:'📚','Special Event':'🌟','Setup / Strike':'🔧'};
+  document.getElementById('sessionType').textContent = (typeIcons[s.type]||'📋') + ' ' + s.type;
+  document.getElementById('sessionCalltime').textContent = s.calltime;
+}
+
+// ══════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════
+function att2GetSessionAttendance() {
+  const s = att2CurrentSession();
+  if (!s) return {};
+  return attDb.attendance[s.id] || {};
+}
+
+function att2RenderStats() {
+  const att = att2GetSessionAttendance();
+  const total = attDb.crew.length;
+  let p=0,a=0,l=0,e=0;
+  attDb.crew.forEach(c => {
+    const r = att[c.id];
+    if (!r) { a++; return; }
+    if (r.status==='present') p++;
+    else if (r.status==='absent') a++;
+    else if (r.status==='late') l++;
+    else if (r.status==='excused') e++;
+    else a++;
+  });
+  document.getElementById('statTotal').textContent   = total;
+  document.getElementById('statPresent').textContent = p;
+  document.getElementById('statAbsent').textContent  = a;
+  document.getElementById('statLate').textContent    = l;
+  document.getElementById('statExcused').textContent = e;
+  const checkedIn = p + l;
+  document.getElementById('statPresentPct').textContent = total ? Math.round(checkedIn/total*100)+'%' : '—%';
+
+  // Progress
+  const prog = total ? Math.round((p+l+e)/total*100) : 0;
+  document.getElementById('progFill').style.width = prog+'%';
+  document.getElementById('progText').textContent = (p+l+e)+' / '+total;
+}
+
+// ══════════════════════════════════════════
+// TABLE RENDER
+// ══════════════════════════════════════════
+function att2RenderTable() {
+  const att = att2GetSessionAttendance();
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const tbody = document.getElementById('rosterBody');
+  tbody.innerHTML = '';
+
+  attDb.crew.filter(c => !q || c.name.toLowerCase().includes(q) || c.role.toLowerCase().includes(q))
+    .forEach(c => {
+      const rec = att[c.id] || { status: '', time: '', note: '' };
+      const initials = c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const acolor = AVATAR_COLORS[c.color % AVATAR_COLORS.length];
+      const attPct = att2GetAttendancePct(c.id);
+      const pctClass = attPct>=85?'att2-pct-high':attPct>=65?'att2-pct-mid':'att2-pct-low';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="att2-cell">
+          <div class="att2-name">
+            <div class="att2-avatar" style="color:${acolor};border-color:${acolor}22;">${initials}</div>
+            <div>
+              <div class="att2-nametext">${c.name}</div>
+              <div class="att2-role">${c.role}</div>
+            </div>
+          </div>
+        </td>
+        <td class="att2-cell">
+          <div class="att2-status-btns">
+            ${STATUSES.map(st=>`
+              <button class="sb sb-${st[0]} ${rec.status===st?'active':''}"
+                onclick="att2SetStatus('${c.id}','${st}')" title="${STATUS_LABELS[st]}">
+                <span class="dot"></span>${STATUS_LABELS[st]}
+              </button>`).join('')}
+          </div>
+        </td>
+        <td class="att2-cell att2-time">${rec.time||'—'}</td>
+        <td class="att2-cell att2-note" onclick="att2OpenNote('${c.id}')" title="${rec.note||'Click to add note'}">${rec.note||'＋ note'}</td>
+        <td class="att2-cell"><span class="att2-pct-pill ${pctClass}">${attPct}%</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+}
+
+// ══════════════════════════════════════════
+// STATUS ACTIONS
+// ══════════════════════════════════════════
+function att2SetStatus(crewId, status) {
+  const s = att2CurrentSession();
+  if (!s) return;
+  if (!attDb.attendance[s.id]) attDb.attendance[s.id] = {};
+  const prev = attDb.attendance[s.id][crewId];
+  const now = new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
+  attDb.attendance[s.id][crewId] = {
+    status,
+    time: (status==='present'||status==='late') ? now : (prev?.time||''),
+    note: prev?.note||''
+  };
+  att2Save();
+  att2RenderStats();
+  att2RenderTable();
+  att2RenderHistory();
+  att2LogActivity(crewId, status);
+  att2Toast(STATUS_ICONS[status]+' '+attDb.crew.find(c=>c.id===crewId)?.name+' — '+STATUS_LABELS[status],
+    status==='present'?'success':status==='absent'?'error':'info');
+}
+
+function att2MarkAllPresent() {
+  const s = att2CurrentSession();
+  if (!s) return;
+  if (!attDb.attendance[s.id]) attDb.attendance[s.id] = {};
+  const now = new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
+  attDb.crew.forEach(c => {
+    if (!attDb.attendance[s.id][c.id] || attDb.attendance[s.id][c.id].status==='') {
+      attDb.attendance[s.id][c.id] = { status:'present', time:now, note:'' };
     }
+  });
+  att2Save();
+  att2RenderStats();
+  att2RenderTable();
+  att2RenderHistory();
+  att2Toast('✔ All unmarked crew set to Present','success');
+}
+
+function att2ClearSession() {
+  if (!confirm('Clear all check-in data for this session?')) return;
+  const s = att2CurrentSession();
+  if (!s) return;
+  attDb.attendance[s.id] = {};
+  att2Save();
+  att2RenderStats();
+  att2RenderTable();
+  att2RenderHistory();
+  att2Toast('Session cleared','info');
+}
+
+// ══════════════════════════════════════════
+// ATTENDANCE % (across all sessions)
+// ══════════════════════════════════════════
+function att2GetAttendancePct(crewId) {
+  let sessions=0, attended=0;
+  attDb.sessions.forEach(s => {
+    const a = attDb.attendance[s.id];
+    if (!a) return;
+    sessions++;
+    const r = a[crewId];
+    if (r && (r.status==='present'||r.status==='late')) attended++;
+  });
+  return sessions ? Math.round(attended/sessions*100) : 100;
+}
+
+// ══════════════════════════════════════════
+// HISTORY / STREAK SIDEBAR
+// ══════════════════════════════════════════
+function att2RenderHistory() {
+  const histEl = document.getElementById('historyList');
+  const streakEl = document.getElementById('streakList');
+  histEl.innerHTML = '';
+  streakEl.innerHTML = '';
+
+  attDb.crew.forEach(c => {
+    const pct = att2GetAttendancePct(c.id);
+    const pctClass = pct>=85?'att2-pct-high':pct>=65?'att2-pct-mid':'att2-pct-low';
+    const initials = c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const acolor = AVATAR_COLORS[c.color % AVATAR_COLORS.length];
+
+    // Sparkline
+    const recent = attDb.sessions.slice().reverse().slice(0,6);
+    const sparkBars = recent.map(s => {
+      const a = attDb.attendance[s.id];
+      const r = a && a[c.id];
+      const st = r ? r.status : 'absent';
+      const h = st==='present'?22:st==='late'?16:st==='excused'?10:5;
+      return `<div class="att2-spark-bar ${st}" style="height:${h}px" title="${STATUS_LABELS[st]||'No data'}"></div>`;
+    }).join('');
+
+    histEl.innerHTML += `
+      <li class="att2-hist-item">
+        <div class="att2-avatar" style="font-size:11px;width:28px;height:28px;color:${acolor};border-color:${acolor}22;flex-shrink:0;">${initials}</div>
+        <div class="att2-hist-detail">
+          <div class="att2-hist-who">${c.name}</div>
+          <div class="att2-sparkline">${sparkBars}</div>
+        </div>
+        <span class="att2-pct-pill ${pctClass}">${pct}%</span>
+      </li>`;
+
+    // Streak
+    const streak = att2GetStreak(c.id);
+    streakEl.innerHTML += `
+      <li class="att2-hist-item">
+        <div style="font-size:16px;width:24px;text-align:center;">${streak.icon}</div>
+        <div class="att2-hist-detail">
+          <div class="att2-hist-who">${c.name}</div>
+          <div class="att2-hist-what">${streak.label}</div>
+        </div>
+        <span class="att2-pct-pill ${pct>=85?'att2-pct-high':pct>=65?'att2-pct-mid':'att2-pct-low'}">${pct}%</span>
+      </li>`;
+  });
+}
+
+function att2GetStreak(crewId) {
+  const sorted = attDb.sessions.slice().sort((a,b)=>b.date-a.date);
+  let streak = 0;
+  for (const s of sorted) {
+    const a = attDb.attendance[s.id];
+    const r = a && a[crewId];
+    if (r && (r.status==='present'||r.status==='late')) streak++;
+    else break;
   }
-}
-function attCurSession(){return attSessions.find(s=>s.id===attCurId)||attSessions[0];}
-
-function attPct(crewId){
-  let t=0,a=0;
-  attSessions.forEach(s=>{const r=attData[s.id]?.[crewId];t++;if(r&&(r.status==='present'||r.status==='late'))a++;});
-  return t?Math.round(a/t*100):100;
-}
-function attStreak(crewId){
-  const sorted=[...attSessions].sort((a,b)=>b.date-a.date);let n=0;
-  for(const s of sorted){const r=attData[s.id]?.[crewId];if(r&&(r.status==='present'||r.status==='late'))n++;else break;}
-  if(n>=5)return{icon:'🔥',label:n+'-session streak!'};
-  if(n>=3)return{icon:'⚡',label:n+' in a row'};
-  if(n===1)return{icon:'✓',label:'Attended last session'};
-  return{icon:'—',label:'No current streak'};
+  if (streak>=5) return { icon:'🔥', label:`${streak}-session streak!` };
+  if (streak>=3) return { icon:'⚡', label:`${streak} in a row` };
+  if (streak===1) return { icon:'✓', label:'Attended last session' };
+  return { icon:'—', label:'No current streak' };
 }
 
-function attRenderAll(){attRenderBar();attRenderStats();attRenderTable();attRenderSidebar();attRenderFeed();}
-
-function attRenderBar(){
-  const s=attCurSession();if(!s)return;
-  document.getElementById('att-sessionName').textContent=s.name;
-  const icons={Production:'🎛',Rehearsal:'🎤',Training:'📚','Special Event':'🌟',Setup:'🔧'};
-  document.getElementById('att-sessionType').textContent=(icons[s.type]||'📋')+' '+s.type;
-  document.getElementById('att-sessionCalltime').textContent=s.calltime;
+// ══════════════════════════════════════════
+// ACTIVITY FEED
+// ══════════════════════════════════════════
+function att2LogActivity(crewId, status) {
+  const c = attDb.crew.find(x=>x.id===crewId);
+  if (!c) return;
+  const entry = {
+    name: c.name,
+    status,
+    time: new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}),
+    ts: Date.now()
+  };
+  attDb.activityLog.unshift(entry);
+  if (attDb.activityLog.length > 20) attDb.activityLog = attDb.activityLog.slice(0,20);
+  att2RenderActivityFeed();
 }
 
-function attRenderStats(){
-  const crew=attGetCrew();
-  const s=attCurSession();const att=s?(attData[s.id]||{}):{};
-  const total=crew.length;let p=0,ab=0,l=0,e=0;
-  crew.forEach(c=>{const r=att[c.id];if(!r||!r.status){ab++;return;}
-    if(r.status==='present')p++;else if(r.status==='absent')ab++;
-    else if(r.status==='late')l++;else if(r.status==='excused')e++;else ab++;});
-  document.getElementById('att-total').textContent=total;
-  document.getElementById('att-present').textContent=p;
-  document.getElementById('att-absent').textContent=ab;
-  document.getElementById('att-late').textContent=l;
-  document.getElementById('att-excused').textContent=e;
-  document.getElementById('att-pct').textContent=total?Math.round((p+l)/total*100)+'%':'—';
-  const prog=total?Math.round((p+l+e)/total*100):0;
-  document.getElementById('att-prog-fill').style.width=prog+'%';
-  document.getElementById('att-prog-txt').textContent=(p+l+e)+' / '+total;
-}
-
-function attRenderTable(){
-  const crew=attGetCrew();
-  const s=attCurSession();const att=s?(attData[s.id]||{}):{};
-  const q=(document.getElementById('att-search')||{value:''}).value.trim().toLowerCase();
-  const tbody=document.getElementById('att-tbody');
-  if(!crew.length){
-    tbody.innerHTML='<tr><td colspan="5" style="padding:24px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim2);">No crew found — add crew members in the Crew tab first.</td></tr>';
+function att2RenderActivityFeed() {
+  const el = document.getElementById('activityFeed');
+  if (!attDb.activityLog.length) {
+    el.innerHTML = '<li class="att2-hist-item" style="color:var(--dim2);font-family:var(--mono);font-size:11px;justify-content:center;">No activity yet</li>';
     return;
   }
-  tbody.innerHTML='';
-  crew.filter(c=>!q||c.name.toLowerCase().includes(q)||c.role.toLowerCase().includes(q)).forEach(c=>{
-    const rec=att[c.id]||{status:'',time:'',note:''};
-    const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const color=AV_COLORS[c.color];const pct=attPct(c.id);
-    const pc=pct>=85?'hi':pct>=65?'mi':'lo';
-    const tr=document.createElement('tr');
-    tr.innerHTML=
-      '<td class="att-c"><div style="display:flex;align-items:center;gap:10px">'+
-        '<div class="att-av" style="color:'+color+';border-color:'+color+'33">'+initials+'</div>'+
-        '<div><div style="font-weight:700;font-size:14px">'+c.name+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--dim2)">'+c.role+'</div></div>'+
-      '</div></td>'+
-      '<td class="att-c"><div style="display:flex;gap:4px;flex-wrap:wrap">'+
-        ['present','absent','late','excused'].map(st=>
-          '<button class="att-sbtn s'+st[0]+(rec.status===st?' on':'')+'" onclick="attSetStatus(''+c.id+'',''+st+'')">'+
-            '<span class="att-dot"></span>'+ST_LABELS[st]+'</button>'
-        ).join('')+
-      '</div></td>'+
-      '<td class="att-c" style="font-family:var(--mono);font-size:10px;color:var(--dim2)">'+(rec.time||'—')+'</td>'+
-      '<td class="att-c att-nc" style="font-family:var(--mono);font-size:10px;color:var(--dim2);cursor:pointer;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="attOpenNote(''+c.id+'')">'+(rec.note||'＋ note')+'</td>'+
-      '<td class="att-c"><span class="att-pp '+pc+'">'+pct+'%</span></td>';
-    tbody.appendChild(tr);
+  el.innerHTML = attDb.activityLog.slice(0,8).map(e => {
+    const icon = {present:'✓',absent:'✗',late:'⧖',excused:'~'}[e.status]||'·';
+    const col  = {present:'var(--green)',absent:'var(--red)',late:'var(--orange)',excused:'var(--blue)'}[e.status]||'var(--dim2)';
+    return `<li class="att2-hist-item">
+      <div class="att2-hist-icon" style="color:${col};font-weight:900;font-size:14px;">${icon}</div>
+      <div class="att2-hist-detail">
+        <div class="att2-hist-who">${e.name}</div>
+        <div class="att2-hist-what" style="color:${col};">${STATUS_LABELS[e.status]}</div>
+      </div>
+      <div class="att2-hist-time">${e.time}</div>
+    </li>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// NOTE MODAL
+// ══════════════════════════════════════════
+function att2OpenNote(crewId) {
+  _noteTargetId = crewId;
+  const c = attDb.crew.find(x=>x.id===crewId);
+  const s = att2CurrentSession();
+  const note = (attDb.attendance[s?.id]?.[crewId]?.note)||'';
+  document.getElementById('noteForName').textContent = c?.name||'';
+  document.getElementById('noteInput').value = note;
+  att2OpenModal('modalNote');
+}
+function att2SaveNote() {
+  if (!_noteTargetId) return;
+  const s = att2CurrentSession();
+  if (!s) return;
+  if (!attDb.attendance[s.id]) attDb.attendance[s.id] = {};
+  if (!attDb.attendance[s.id][_noteTargetId]) attDb.attendance[s.id][_noteTargetId]={status:'',time:'',note:''};
+  attDb.attendance[s.id][_noteTargetId].note = document.getElementById('noteInput').value.trim();
+  att2Save();
+  att2RenderTable();
+  att2CloseModal('modalNote');
+  att2Toast('📝 Note saved','info');
+}
+
+// ══════════════════════════════════════════
+// SESSION MODALS
+// ══════════════════════════════════════════
+function att2OpenNewSession() { att2OpenModal('modalNewSession'); }
+
+function att2CreateSession() {
+  const name = document.getElementById('ns_name').value.trim();
+  if (!name) { att2Toast('Session name required','error'); return; }
+  const id = 'sess_'+Date.now();
+  const callRaw = document.getElementById('ns_calltime').value;
+  const callFmt = callRaw ? att2FmtTime(callRaw) : '8:00 AM';
+  const typeRaw = document.getElementById('ns_type').value;
+  attDb.sessions.unshift({ id, name, type:typeRaw, calltime:callFmt, notes:document.getElementById('ns_notes').value.trim(), date:Date.now() });
+  attDb.attendance[id] = {};
+  attDb.currentSessionId = id;
+  attDb.activityLog = [];
+  att2Save();
+  att2CloseModal('modalNewSession');
+  att2RenderSessionBar();
+  att2RenderStats();
+  att2RenderTable();
+  att2RenderHistory();
+  att2Toast('📋 Session created: '+name,'success');
+}
+
+function att2FmtTime(t) {
+  const [h,m] = t.split(':').map(Number);
+  const ampm = h<12?'AM':'PM';
+  const h12 = h%12||12;
+  return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function att2OpenSessionPicker() {
+  const el = document.getElementById('sessionPickerList');
+  el.innerHTML = attDb.sessions.map(s => `
+    <li class="att2-hist-item" style="cursor:pointer;${s.id===attDb.currentSessionId?'background:var(--aglow);':''}" onclick="att2SetSession('${s.id}')">
+      <div style="font-size:15px;">📋</div>
+      <div class="att2-hist-detail">
+        <div class="att2-hist-who">${s.name}</div>
+        <div class="att2-hist-what">${s.type} · ${s.calltime}${s.notes?' · '+s.notes:''}</div>
+      </div>
+      ${s.id===attDb.currentSessionId?'<span style="color:var(--amber);font-size:11px;font-family:var(--mono);">ACTIVE</span>':''}
+    </li>`).join('');
+  att2OpenModal('modalSessions');
+}
+
+// ══════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════
+function att2ExportCSV() {
+  const s = att2CurrentSession();
+  const att = att2GetSessionAttendance();
+  let csv = 'Name,Role,Status,Check-In Time,Note,Attendance%\n';
+  attDb.crew.forEach(c => {
+    const r = att[c.id]||{status:'absent',time:'',note:''};
+    const pct = att2GetAttendancePct(c.id);
+    csv += `"${c.name}","${c.role}","${r.status}","${r.time}","${r.note}","${pct}%"\n`;
   });
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`attendance_${s?.name?.replace(/[^a-z0-9]/gi,'_')||'session'}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  att2Toast('⬇ CSV downloaded','success');
 }
 
-function attRenderSidebar(){
-  const crew=attGetCrew();
-  const histEl=document.getElementById('att-hist');
-  const strEl=document.getElementById('att-streak');
-  histEl.innerHTML='';strEl.innerHTML='';
-  crew.forEach(c=>{
-    const pct=attPct(c.id);const pc=pct>=85?'hi':pct>=65?'mi':'lo';
-    const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const color=AV_COLORS[c.color];
-    const recent=[...attSessions].sort((a,b)=>a.date-b.date).slice(-6);
-    const sparks=recent.map(s=>{const r=attData[s.id]?.[c.id];const st=r?.status||'absent';
-      const h={present:20,late:14,excused:8,absent:4}[st]||4;
-      return'<div class="att-spk '+st+'" style="height:'+h+'px"></div>';}).join('');
-    histEl.innerHTML+='<li class="att-hi">'+
-      '<div class="att-av" style="font-size:11px;width:28px;height:28px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-family:var(--head);border:2px solid '+color+'33;color:'+color+';">'+initials+'</div>'+
-      '<div style="flex:1;min-width:0"><div class="att-hw">'+c.name+'</div><div class="att-spark" style="margin-top:4px">'+sparks+'</div></div>'+
-      '<span class="att-pp '+pc+'">'+pct+'%</span></li>';
-    const streak=attStreak(c.id);
-    strEl.innerHTML+='<li class="att-hi">'+
-      '<div style="font-size:16px;width:24px;text-align:center;flex-shrink:0">'+streak.icon+'</div>'+
-      '<div style="flex:1;min-width:0"><div class="att-hw">'+c.name+'</div><div class="att-hd">'+streak.label+'</div></div>'+
-      '<span class="att-pp '+pc+'">'+pct+'%</span></li>';
-  });
+function att2PrintRoster() {
+  window.print();
 }
 
-function attRenderFeed(){
-  const el=document.getElementById('att-feed');
-  if(!attLog.length){el.innerHTML='<li class="att-hi" style="color:var(--dim2);font-family:var(--mono);font-size:11px;justify-content:center;">No activity yet</li>';return;}
-  el.innerHTML=attLog.slice(0,8).map(e=>
-    '<li class="att-hi"><div style="font-size:14px;width:22px;text-align:center;color:'+(ST_COLORS[e.status]||'var(--dim2)')+';font-weight:900">'+(ST_ICONS[e.status]||'·')+'</div>'+
-    '<div style="flex:1;min-width:0"><div class="att-hw">'+e.name+'</div><div class="att-hd" style="color:'+(ST_COLORS[e.status]||'var(--dim2)')+'">'+ST_LABELS[e.status]+'</div></div>'+
-    '<div class="att-ht">'+e.time+'</div></li>'
-  ).join('');
+// ══════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════
+function att2SwitchTab(group, targetId, btn) {
+  document.querySelectorAll('.att2-tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById(targetId).classList.add('active');
+  btn.classList.add('active');
 }
 
-window.attSetStatus=function(crewId,status){
-  const s=attCurSession();if(!s)return;
-  if(!attData[s.id])attData[s.id]={};
-  const prev=attData[s.id][crewId]||{};
-  const now=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
-  attData[s.id][crewId]={status,time:(status==='present'||status==='late')?now:(prev.time||''),note:prev.note||''};
-  attSave();
-  const crew=attGetCrew();const c=crew.find(x=>x.id===crewId);
-  attLog.unshift({name:c?.name||crewId,status,time:now,ts:Date.now()});
-  if(attLog.length>20)attLog=attLog.slice(0,20);
-  attRenderStats();attRenderTable();attRenderSidebar();attRenderFeed();
-  if(typeof toast==='function')toast(ST_ICONS[status]+' '+(c?.name||crewId)+' — '+ST_LABELS[status],status==='present'?'success':status==='absent'?'error':'info');
-};
-
-window.attMarkAll=function(){
-  const s=attCurSession();if(!s)return;
-  if(!attData[s.id])attData[s.id]={};
-  const crew=attGetCrew();
-  const now=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
-  crew.forEach(c=>{if(!attData[s.id][c.id]||!attData[s.id][c.id].status)attData[s.id][c.id]={status:'present',time:now,note:''};});
-  attSave();attRenderStats();attRenderTable();attRenderSidebar();
-  if(typeof toast==='function')toast('All unmarked crew marked Present','success');
-};
-
-window.attClear=function(){
-  if(!confirm('Clear all check-in data for this session?'))return;
-  const s=attCurSession();if(!s)return;
-  attData[s.id]={};attSave();attRenderStats();attRenderTable();attRenderSidebar();
-  if(typeof toast==='function')toast('Session cleared','info');
-};
-
-window.attCreateSession=function(){
-  const name=(document.getElementById('att-ns-name').value||'').trim();
-  if(!name){if(typeof toast==='function')toast('Session name required','error');return;}
-  const id='sess_'+Date.now();
-  const callRaw=document.getElementById('att-ns-time').value;
-  let ct='8:00 AM';
-  if(callRaw){const[h,m]=callRaw.split(':').map(Number);ct=(h%12||12)+':'+String(m).padStart(2,'0')+' '+(h<12?'AM':'PM');}
-  attSessions.unshift({id,name,type:document.getElementById('att-ns-type').value,calltime:ct,date:Date.now()});
-  attData[id]={};attCurId=id;attLog=[];
-  attSave();attCloseModal('att-mo-new');attRenderAll();
-  if(typeof toast==='function')toast('Session created: '+name,'success');
-};
-
-window.attOpenPicker=function(){
-  const el=document.getElementById('att-pick-list');
-  el.innerHTML=attSessions.length?attSessions.map(s=>
-    '<li class="att-hi" style="cursor:pointer'+(s.id===attCurId?';background:rgba(240,165,0,.06)':'')+'" onclick="attSetSession(''+s.id+'')">'+
-    '<div style="font-size:15px">📋</div>'+
-    '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+s.name+'</div>'+
-    '<div style="font-family:var(--mono);font-size:10px;color:var(--dim2)">'+s.type+' · '+s.calltime+'</div></div>'+
-    (s.id===attCurId?'<span style="color:var(--amber);font-size:10px;font-family:var(--mono)">ACTIVE</span>':'')+
-    '</li>').join('')
-    :'<li class="att-hi" style="color:var(--dim2);font-family:var(--mono);font-size:11px">No sessions yet</li>';
-  attOpenModal('att-mo-pick');
-};
-
-window.attSetSession=function(id){
-  attCurId=id;if(!attData[id])attData[id]={};
-  attSave();attCloseModal('att-mo-pick');attRenderAll();
-};
-
-window.attNewSession=function(){attOpenModal('att-mo-new');};
-
-window.attOpenNote=function(crewId){
-  attNoteTarget=crewId;
-  const crew=attGetCrew();const c=crew.find(x=>x.id===crewId);
-  const s=attCurSession();
-  document.getElementById('att-note-name').textContent=c?.name||'';
-  document.getElementById('att-note-inp').value=attData[s?.id]?.[crewId]?.note||'';
-  attOpenModal('att-mo-note');
-};
-
-window.attSaveNote=function(){
-  if(!attNoteTarget)return;const s=attCurSession();if(!s)return;
-  if(!attData[s.id])attData[s.id]={};
-  if(!attData[s.id][attNoteTarget])attData[s.id][attNoteTarget]={status:'',time:'',note:''};
-  attData[s.id][attNoteTarget].note=document.getElementById('att-note-inp').value.trim();
-  attSave();attRenderTable();attCloseModal('att-mo-note');
-  if(typeof toast==='function')toast('Note saved','info');
-};
-
-window.attExportCSV=function(){
-  const crew=attGetCrew();const s=attCurSession();const att=s?(attData[s.id]||{}):{};
-  let csv='"Session","'+(s?.name||'')+'"
-"Type","'+(s?.type||'')+'"
-"Calltime","'+(s?.calltime||'')+'"
-
-Name,Role,Status,Check-In Time,Note,Attendance%
-';
-  crew.forEach(c=>{const r=att[c.id]||{status:'absent',time:'',note:''};
-    csv+='"'+c.name+'","'+c.role+'","'+r.status+'","'+r.time+'","'+r.note+'","'+attPct(c.id)+'%"
-';});
-  const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download='attendance_'+((s?.name||'session').replace(/[^a-z0-9]/gi,'_'))+'.csv';a.click();URL.revokeObjectURL(url);
-  if(typeof toast==='function')toast('CSV downloaded','success');
-};
-
-window.attOpenModal=function(id){document.getElementById(id).classList.add('open');};
-window.attCloseModal=function(id){document.getElementById(id).classList.remove('open');};
-window.attTab=function(tcId,btnId){
-  document.querySelectorAll('.att-tc').forEach(el=>el.classList.remove('on'));
-  document.querySelectorAll('.att-tab').forEach(el=>el.classList.remove('on'));
-  document.getElementById(tcId).classList.add('on');
-  document.getElementById(btnId).classList.add('on');
-};
-
-// Close modals on backdrop click
-document.querySelectorAll('.att-mo').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
-
-// Init
-attLoadLocal();
-attEnsureSession();
-
-// Re-render when attendance page is shown, so it picks up latest db.technicians
-const _origGo = window.go;
-window.go = function(page) {
-  _origGo(page);
-  if(page === 'attendance') {
-    attEnsureSession();
-    attRenderAll();
-  }
-};
-
-// Also render on Firebase data ready
-window.addEventListener('fbReady', function(e) {
-  const p = e.detail;
-  if (p && p.attendance) {
-    const fa = p.attendance;
-    if(fa.sessions) attSessions = fa.sessions;
-    if(fa.attendance) attData = fa.attendance;
-    if(fa.currentSessionId) attCurId = fa.currentSessionId;
-    if(fa.activityLog) attLog = fa.activityLog;
-    attSaveLocal();
-  }
-  attEnsureSession();
-  attRenderAll();
+// ══════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════
+function att2OpenModal(id) { document.getElementById(id).classList.add('open'); }
+function att2CloseModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.att2-modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); });
 });
 
-// Initial render after a short delay to let db load
-setTimeout(function(){attEnsureSession();attRenderAll();}, 500);
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+function att2Toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${msg}</span>`;
+  document.getElementById('att2-toastStack').appendChild(el);
+  setTimeout(()=>el.remove(), 3200);
+}
 
-})();
+// ══════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════
+att2SyncCrew();
+att2RenderSessionBar();
+att2RenderStats();
+att2RenderTable();
+att2RenderHistory();
+att2RenderActivityFeed();
+
+// Re-sync crew when Firebase data arrives in index.html
+const _att2OrigRemote = window._onRemoteData;
+window._onRemoteData = function(r) {
+  if (typeof _att2OrigRemote === 'function') _att2OrigRemote(r);
+  att2SyncCrew();
+  att2RenderTable();
+  att2RenderStats();
+  att2RenderHistory();
+};
+
+// Re-render when user navigates to attendance tab
+document.addEventListener('DOMContentLoaded', function() {
+  var _att2OrigGo = window.go;
+  if (typeof _att2OrigGo === 'function') {
+    window.go = function(page) {
+      _att2OrigGo(page);
+      if (page === 'attendance') {
+        att2SyncCrew();
+        att2RenderSessionBar();
+        att2RenderStats();
+        att2RenderTable();
+        att2RenderHistory();
+        att2RenderActivityFeed();
+      }
+    };
+  }
+});
+
 </script>
 
+</main>
 
 <!-- ══════════ MODALS ══════════ -->
 
