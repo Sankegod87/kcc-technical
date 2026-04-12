@@ -558,6 +558,7 @@ textarea{resize:vertical;min-height:70px;}
         <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('showlog');closeMoreNav()" id="nav-showlog">🎭 Shows</button>
         <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('history');closeMoreNav()" id="nav-history">📋 History</button>
         <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('nfc');closeMoreNav()" id="nav-nfc">📡 NFC</button>
+        <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('attendance');closeMoreNav()" id="nav-attendance">✅ Attendance</button>
         <div style="border-top:1px solid var(--border);margin:4px 0"></div>
         <button class="nb" style="display:block;width:100%;text-align:left;padding:8px 12px" onclick="go('settings');closeMoreNav()" id="nav-settings">⚙️ Settings</button>
       </div>
@@ -586,6 +587,7 @@ textarea{resize:vertical;min-height:70px;}
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('checklist');hideMobileMenu()">✅ Checklist</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('crew');hideMobileMenu()">👷 Crew</button>
     <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('settings');hideMobileMenu()">⚙️ Settings</button>
+    <button class="btn bgh" style="justify-content:flex-start;gap:10px" onclick="go('attendance');hideMobileMenu()">✅ Attendance</button>
   </div>
   <button class="btn bgh" style="width:100%;justify-content:center;margin-top:10px" onclick="hideMobileMenu()">✕ Close</button>
 </div>
@@ -989,6 +991,18 @@ textarea{resize:vertical;min-height:70px;}
       </div>
     </div>
   </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     ATTENDANCE PAGE
+     ═══════════════════════════════════════ -->
+<div id="pg-attendance" style="display:none">
+  <iframe
+    id="attendanceFrame"
+    src="attendance.html"
+    style="width:100%;height:calc(100vh - 110px);border:none;display:block;"
+    allowfullscreen>
+  </iframe>
 </div>
 
 </main>
