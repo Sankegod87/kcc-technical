@@ -1,3 +1,4 @@
+const CACHE_VERSION = 'v' + Date.now();
 const CACHE_NAME = 'slt-cache-v2';
 const ASSETS = [
   '/stage-light/',
