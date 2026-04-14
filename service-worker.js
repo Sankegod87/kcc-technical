@@ -1,4 +1,4 @@
-const CACHE_NAME = 'slt-cache-v1';
+const CACHE_NAME = 'slt-cache-v2';
 const ASSETS = [
   '/stage-light/',
   '/stage-light/index.html',
