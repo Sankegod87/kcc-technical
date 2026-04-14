@@ -993,6 +993,122 @@ textarea{resize:vertical;min-height:70px;}
     </div>
   </div>
 </div>
+<!-- ── ATTENDANCE (admin only) ── -->
+<div id="pg-attendance" style="display:none">
+  <div id="att-adminGate" style="display:none;background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:var(--radius);padding:28px;text-align:center;margin-bottom:16px;">
+    <div style="font-size:36px;margin-bottom:10px;">🔒</div>
+    <div style="font-family:var(--head);font-weight:900;font-size:20px;color:var(--red);">Admin Access Required</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:8px;">Only admins can view the full attendance tracker.</div>
+    <button class="btn bgh bsm" style="margin-top:14px;" onclick="go('checkin')">📱 Go to Self Check-In →</button>
+  </div>
+  <div id="att-adminContent">
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Session</div><div style="font-family:var(--head);font-weight:700;font-size:15px;" id="att-sessionName">—</div></div>
+      <div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Calltime</div><div style="font-family:var(--head);font-weight:700;font-size:15px;" id="att-sessionCalltime">—</div></div>
+      <div style="background:var(--aglow);border:1px solid rgba(240,165,0,.35);border-radius:20px;padding:3px 12px;font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:600;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.4s infinite;display:inline-block;"></span>LIVE</div>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn bgh bsm" onclick="attShowQR()">📱 QR Code</button>
+        <button class="btn bgh bsm" onclick="attPickSession()">📋 Sessions</button>
+        <button class="btn ba bsm" onclick="attMarkAllPresent()">✔ Mark All Present</button>
+      </div>
+    </div>
+    <div class="stats" style="margin-bottom:16px;">
+      <div class="sc ca"><div class="sc-label">Scheduled</div><div class="sc-val" id="att-statTotal">—</div></div>
+      <div class="sc cg"><div class="sc-label">Present</div><div class="sc-val" id="att-statPresent">0</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);margin-top:4px;" id="att-statPct">—</div></div>
+      <div class="sc cr"><div class="sc-label">Absent</div><div class="sc-val" id="att-statAbsent">0</div></div>
+      <div class="sc" style="position:relative;overflow:hidden;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;"><div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--orange);"></div><div class="sc-label">Late</div><div class="sc-val" style="color:var(--orange);" id="att-statLate">0</div></div>
+      <div class="sc cb"><div class="sc-label">Excused</div><div class="sc-val" id="att-statExcused">0</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:start;">
+      <div class="panel">
+        <div class="ph"><span class="pt">🎭 Crew Roster</span><div style="margin-left:auto;"><button class="btn bgh bsm" onclick="attExportCSV()">⬇ CSV</button></div></div>
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);"><input id="att-search" placeholder="Search…" oninput="attRenderTable()" style="width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;"></div>
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-bottom:5px;"><span style="color:var(--dim2);">Progress</span><span id="att-progText" style="color:var(--amber);">0 / 0</span></div>
+          <div style="height:4px;background:var(--s3);border-radius:3px;overflow:hidden;"><div id="att-progFill" style="height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--amber));width:0%;transition:width .5s;"></div></div>
+        </div>
+        <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);">Crew Member</th>
+            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);">Status</th>
+            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);" class="mhide">Time</th>
+            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);" class="mhide">Note</th>
+            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);">Att%</th>
+          </tr></thead>
+          <tbody id="att-rosterBody"></tbody>
+        </table></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);">
+          <button class="btn bgh bsm" onclick="attExportCSV()">⬇ Export CSV</button>
+          <button class="btn bgh bsm" onclick="window.print()">🖨 Print</button>
+          <button class="btn br bsm" onclick="attClearSession()">✕ Clear</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="panel">
+          <div class="ph"><span class="pt">📡 Live Activity</span></div>
+          <ul id="att-activityFeed" style="padding:0;list-style:none;"><li style="padding:12px 16px;font-family:var(--mono);font-size:11px;color:var(--dim2);text-align:center;">No activity yet</li></ul>
+        </div>
+        <div class="panel">
+          <div class="ph"><span class="pt">📊 Season Attendance</span></div>
+          <div style="display:flex;gap:2px;padding:8px 12px;border-bottom:1px solid var(--border);">
+            <button id="att-tab-hist" onclick="attSwitchTab('hist')" style="background:var(--aglow);border:1px solid rgba(240,165,0,.3);color:var(--amber);font-family:var(--head);font-weight:700;font-size:11px;text-transform:uppercase;padding:5px 12px;border-radius:6px;cursor:pointer;">History</button>
+            <button id="att-tab-streak" onclick="attSwitchTab('streak')" style="background:none;border:none;color:var(--dim2);font-family:var(--head);font-weight:700;font-size:11px;text-transform:uppercase;padding:5px 12px;border-radius:6px;cursor:pointer;">Streaks</button>
+          </div>
+          <div id="att-tab-hist-content"><ul id="att-historyList" style="padding:0;list-style:none;"></ul></div>
+          <div id="att-tab-streak-content" style="display:none;"><ul id="att-streakList" style="padding:0;list-style:none;"></ul></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="att-qrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
+    <div style="background:var(--s1);border:1px solid var(--border2);border-radius:14px;padding:28px;text-align:center;max-width:340px;width:90%;">
+      <div style="font-family:var(--head);font-weight:900;font-size:18px;margin-bottom:4px;">📱 Self Check-In QR</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-bottom:16px;">Crew scan this to check themselves in</div>
+      <div id="att-qrcode" style="margin:0 auto 14px;width:200px;height:200px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;"></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--dim2);word-break:break-all;margin-bottom:16px;" id="att-qrUrl"></div>
+      <button class="btn bgh" style="width:100%;justify-content:center;" onclick="document.getElementById('att-qrModal').style.display='none'">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SELF CHECK-IN (all crew) ── -->
+<div id="pg-checkin" style="display:none">
+  <div style="max-width:480px;margin:0 auto;">
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:14px;text-align:center;">
+      <div style="font-size:40px;margin-bottom:10px;">✅</div>
+      <div style="font-family:var(--head);font-weight:900;font-size:22px;" id="ci-sessionName">—</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:4px;" id="ci-sessionSub">—</div>
+      <div style="margin-top:12px;" id="ci-sessionStatus"></div>
+    </div>
+    <div id="ci-loginPrompt" style="display:none;background:var(--aglow);border:1px solid rgba(240,165,0,.3);border-radius:var(--radius);padding:16px;margin-bottom:14px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">👤</div>
+      <div style="font-family:var(--head);font-weight:700;font-size:16px;color:var(--amber);">Log In First</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:4px;">Select your name from the login screen to check in.</div>
+    </div>
+    <div id="ci-selfPanel" style="display:none;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Your Check-In</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+        <div style="font-size:32px;" id="ci-myAvatar">👤</div>
+        <div style="flex:1;"><div style="font-weight:900;font-size:18px;" id="ci-myName">—</div><div style="font-family:var(--mono);font-size:11px;color:var(--dim2);" id="ci-myRole">—</div></div>
+        <div id="ci-myStatus" style="font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:20px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn bg" style="flex:1;justify-content:center;" onclick="ciCheckIn('present')">✓ Present</button>
+        <button class="btn" style="flex:1;justify-content:center;background:var(--orange);color:#000;" onclick="ciCheckIn('late')">⧖ Late</button>
+        <button class="btn bgh" style="flex:1;justify-content:center;" onclick="ciCheckIn('excused')">~ Excused</button>
+      </div>
+    </div>
+    <div id="ci-notOnRoster" style="display:none;background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:var(--radius);padding:16px;margin-bottom:14px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">🚫</div>
+      <div style="font-family:var(--head);font-weight:700;font-size:16px;color:var(--red);">Not On This Week's Roster</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:4px;">Contact your crew lead if this is wrong.</div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="pt">📋 This Week's Crew</span></div>
+      <ul id="ci-rosterList" style="padding:0;list-style:none;"></ul>
+    </div>
+  </div>
+</div>
 
 </main>
 
@@ -4301,211 +4417,75 @@ if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
   }
 }
 </script>
-<!-- ═══════════════════════════════════════════════════════════
-     ATTENDANCE PAGE  (admin only)
-     ═══════════════════════════════════════════════════════════ -->
-<div id="pg-attendance" style="display:none">
-  <div id="att-adminGate" style="display:none;background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:var(--radius);padding:28px;text-align:center;margin-bottom:16px;">
-    <div style="font-size:36px;margin-bottom:10px;">🔒</div>
-    <div style="font-family:var(--head);font-weight:900;font-size:20px;color:var(--red);">Admin Access Required</div>
-    <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:8px;">Only admins and master admins can view the full attendance tracker.</div>
-    <button class="btn bgh bsm" style="margin-top:14px;" onclick="go('checkin')">📱 Go to Self Check-In →</button>
-  </div>
-  <div id="att-adminContent">
-    <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-      <div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Session</div><div style="font-family:var(--head);font-weight:700;font-size:15px;" id="att-sessionName">—</div></div>
-      <div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Calltime</div><div style="font-family:var(--head);font-weight:700;font-size:15px;" id="att-sessionCalltime">—</div></div>
-      <div style="background:var(--aglow);border:1px solid rgba(240,165,0,.35);border-radius:20px;padding:3px 12px;font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:600;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.4s infinite;display:inline-block;"></span>LIVE</div>
-      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn bgh bsm" onclick="attShowQR()">📱 QR Code</button>
-        <button class="btn bgh bsm" onclick="attPickSession()">📋 Sessions</button>
-        <button class="btn ba bsm" onclick="attMarkAllPresent()">✔ Mark All Present</button>
-      </div>
-    </div>
-    <div class="stats" style="margin-bottom:16px;">
-      <div class="sc ca"><div class="sc-label">Scheduled</div><div class="sc-val" id="att-statTotal">—</div></div>
-      <div class="sc cg"><div class="sc-label">Present</div><div class="sc-val" id="att-statPresent">0</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);margin-top:4px;" id="att-statPct">—</div></div>
-      <div class="sc cr"><div class="sc-label">Absent</div><div class="sc-val" id="att-statAbsent">0</div></div>
-      <div class="sc" style="position:relative;overflow:hidden;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;"><div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--orange);"></div><div class="sc-label">Late</div><div class="sc-val" style="color:var(--orange);" id="att-statLate">0</div></div>
-      <div class="sc cb"><div class="sc-label">Excused</div><div class="sc-val" id="att-statExcused">0</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:start;">
-      <div class="panel">
-        <div class="ph"><span class="pt">🎭 Crew Roster</span><div style="margin-left:auto;"><button class="btn bgh bsm" onclick="attExportCSV()">⬇ CSV</button></div></div>
-        <div style="padding:10px 14px;border-bottom:1px solid var(--border);"><input id="att-search" placeholder="Search…" oninput="attRenderTable()" style="width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;"></div>
-        <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
-          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-bottom:5px;"><span style="color:var(--dim2);">Progress</span><span id="att-progText" style="color:var(--amber);">0 / 0</span></div>
-          <div style="height:4px;background:var(--s3);border-radius:3px;overflow:hidden;"><div id="att-progFill" style="height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--amber));width:0%;transition:width .5s;"></div></div>
-        </div>
-        <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
-          <thead><tr>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);">Crew Member</th>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);">Status</th>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);" class="mhide">Time</th>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);" class="mhide">Note</th>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);">Att%</th>
-          </tr></thead>
-          <tbody id="att-rosterBody"></tbody>
-        </table></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);">
-          <button class="btn bgh bsm" onclick="attExportCSV()">⬇ Export CSV</button>
-          <button class="btn bgh bsm" onclick="window.print()">🖨 Print</button>
-          <button class="btn br bsm" onclick="attClearSession()">✕ Clear</button>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <div class="panel">
-          <div class="ph"><span class="pt">📡 Live Activity</span></div>
-          <ul id="att-activityFeed" style="padding:0;list-style:none;"><li style="padding:12px 16px;font-family:var(--mono);font-size:11px;color:var(--dim2);text-align:center;">No activity yet</li></ul>
-        </div>
-        <div class="panel">
-          <div class="ph"><span class="pt">📊 Season Attendance</span></div>
-          <div style="display:flex;gap:2px;padding:8px 12px;border-bottom:1px solid var(--border);">
-            <button id="att-tab-hist" onclick="attSwitchTab('hist')" style="background:var(--aglow);border:1px solid rgba(240,165,0,.3);color:var(--amber);font-family:var(--head);font-weight:700;font-size:11px;text-transform:uppercase;padding:5px 12px;border-radius:6px;cursor:pointer;">History</button>
-            <button id="att-tab-streak" onclick="attSwitchTab('streak')" style="background:none;border:none;color:var(--dim2);font-family:var(--head);font-weight:700;font-size:11px;text-transform:uppercase;padding:5px 12px;border-radius:6px;cursor:pointer;">Streaks</button>
-          </div>
-          <div id="att-tab-hist-content"><ul id="att-historyList" style="padding:0;list-style:none;"></ul></div>
-          <div id="att-tab-streak-content" style="display:none;"><ul id="att-streakList" style="padding:0;list-style:none;"></ul></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- QR Modal -->
-  <div id="att-qrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
-    <div style="background:var(--s1);border:1px solid var(--border2);border-radius:14px;padding:28px;text-align:center;max-width:340px;width:90%;">
-      <div style="font-family:var(--head);font-weight:900;font-size:18px;margin-bottom:4px;">📱 Self Check-In QR</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-bottom:16px;">Crew scan this to check themselves in</div>
-      <div id="att-qrcode" style="margin:0 auto 14px;width:200px;height:200px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;"></div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--dim2);word-break:break-all;margin-bottom:16px;" id="att-qrUrl"></div>
-      <button class="btn bgh" style="width:100%;justify-content:center;" onclick="document.getElementById('att-qrModal').style.display='none'">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════
-     SELF CHECK-IN PAGE  (all crew)
-     ═══════════════════════════════════════════════════════════ -->
-<div id="pg-checkin" style="display:none">
-  <div style="max-width:480px;margin:0 auto;">
-    <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:14px;text-align:center;">
-      <div style="font-size:40px;margin-bottom:10px;">✅</div>
-      <div style="font-family:var(--head);font-weight:900;font-size:22px;" id="ci-sessionName">—</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:4px;" id="ci-sessionSub">—</div>
-      <div style="margin-top:12px;" id="ci-sessionStatus"></div>
-    </div>
-    <div id="ci-selfPanel" style="display:none;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px;">
-      <div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Your Check-In</div>
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
-        <div style="font-size:32px;" id="ci-myAvatar">👤</div>
-        <div style="flex:1;">
-          <div style="font-weight:900;font-size:18px;" id="ci-myName">—</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);" id="ci-myRole">—</div>
-        </div>
-        <div id="ci-myStatus" style="font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:20px;"></div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn bg" style="flex:1;justify-content:center;" onclick="ciCheckIn('present')">✓ Present</button>
-        <button class="btn" style="flex:1;justify-content:center;background:var(--orange);color:#000;" onclick="ciCheckIn('late')">⧖ Late</button>
-        <button class="btn bgh" style="flex:1;justify-content:center;" onclick="ciCheckIn('excused')">~ Excused</button>
-      </div>
-    </div>
-    <div id="ci-notOnRoster" style="display:none;background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:var(--radius);padding:16px;margin-bottom:14px;text-align:center;">
-      <div style="font-size:24px;margin-bottom:6px;">🚫</div>
-      <div style="font-family:var(--head);font-weight:700;font-size:16px;color:var(--red);">Not On This Week's Roster</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:4px;">Contact your crew lead if you think this is wrong.</div>
-    </div>
-    <div id="ci-loginPrompt" style="display:none;background:var(--aglow);border:1px solid rgba(240,165,0,.3);border-radius:var(--radius);padding:16px;margin-bottom:14px;text-align:center;">
-      <div style="font-size:24px;margin-bottom:6px;">👤</div>
-      <div style="font-family:var(--head);font-weight:700;font-size:16px;color:var(--amber);">Log In First</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:4px;">Select your name from the login screen to check in.</div>
-    </div>
-    <div class="panel">
-      <div class="ph"><span class="pt">📋 This Week's Crew</span></div>
-      <ul id="ci-rosterList" style="padding:0;list-style:none;"></ul>
-    </div>
-  </div>
-</div>
-
+<!-- PWA Service Worker Registration -->
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+</script>
 <script>
 // ════════════════════════════════════════════════════════════════
-// ATTENDANCE MODULE
-// All data lives in db.attendanceData and is saved via the main
-// app's save() function → goes to localStorage + Firebase automatically
+// ATTENDANCE MODULE — data lives in db.attendanceData
+// saved via main save() → localStorage + Firebase automatically
 // ════════════════════════════════════════════════════════════════
 const ATT_AVCOLS   = ['#f0a500','#28c97a','#3d9be9','#a855f7','#e03c3c','#f97316','#06b6d4','#ec4899'];
 const ATT_STATUSES = ['present','absent','late','excused'];
 const ATT_LABELS   = {present:'Present',absent:'Absent',late:'Late',excused:'Excused'};
 const ATT_ICONS    = {present:'✓',absent:'✗',late:'⧖',excused:'~'};
 const ATT_COLORS   = {present:'var(--green)',absent:'var(--red)',late:'var(--orange)',excused:'var(--blue)'};
+let _attCurKey=null, _attLog=[];
 
-let _attCurKey = null;   // currently-viewed session key (YYYY-MM-DD)
-let _attLog    = [];     // in-memory activity log (not persisted — just for current session view)
-
-// Single source of truth: db.attendanceData = { sessions:[], records:{} }
 function _attD(){
-  if(!db.attendanceData) db.attendanceData={sessions:[],records:{}};
-  if(!db.attendanceData.sessions) db.attendanceData.sessions=[];
-  if(!db.attendanceData.records)  db.attendanceData.records={};
+  if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};
+  if(!db.attendanceData.sessions)db.attendanceData.sessions=[];
+  if(!db.attendanceData.records)db.attendanceData.records={};
   return db.attendanceData;
 }
 
-// ── Session helpers ───────────────────────────────────────────
-
-// Key for the nearest Sunday (today if Sunday, else last Sunday)
 function _attNearestSundayKey(){
-  const now=new Date();
-  const d=new Date(now);
-  d.setDate(d.getDate()-d.getDay()); // always go to Sunday
-  return schedKey(d);
+  const d=new Date();d.setDate(d.getDate()-d.getDay());return schedKey(d);
 }
 
-// Sync one schedule entry into attendanceData.sessions
 function _attSyncSess(key){
-  const d=_attD();
-  const sched=db.schedules[key];
+  const d=_attD();const sched=db.schedules[key];
   let sess=d.sessions.find(s=>s.id===key);
   const crewIds=sched?(sched.crew||[]):[];
   if(!sess){
     const date=new Date(key+'T12:00:00');
     sess={id:key,name:'Sunday Service — '+date.toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}),date:date.getTime(),calltime:'8:00 AM',crewIds};
-    d.sessions.unshift(sess);
-    d.sessions.sort((a,b)=>b.date-a.date);
-  } else {
-    sess.crewIds=crewIds; // always refresh from schedule
-  }
-  if(!d.records[key]) d.records[key]={};
+    d.sessions.unshift(sess);d.sessions.sort((a,b)=>b.date-a.date);
+  } else {sess.crewIds=crewIds;}
+  if(!d.records[key])d.records[key]={};
   return sess;
 }
 
-// Make sure the nearest Sunday session exists
 function _attEnsureToday(){
   const key=_attNearestSundayKey();
-  _attSyncSess(key); // will create if missing
-  // Sync ALL schedule entries too
+  _attSyncSess(key);
   Object.keys(db.schedules||{}).forEach(k=>_attSyncSess(k));
 }
 
-// Current active session object
 function _attCurSess(){
   const d=_attD();
-  if(_attCurKey && d.sessions.find(s=>s.id===_attCurKey)) return d.sessions.find(s=>s.id===_attCurKey);
-  // Default to nearest Sunday
-  const todayKey=_attNearestSundayKey();
-  const today=d.sessions.find(s=>s.id===todayKey);
-  if(today){_attCurKey=todayKey;return today;}
+  if(_attCurKey&&d.sessions.find(s=>s.id===_attCurKey))return d.sessions.find(s=>s.id===_attCurKey);
+  const today=_attNearestSundayKey();
+  const todaySess=d.sessions.find(s=>s.id===today);
+  if(todaySess){_attCurKey=today;return todaySess;}
   if(d.sessions.length){_attCurKey=d.sessions[0].id;return d.sessions[0];}
   return null;
 }
 
-// Crew list for a session
 function _attCrew(sess){
-  if(!sess) return [];
+  if(!sess)return[];
   const ids=sess.crewIds||[];
-  if(!ids.length) return db.technicians||[];
+  if(!ids.length)return db.technicians||[];
   return ids.map(id=>(db.technicians||[]).find(t=>t.id===id)).filter(Boolean);
 }
 
-// Attendance % across all sessions for a tech
 function _attPct(techId){
   const d=_attD();let t=0,a=0;
   d.sessions.forEach(s=>{const r=d.records[s.id]?.[techId];t++;if(r&&(r.status==='present'||r.status==='late'))a++;});
@@ -4521,39 +4501,29 @@ function _attStreak(techId){
   return{icon:'—',label:'No current streak'};
 }
 
-function _attPctStyle(pct){
-  return pct>=85?`background:var(--gglow);color:var(--green);border:1px solid rgba(40,201,122,.3)`:
-         pct>=65?`background:var(--aglow);color:var(--amber);border:1px solid rgba(240,165,0,.3)`:
-                 `background:var(--rglow);color:var(--red);border:1px solid rgba(224,60,60,.3)`;
+function _attPctSty(p){
+  return p>=85?'background:var(--gglow);color:var(--green);border:1px solid rgba(40,201,122,.3)':
+         p>=65?'background:var(--aglow);color:var(--amber);border:1px solid rgba(240,165,0,.3)':
+               'background:var(--rglow);color:var(--red);border:1px solid rgba(224,60,60,.3)';
 }
 
-// ════════════════════════════════════════════════════════════════
-// ADMIN ATTENDANCE — render
-// ════════════════════════════════════════════════════════════════
+// ── Admin Attendance ──────────────────────────────────────────
 function renderAttendance(){
   const gate=document.getElementById('att-adminGate');
   const content=document.getElementById('att-adminContent');
   if(!isAdmin()){gate.style.display='';content.style.display='none';return;}
   gate.style.display='none';content.style.display='';
   _attEnsureToday();
-  _attRenderBar();attRenderStats();attRenderTable();attRenderSidebar();attRenderActivity();
-}
-
-function _attRenderBar(){
-  const s=_attCurSess();
-  document.getElementById('att-sessionName').textContent=s?s.name:'No session';
-  document.getElementById('att-sessionCalltime').textContent=s?(s.calltime||'8:00 AM'):'—';
+  document.getElementById('att-sessionName').textContent=_attCurSess()?.name||'No session';
+  document.getElementById('att-sessionCalltime').textContent=_attCurSess()?.calltime||'—';
+  attRenderStats();attRenderTable();attRenderSidebar();attRenderActivity();
 }
 
 function attRenderStats(){
-  const s=_attCurSess();const d=_attD();
-  const rec=s?(d.records[s.id]||{}):{};
-  const crew=_attCrew(s);const tot=crew.length;
-  let p=0,a=0,l=0,e=0;
-  crew.forEach(c=>{const r=rec[c.id];
-    if(!r||!r.status){a++;return;}
-    if(r.status==='present')p++;else if(r.status==='absent')a++;else if(r.status==='late')l++;else if(r.status==='excused')e++;else a++;
-  });
+  const s=_attCurSess();const d=_attD();const rec=s?(d.records[s.id]||{}):{};
+  const crew=_attCrew(s);const tot=crew.length;let p=0,a=0,l=0,e=0;
+  crew.forEach(c=>{const r=rec[c.id];if(!r||!r.status){a++;return;}
+    if(r.status==='present')p++;else if(r.status==='absent')a++;else if(r.status==='late')l++;else if(r.status==='excused')e++;else a++;});
   document.getElementById('att-statTotal').textContent=tot;
   document.getElementById('att-statPresent').textContent=p;
   document.getElementById('att-statAbsent').textContent=a;
@@ -4566,85 +4536,64 @@ function attRenderStats(){
 }
 
 function attRenderTable(){
-  const s=_attCurSess();const d=_attD();
-  const rec=s?(d.records[s.id]||{}):{};
+  const s=_attCurSess();const d=_attD();const rec=s?(d.records[s.id]||{}):{};
   const q=(document.getElementById('att-search')?.value||'').trim().toLowerCase();
-  const tbody=document.getElementById('att-rosterBody');
-  const crew=_attCrew(s);
-  if(!crew.length){
-    tbody.innerHTML='<tr><td colspan="5" style="padding:24px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim2);">No crew assigned.<br>Go to Schedule tab → assign crew for this Sunday.</td></tr>';return;
-  }
+  const tbody=document.getElementById('att-rosterBody');const crew=_attCrew(s);
+  if(!crew.length){tbody.innerHTML='<tr><td colspan="5" style="padding:24px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim2);">No crew assigned — go to Schedule to assign crew for this Sunday.</td></tr>';return;}
   tbody.innerHTML='';
   crew.filter(c=>!q||c.name.toLowerCase().includes(q)||(c.role||'').toLowerCase().includes(q)).forEach((c,i)=>{
     const rv=rec[c.id]||{status:'',time:'',note:''};
     const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const col=ATT_AVCOLS[i%ATT_AVCOLS.length];
-    const pct=_attPct(c.id);
+    const col=ATT_AVCOLS[i%ATT_AVCOLS.length];const pct=_attPct(c.id);
     const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;">
+    tr.innerHTML=`<td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;border:2px solid ${col}33;color:${col};font-family:var(--head);">${c.avatar||initials}</div>
           <div><div style="font-weight:700;font-size:14px;">${c.name}</div><div style="font-family:var(--mono);font-size:10px;color:var(--dim2);">${c.role||'Technician'}</div></div>
-        </div>
-      </td>
+        </div></td>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;">
         <div style="display:flex;gap:4px;flex-wrap:wrap;">
-          ${ATT_STATUSES.map(st=>{
-            const active=rv.status===st;
-            const cv=ATT_COLORS[st];
-            const gv={present:'var(--gglow)',absent:'var(--rglow)',late:'var(--oglow,rgba(249,115,22,.1))',excused:'var(--bglow)'}[st];
-            return`<button onclick="attSetStatus('${c.id}','${st}')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;border:1.5px solid ${active?cv:cv+'44'};cursor:pointer;background:${active?gv:'transparent'};color:${active?cv:'var(--dim2)'};white-space:nowrap;transition:all .12s;"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;"></span>${ATT_LABELS[st]}</button>`;
-          }).join('')}
-        </div>
-      </td>
+          ${ATT_STATUSES.map(st=>{const active=rv.status===st;const cv=ATT_COLORS[st];const gv={present:'var(--gglow)',absent:'var(--rglow)',late:'rgba(249,115,22,.1)',excused:'var(--bglow)'}[st];
+            return`<button onclick="attSetStatus('${c.id}','${st}')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;border:1.5px solid ${active?cv:cv+'44'};cursor:pointer;background:${active?gv:'transparent'};color:${active?cv:'var(--dim2)'};white-space:nowrap;transition:all .12s;"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;"></span>${ATT_LABELS[st]}</button>`;}).join('')}
+        </div></td>
       <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;font-family:var(--mono);font-size:10px;color:var(--dim2);" class="mhide">${rv.time||'—'}</td>
-      <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;font-family:var(--mono);font-size:10px;color:var(--dim2);cursor:pointer;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="mhide" onclick="attOpenNote('${c.id}')" title="Click to edit note">${rv.note||'＋ note'}</td>
-      <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;"><span style="font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;${_attPctStyle(pct)}">${pct}%</span></td>`;
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;font-family:var(--mono);font-size:10px;color:var(--dim2);cursor:pointer;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="mhide" onclick="attOpenNote('${c.id}')">${rv.note||'＋ note'}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;"><span style="font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;${_attPctSty(pct)}">${pct}%</span></td>`;
     tbody.appendChild(tr);
   });
 }
 
 function attRenderSidebar(){
-  const hEl=document.getElementById('att-historyList');
-  const sEl=document.getElementById('att-streakList');
-  if(!hEl||!sEl)return;
-  hEl.innerHTML='';sEl.innerHTML='';
+  const hEl=document.getElementById('att-historyList');const sEl=document.getElementById('att-streakList');
+  if(!hEl||!sEl)return;hEl.innerHTML='';sEl.innerHTML='';
   const d=_attD();
   (db.technicians||[]).forEach((c,i)=>{
     const pct=_attPct(c.id);
     const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const color=ATT_AVCOLS[i%ATT_AVCOLS.length];
     const recent=[...d.sessions].sort((a,b)=>a.date-b.date).slice(-6);
-    const spark=recent.map(s=>{
-      const r=d.records[s.id]?.[c.id];const st=r?.status||'absent';
-      const h={present:20,late:14,excused:8,absent:4}[st]||4;
-      const bc={present:'var(--green)',late:'var(--orange)',excused:'var(--blue)',absent:'var(--s3)'}[st];
-      return`<div style="width:5px;height:${h}px;border-radius:2px 2px 0 0;background:${bc};"></div>`;
-    }).join('');
+    const spark=recent.map(s=>{const r=d.records[s.id]?.[c.id];const st=r?.status||'absent';const h={present:20,late:14,excused:8,absent:4}[st]||4;const bc={present:'var(--green)',late:'var(--orange)',excused:'var(--blue)',absent:'var(--s3)'}[st];return`<div style="width:5px;height:${h}px;border-radius:2px 2px 0 0;background:${bc};"></div>`;}).join('');
     hEl.innerHTML+=`<li style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
       <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0;border:2px solid ${color}33;color:${color};font-family:var(--head);">${c.avatar||initials}</div>
       <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;">${c.name}</div><div style="display:flex;gap:2px;align-items:flex-end;height:20px;margin-top:4px;">${spark}</div></div>
-      <span style="font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;${_attPctStyle(pct)}">${pct}%</span></li>`;
+      <span style="font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;${_attPctSty(pct)}">${pct}%</span></li>`;
     const streak=_attStreak(c.id);
     sEl.innerHTML+=`<li style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
       <div style="font-size:16px;width:24px;text-align:center;flex-shrink:0;">${streak.icon}</div>
       <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;">${c.name}</div><div style="font-family:var(--mono);font-size:10px;color:var(--dim2);">${streak.label}</div></div>
-      <span style="font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;${_attPctStyle(pct)}">${pct}%</span></li>`;
+      <span style="font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;${_attPctSty(pct)}">${pct}%</span></li>`;
   });
 }
 
 function attRenderActivity(){
   const el=document.getElementById('att-activityFeed');if(!el)return;
   if(!_attLog.length){el.innerHTML='<li style="padding:12px 16px;font-family:var(--mono);font-size:11px;color:var(--dim2);text-align:center;">No activity yet</li>';return;}
-  el.innerHTML=_attLog.slice(0,8).map(e=>`
-    <li style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
-      <div style="font-size:14px;width:22px;text-align:center;color:${ATT_COLORS[e.status]||'var(--dim2)'};font-weight:900;">${ATT_ICONS[e.status]||'·'}</div>
-      <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;">${e.name}</div><div style="font-family:var(--mono);font-size:10px;color:${ATT_COLORS[e.status]||'var(--dim2)'};">${ATT_LABELS[e.status]}</div></div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--dim);flex-shrink:0;">${e.time}</div></li>`).join('');
+  el.innerHTML=_attLog.slice(0,8).map(e=>`<li style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+    <div style="font-size:14px;width:22px;text-align:center;color:${ATT_COLORS[e.status]||'var(--dim2)'};font-weight:900;">${ATT_ICONS[e.status]||'·'}</div>
+    <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;">${e.name}</div><div style="font-family:var(--mono);font-size:10px;color:${ATT_COLORS[e.status]||'var(--dim2)'};">${ATT_LABELS[e.status]}</div></div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dim);flex-shrink:0;">${e.time}</div></li>`).join('');
 }
 
-// ── Admin actions ─────────────────────────────────────────────
 function attSetStatus(techId,status){
   if(!isAdmin()){toast('Admin permission required','error');return;}
   const s=_attCurSess();if(!s)return;
@@ -4652,11 +4601,9 @@ function attSetStatus(techId,status){
   const prev=d.records[s.id][techId]||{};
   const now=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
   d.records[s.id][techId]={status,time:(status==='present'||status==='late')?now:(prev.time||''),note:prev.note||''};
-  // Log to activity feed
   const name=(db.technicians||[]).find(x=>x.id===techId)?.name||techId;
   _attLog.unshift({name,status,time:now,ts:Date.now()});if(_attLog.length>20)_attLog=_attLog.slice(0,20);
-  save(); // ← main app save() — writes to localStorage + Firebase
-  attRenderStats();attRenderTable();attRenderSidebar();attRenderActivity();
+  save();attRenderStats();attRenderTable();attRenderSidebar();attRenderActivity();
   toast(ATT_ICONS[status]+' '+name+' — '+ATT_LABELS[status],status==='present'?'success':status==='absent'?'error':'info');
 }
 
@@ -4698,17 +4645,11 @@ function attPickSession(){
 function attSwitchTab(tab){
   document.getElementById('att-tab-hist-content').style.display=tab==='hist'?'':'none';
   document.getElementById('att-tab-streak-content').style.display=tab==='streak'?'':'none';
-  ['hist','streak'].forEach(t=>{
-    const b=document.getElementById('att-tab-'+t);
-    b.style.background=tab===t?'var(--aglow)':'none';
-    b.style.border=tab===t?'1px solid rgba(240,165,0,.3)':'none';
-    b.style.color=tab===t?'var(--amber)':'var(--dim2)';
-  });
+  ['hist','streak'].forEach(t=>{const b=document.getElementById('att-tab-'+t);b.style.background=tab===t?'var(--aglow)':'none';b.style.border=tab===t?'1px solid rgba(240,165,0,.3)':'none';b.style.color=tab===t?'var(--amber)':'var(--dim2)';});
 }
 
 function attExportCSV(){
-  if(!isAdmin())return;
-  const s=_attCurSess();const d=_attD();const rec=s?(d.records[s.id]||{}):{};
+  if(!isAdmin())return;const s=_attCurSess();const d=_attD();const rec=s?(d.records[s.id]||{}):{};
   let csv=`"Session","${s?.name||''}"\n"Calltime","${s?.calltime||''}"\n\nName,Role,Status,Check-In Time,Note,Attendance%\n`;
   _attCrew(s).forEach(c=>{const r=rec[c.id]||{status:'absent',time:'',note:''};csv+=`"${c.name}","${c.role||''}","${r.status}","${r.time}","${r.note}","${_attPct(c.id)}%"\n`;});
   const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);
@@ -4716,8 +4657,7 @@ function attExportCSV(){
 }
 
 function attShowQR(){
-  const modal=document.getElementById('att-qrModal');
-  modal.style.display='flex';
+  const modal=document.getElementById('att-qrModal');modal.style.display='flex';
   const qrDiv=document.getElementById('att-qrcode');qrDiv.innerHTML='';
   const url=window.location.origin+window.location.pathname+'?checkin=1';
   document.getElementById('att-qrUrl').textContent=url;
@@ -4726,43 +4666,31 @@ function attShowQR(){
 }
 document.getElementById('att-qrModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
 
-// ════════════════════════════════════════════════════════════════
-// SELF CHECK-IN — render + action
-// ════════════════════════════════════════════════════════════════
+// ── Self Check-In ─────────────────────────────────────────────
 function renderCheckin(){
   _attEnsureToday();
-  const s=_attCurSess();
-  const d=_attD();
-  const tech=getCurTech();
-
+  const s=_attCurSess();const d=_attD();const tech=getCurTech();
   // Session header
   if(s){
     document.getElementById('ci-sessionName').textContent=s.name;
-    const crew=_attCrew(s);
-    const rec=d.records[s.id]||{};
+    const crew=_attCrew(s);const rec=d.records[s.id]||{};
     const checked=crew.filter(c=>{const r=rec[c.id];return r&&(r.status==='present'||r.status==='late');}).length;
     document.getElementById('ci-sessionSub').textContent='Calltime: '+(s.calltime||'8:00 AM')+' · '+crew.length+' assigned';
-    document.getElementById('ci-sessionStatus').innerHTML=
-      `<div style="display:inline-flex;align-items:center;gap:8px;background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:20px;padding:4px 14px;font-family:var(--mono);font-size:11px;color:var(--green);">
-        <span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);display:inline-block;"></span>
-        ${checked} of ${crew.length} checked in</div>`;
+    document.getElementById('ci-sessionStatus').innerHTML=`<div style="display:inline-flex;align-items:center;gap:8px;background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:20px;padding:4px 14px;font-family:var(--mono);font-size:11px;color:var(--green);"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);display:inline-block;"></span>${checked} of ${crew.length} checked in</div>`;
   } else {
     document.getElementById('ci-sessionName').textContent='No Active Session';
     document.getElementById('ci-sessionSub').textContent='No Sunday session found.';
     document.getElementById('ci-sessionStatus').innerHTML='';
   }
-
-  // Self panel
+  // Panels
   const selfPanel=document.getElementById('ci-selfPanel');
   const notOnRoster=document.getElementById('ci-notOnRoster');
   const loginPrompt=document.getElementById('ci-loginPrompt');
   selfPanel.style.display='none';notOnRoster.style.display='none';loginPrompt.style.display='none';
-
   if(!tech){
     loginPrompt.style.display='';
   } else if(s){
-    const crew=_attCrew(s);
-    const onRoster=crew.some(c=>c.id===tech.id);
+    const crew=_attCrew(s);const onRoster=crew.some(c=>c.id===tech.id);
     if(onRoster){
       selfPanel.style.display='';
       document.getElementById('ci-myAvatar').textContent=tech.avatar||'👤';
@@ -4770,27 +4698,17 @@ function renderCheckin(){
       document.getElementById('ci-myRole').textContent=tech.role||'Technician';
       const rec=(d.records[s.id]||{})[tech.id];
       const statusEl=document.getElementById('ci-myStatus');
-      if(rec&&rec.status){
-        const cv=ATT_COLORS[rec.status];
-        statusEl.textContent=ATT_ICONS[rec.status]+' '+ATT_LABELS[rec.status]+(rec.time?' · '+rec.time:'');
-        statusEl.style.cssText=`border:1px solid ${cv};color:${cv};`;
-      } else {
-        statusEl.textContent='Not checked in';
-        statusEl.style.cssText='background:var(--s3);color:var(--dim2);';
-      }
-    } else {
-      notOnRoster.style.display='';
-    }
+      if(rec&&rec.status){const cv=ATT_COLORS[rec.status];statusEl.textContent=ATT_ICONS[rec.status]+' '+ATT_LABELS[rec.status]+(rec.time?' · '+rec.time:'');statusEl.style.cssText=`border:1px solid ${cv};color:${cv};`;}
+      else{statusEl.textContent='Not checked in';statusEl.style.cssText='background:var(--s3);color:var(--dim2);';}
+    } else {notOnRoster.style.display='';}
   }
-
-  // Roster list (read-only)
+  // Roster list
   const rosterEl=document.getElementById('ci-rosterList');
   if(!s){rosterEl.innerHTML='<li style="padding:16px;font-family:var(--mono);font-size:12px;color:var(--dim2);text-align:center;">No session</li>';return;}
   const crew=_attCrew(s);const rec=d.records[s.id]||{};
   if(!crew.length){rosterEl.innerHTML='<li style="padding:16px;font-family:var(--mono);font-size:12px;color:var(--dim2);text-align:center;">No crew assigned yet</li>';return;}
   rosterEl.innerHTML=crew.map((c,i)=>{
-    const r=rec[c.id];const st=r?.status||'';
-    const cv=ATT_COLORS[st]||'var(--dim2)';
+    const r=rec[c.id];const st=r?.status||'';const cv=ATT_COLORS[st]||'var(--dim2)';
     const color=ATT_AVCOLS[i%ATT_AVCOLS.length];
     const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     return`<li style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
@@ -4807,35 +4725,21 @@ function renderCheckin(){
 function ciCheckIn(status){
   const tech=getCurTech();if(!tech){toast('Please log in first','error');return;}
   const s=_attCurSess();if(!s){toast('No active session','error');return;}
-  // Verify on roster
   if(!_attCrew(s).some(c=>c.id===tech.id)){toast('You\'re not on this week\'s roster','error');return;}
   const d=_attD();if(!d.records[s.id])d.records[s.id]={};
   const now=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
   d.records[s.id][tech.id]={status,time:now,note:''};
-  // Log to activity feed so admin sees it instantly
   _attLog.unshift({name:tech.name,status,time:now,ts:Date.now()});if(_attLog.length>20)_attLog=_attLog.slice(0,20);
-  save(); // ← saves to localStorage + Firebase so admin tracker sees it
-  renderCheckin();
+  save();renderCheckin();
   toast(ATT_ICONS[status]+' Checked in as '+ATT_LABELS[status]+' · '+now,'success');
 }
 
-// Auto-navigate to check-in if ?checkin=1 in URL
+// Auto-go to check-in page if URL has ?checkin=1
 (function(){
   if(new URLSearchParams(window.location.search).get('checkin')==='1'){
     window.addEventListener('load',()=>setTimeout(()=>go('checkin'),500));
   }
 })();
-</script>
-
-<!-- PWA Service Worker Registration -->
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(reg => console.log('SW registered:', reg.scope))
-      .catch(err => console.warn('SW registration failed:', err));
-  });
-}
 </script>
 </body>
 </html>
