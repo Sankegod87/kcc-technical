@@ -1006,6 +1006,15 @@ textarea{resize:vertical;min-height:70px;}
         <button class="btn ba" onclick="saveMaintSettings()">Save</button>
       </div>
     </div>
+
+    <div class="panel" style="border-color:rgba(224,60,60,.3)">
+      <div class="ph"><span class="pt">👤 Account</span></div>
+      <div class="pb">
+        <p class="dim mb12">Signed in as: <span id="settingsSignedInAs" style="color:var(--text);font-weight:700">—</span></p>
+        <button class="btn" style="background:var(--rglow);border:1px solid rgba(224,60,60,.4);color:var(--red);width:100%;justify-content:center;font-size:14px;padding:12px" onclick="lsLogout()">Sign Out &amp; Return to Login</button>
+      </div>
+    </div>
+
   </div>
 </div>
 <!-- ── ATTENDANCE (admin only) ── -->
@@ -1610,7 +1619,6 @@ window.addEventListener('syncStatus',e=>{const{state,msg}=e.detail;setSyncState(
 // LOGIN SCREEN
 // ══════════════════════════════════════════════════
 let _lsSelectedId = null;
-let _lsSelectedTech = null; // cache full tech object so Firebase re-syncs can't break submit
 
 function showLoginScreen(){
   const screen = document.getElementById('loginScreen');
@@ -1656,7 +1664,7 @@ function lsSelectUser(id){
     return;
   }
   _lsSelectedId = id;
-  _lsSelectedTech = t; // cache it here
+  document.getElementById('ls-step1').style.display = 'none';
   document.getElementById('ls-step2').style.display = '';
   document.getElementById('ls-avatar').textContent = t.avatar||'👤';
   document.getElementById('ls-name').textContent = t.name;
@@ -1672,13 +1680,12 @@ function lsSelectUser(id){
 
 function lsBack(){
   _lsSelectedId = null;
-  _lsSelectedTech = null;
   document.getElementById('ls-step1').style.display = '';
   document.getElementById('ls-step2').style.display = 'none';
 }
 
 function lsSubmit(){
-  const t = _lsSelectedTech || db.technicians.find(x=>x.id===_lsSelectedId);
+  const t = db.technicians.find(x=>x.id===_lsSelectedId);
   if(!t){
     // Tech not found — could be a Firebase sync timing issue; go back to step 1
     lsBack();
@@ -2353,6 +2360,10 @@ function renderCrew(){
 // ── Settings ──
 function renderSettings(){
   const s=db.settings||{};
+  // Update account panel
+  const t=getCurTech();
+  const signedInEl=document.getElementById('settingsSignedInAs');
+  if(signedInEl) signedInEl.textContent=t?(t.avatar||'👤')+' '+t.name:'Not logged in';
   // Render roles and training options lists
   renderRolesList();
   renderTrainingOptions();
