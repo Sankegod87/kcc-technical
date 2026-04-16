@@ -4590,7 +4590,6 @@ let _attCurKey=null, _attLog=[];
 
 let _attAdminSlot='s1'; // kept for data-key compatibility (always s1)
 function attAdminSlot(slot){} // slot switching removed
-  if(s1){s1.style.background=slot==='s1'?'var(--aglow)':'transparent';s1.style.borderColor=slot==='s1'?'var(--amber)':'var(--border2)';s1.style.color=slot==='s1'?'var(--amber)':'var(--dim2)';}
 
 function _attD(){
   if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};
@@ -4929,7 +4928,7 @@ function renderCheckin(){
   _attEnsureToday();
   const d=_attD();
 
-  if(!isAdmin()&&d.activeCheckinSession){
+  if(d.activeCheckinSession){
     const pinned=d.sessions.find(x=>x.id===d.activeCheckinSession);
     if(pinned&&_attCurKey!==d.activeCheckinSession) _attCurKey=d.activeCheckinSession;
   }
