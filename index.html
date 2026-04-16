@@ -4590,6 +4590,7 @@ let _attCurKey=null, _attLog=[];
 
 let _attAdminSlot='s1'; // kept for data-key compatibility (always s1)
 function attAdminSlot(slot){} // slot switching removed
+function _ciRecKey(sessId,slot){ return sessId; } // slot removed — key is just the session id
 
 function _attD(){
   if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};
