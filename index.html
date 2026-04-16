@@ -1075,10 +1075,7 @@ textarea{resize:vertical;min-height:70px;}
     <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
       <div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Session</div><div style="font-family:var(--head);font-weight:700;font-size:15px;" id="att-sessionName">—</div></div>
       <div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Calltime</div><div style="font-family:var(--head);font-weight:700;font-size:15px;" id="att-sessionCalltime">—</div></div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <button id="att-slot-s1" onclick="attAdminSlot('s1')" style="font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;cursor:pointer;border:1.5px solid var(--amber);background:var(--aglow);color:var(--amber);">🌅 S1</button>
-        <button id="att-slot-s2" onclick="attAdminSlot('s2')" style="font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;cursor:pointer;border:1.5px solid var(--border2);background:transparent;color:var(--dim2);">🌆 S2</button>
-      </div>
+
       <div style="background:var(--aglow);border:1px solid rgba(240,165,0,.35);border-radius:20px;padding:3px 12px;font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:600;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.4s infinite;display:inline-block;"></span>LIVE</div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn bgh bsm" onclick="attShowQR()">📱 QR Code</button>
@@ -1201,10 +1198,7 @@ textarea{resize:vertical;min-height:70px;}
       <div style="margin-top:10px;" id="ci-sessionStatus"></div>
     </div>
 
-    <!-- Session slot tabs (Session 1 / Session 2) -->
-    <div class="ci-sess-tabs" id="ci-sessTabs">
-      <div class="ci-sess-tab active" id="ci-tab-s1" onclick="ciSwitchSlot('s1')">🌅 Session 1</div>
-      <div class="ci-sess-tab" id="ci-tab-s2" onclick="ciSwitchSlot('s2')">🌆 Session 2</div>
+    <!-- Session slot tabs removed — single session per event -->
     </div>
 
     <!-- Login prompt -->
@@ -4593,17 +4587,10 @@ const ATT_LABELS   = {present:'Present',absent:'Absent',late:'Late',excused:'Exc
 const ATT_ICONS    = {present:'✓',absent:'✗',late:'⧖',excused:'~'};
 const ATT_COLORS   = {present:'var(--green)',absent:'var(--red)',late:'var(--orange)',excused:'var(--blue)'};
 let _attCurKey=null, _attLog=[];
-let _attAdminSlot='s1'; // which slot admin is viewing in the attendance page
 
-function attAdminSlot(slot){
-  _attAdminSlot=slot;
-  const s1=document.getElementById('att-slot-s1');
-  const s2=document.getElementById('att-slot-s2');
+let _attAdminSlot='s1'; // kept for data-key compatibility (always s1)
+function attAdminSlot(slot){} // slot switching removed
   if(s1){s1.style.background=slot==='s1'?'var(--aglow)':'transparent';s1.style.borderColor=slot==='s1'?'var(--amber)':'var(--border2)';s1.style.color=slot==='s1'?'var(--amber)':'var(--dim2)';}
-  if(s2){s2.style.background=slot==='s2'?'var(--pglow)':'transparent';s2.style.borderColor=slot==='s2'?'var(--purple)':'var(--border2)';s2.style.color=slot==='s2'?'var(--purple)':'var(--dim2)';}
-  attRenderStats();attRenderTable();
-  toast((slot==='s2'?'🌆 Session 2':'🌅 Session 1')+' view','info');
-}
 
 function _attD(){
   if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};
@@ -4687,7 +4674,7 @@ function renderAttendance(){
 
 function attRenderStats(){
   const s=_attCurSess();const d=_attD();
-  const recKey=s?_ciRecKey(s.id,_attAdminSlot):null;
+  const recKey=s?_ciRecKey(s.id,'s1'):null;
   const rec=recKey?(d.records[recKey]||{}):{};
   const crew=_attCrew(s);const tot=crew.length;let p=0,a=0,l=0,e=0;
   crew.forEach(c=>{const r=rec[c.id];if(!r||!r.status){a++;return;}
@@ -4705,7 +4692,7 @@ function attRenderStats(){
 
 function attRenderTable(){
   const s=_attCurSess();const d=_attD();
-  const recKey=s?_ciRecKey(s.id,_attAdminSlot):null;
+  const recKey=s?_ciRecKey(s.id,'s1'):null;
   const rec=recKey?(d.records[recKey]||{}):{};
   const q=(document.getElementById('att-search')?.value||'').trim().toLowerCase();
   const tbody=document.getElementById('att-rosterBody');const crew=_attCrew(s);
@@ -4768,41 +4755,40 @@ function attSetStatus(techId,status){
   if(!isAdmin()){toast('Admin permission required','error');return;}
   const s=_attCurSess();if(!s)return;
   const d=_attD();
-  const recKey=_ciRecKey(s.id,_attAdminSlot);
+  const recKey=_ciRecKey(s.id,'s1');
   if(!d.records[recKey])d.records[recKey]={};
   const prev=d.records[recKey][techId]||{};
   const now=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
   d.records[recKey][techId]={status,time:(status==='present'||status==='late')?now:(prev.time||''),note:prev.note||''};
   const name=(db.technicians||[]).find(x=>x.id===techId)?.name||techId;
-  _attLog.unshift({name,status,time:now,ts:Date.now(),slot:_attAdminSlot});if(_attLog.length>20)_attLog=_attLog.slice(0,20);
+  _attLog.unshift({name,status,time:now,ts:Date.now()});if(_attLog.length>20)_attLog=_attLog.slice(0,20);
   save();attRenderStats();attRenderTable();attRenderSidebar();attRenderActivity();
-  toast(ATT_ICONS[status]+' '+name+' — '+ATT_LABELS[status]+' ('+(  _attAdminSlot==='s2'?'S2':'S1')+')',status==='present'?'success':status==='absent'?'error':'info');
+  toast(ATT_ICONS[status]+' '+name+' — '+ATT_LABELS[status],status==='present'?'success':status==='absent'?'error':'info');
 }
 
 function attMarkAllPresent(){
   if(!isAdmin()){toast('Admin permission required','error');return;}
   const s=_attCurSess();if(!s)return;const d=_attD();
-  const recKey=_ciRecKey(s.id,_attAdminSlot);
+  const recKey=_ciRecKey(s.id,'s1');
   if(!d.records[recKey])d.records[recKey]={};
   const now=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
   _attCrew(s).forEach(c=>{if(!d.records[recKey][c.id]||!d.records[recKey][c.id].status)d.records[recKey][c.id]={status:'present',time:now,note:''};});
-  save();attRenderStats();attRenderTable();attRenderSidebar();toast('✔ All unmarked crew marked Present ('+ (_attAdminSlot==='s2'?'Session 2':'Session 1')+')','success');
+  save();attRenderStats();attRenderTable();attRenderSidebar();toast('✔ All unmarked crew marked Present','success');
 }
 
 function attClearSession(){
   if(!isAdmin()){toast('Admin permission required','error');return;}
-  const slotLabel=_attAdminSlot==='s2'?'Session 2':'Session 1';
-  if(!confirm('Clear all check-in data for '+slotLabel+'?'))return;
+  if(!confirm('Clear all check-in data for this session?'))return;
   const s=_attCurSess();if(!s)return;
-  const recKey=_ciRecKey(s.id,_attAdminSlot);
-  _attD().records[recKey]={};save();attRenderStats();attRenderTable();attRenderSidebar();toast(slotLabel+' cleared','info');
+  const recKey=_ciRecKey(s.id,'s1');
+  _attD().records[recKey]={};save();attRenderStats();attRenderTable();attRenderSidebar();toast('Session cleared','info');
 }
 
 function attOpenNote(techId){
   if(!isAdmin())return;
   const c=(db.technicians||[]).find(x=>x.id===techId);
   const s=_attCurSess();const d=_attD();
-  const recKey=_ciRecKey(s?.id,_attAdminSlot);
+  const recKey=_ciRecKey(s?.id,'s1');
   const cur=(d.records[recKey]||{})[techId]?.note||'';
   const val=prompt('Note for '+c?.name+':'+(cur?'\nCurrent: '+cur:''),cur);
   if(val===null)return;
@@ -4827,9 +4813,8 @@ function attSwitchTab(tab){
 
 function attExportCSV(){
   if(!isAdmin())return;const s=_attCurSess();const d=_attD();
-  const recKey=s?_ciRecKey(s.id,_attAdminSlot):null;
+  const recKey=s?_ciRecKey(s.id,'s1'):null;
   const rec=recKey?(d.records[recKey]||{}):{};
-  const slotLabel=_attAdminSlot==='s2'?'Session 2':'Session 1';
   let csv=`"Session","${s?.name||''}"\n"Calltime","${s?.calltime||''}"\n\nName,Role,Status,Check-In Time,Note,Attendance%\n`;
   _attCrew(s).forEach(c=>{const r=rec[c.id]||{status:'absent',time:'',note:''};csv+=`"${c.name}","${c.role||''}","${r.status}","${r.time}","${r.note}","${_attPct(c.id)}%"\n`;});
   const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);
@@ -4848,37 +4833,23 @@ document.getElementById('att-qrModal').addEventListener('click',function(e){if(e
 document.getElementById('att-newSessModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
 
 // ── Self Check-In ─────────────────────────────────────────────
-// Slot: 's1' or 's2'. Admin can pin which slot crew sees.
-let _ciSlot='s1';
+let _ciSlot='s1'; // kept for compatibility
 
-function _ciActiveSlot(){
-  const d=_attD();
-  if(!isAdmin()&&d.activeCheckinSlot) return d.activeCheckinSlot;
-  return _ciSlot;
-}
+function _ciActiveSlot(){ return 's1'; }
 
-function _ciRecKey(sessId,slot){
-  return slot==='s2'?sessId+'__s2':sessId;
-}
-
-function ciSwitchSlot(slot){
-  _ciSlot=slot;
-  document.getElementById('ci-tab-s1').classList.toggle('active',slot==='s1');
-  document.getElementById('ci-tab-s2').classList.toggle('active',slot==='s2');
-  renderCheckin();
-}
+function ciSwitchSlot(slot){ /* removed */ }
 
 function ciAdminSetActive(){
   if(!isAdmin())return;
   const val=document.getElementById('ci-activeSessionSel').value;
-  const parts=val.split('||');const sessId=parts[0];const slot=parts[1]||'s1';
+  const sessId=val;
   const d=_attD();
   d.activeCheckinSession=sessId;
-  d.activeCheckinSlot=slot;
+  d.activeCheckinSlot='s1';
   _attCurKey=sessId;
-  _ciSlot=slot;
+  _ciSlot='s1';
   save();renderCheckin();
-  toast('📡 Active session set for crew: '+(slot==='s2'?'Session 2':'Session 1'),'success');
+  toast('📡 Active session set for crew','success');
 }
 
 function attSetActiveSession(){
@@ -4947,13 +4918,11 @@ function _ciPopulateAdminBar(){
   bar.style.display='flex';
   const d=_attD();
   const activeSess=d.activeCheckinSession||_attNearestSundayKey();
-  const activeSlot=d.activeCheckinSlot||'s1';
-  sel.innerHTML=d.sessions.slice(0,20).flatMap(s=>[
-    '<option value="'+s.id+'||s1" '+(s.id===activeSess&&activeSlot==='s1'?'selected':'')+'>🌅 '+s.name+' — Session 1</option>',
-    '<option value="'+s.id+'||s2" '+(s.id===activeSess&&activeSlot==='s2'?'selected':'')+'>🌆 '+s.name+' — Session 2</option>'
-  ]).join('');
+  sel.innerHTML=d.sessions.slice(0,20).map(s=>
+    '<option value="'+s.id+'" '+(s.id===activeSess?'selected':'')+'>'+s.name+'</option>'
+  ).join('');
   const badge=document.getElementById('ci-ab-badge');
-  if(badge)badge.textContent=activeSlot==='s2'?'S2 LIVE':'S1 LIVE';
+  if(badge)badge.textContent='LIVE';
 }
 
 function renderCheckin(){
@@ -4969,16 +4938,7 @@ function renderCheckin(){
   const s=_attCurSess();
   const tech=getCurTech();
 
-  // Slot tabs — admins see both; crew see none (auto-directed)
-  const tabs=document.getElementById('ci-sessTabs');
-  if(tabs) tabs.style.display=isAdmin()?'':'none';
-  const t1=document.getElementById('ci-tab-s1');const t2=document.getElementById('ci-tab-s2');
-  if(t1)t1.classList.toggle('active',slot==='s1');
-  if(t2)t2.classList.toggle('active',slot==='s2');
-
   _ciPopulateAdminBar();
-
-  const slotLabel=slot==='s2'?'Session 2':'Session 1';
 
   if(s){
     document.getElementById('ci-sessionName').textContent=s.name;
@@ -4987,7 +4947,7 @@ function renderCheckin(){
     if(!d.records[recKey])d.records[recKey]={};
     const rec=d.records[recKey]||{};
     const checked=crew.filter(c=>{const r=rec[c.id];return r&&(r.status==='present'||r.status==='late');}).length;
-    document.getElementById('ci-sessionSub').textContent=slotLabel+' · Calltime: '+(s.calltime||'8:00 AM')+' · '+crew.length+' assigned';
+    document.getElementById('ci-sessionSub').textContent='Calltime: '+(s.calltime||'8:00 AM')+' · '+crew.length+' assigned';
     document.getElementById('ci-sessionStatus').innerHTML='<div style="display:inline-flex;align-items:center;gap:8px;background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:20px;padding:4px 14px;font-family:var(--mono);font-size:11px;color:var(--green);"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);display:inline-block;"></span>'+checked+' of '+crew.length+' checked in</div>';
   } else {
     document.getElementById('ci-sessionName').textContent='No Active Session';
@@ -5050,7 +5010,7 @@ function ciCheckIn(status){
   d.records[recKey][tech.id]={status,time:now,note:''};
   _attLog.unshift({name:tech.name,status,time:now,ts:Date.now(),slot});if(_attLog.length>20)_attLog=_attLog.slice(0,20);
   save();renderCheckin();
-  toast(ATT_ICONS[status]+' Checked in as '+ATT_LABELS[status]+' ('+(slot==='s2'?'Session 2':'Session 1')+') · '+now,'success');
+  toast(ATT_ICONS[status]+' Checked in as '+ATT_LABELS[status]+' · '+now,'success');
 }
 // Auto-go to check-in page if URL has ?checkin=1
 (function(){
