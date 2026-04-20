@@ -1,5 +1,5 @@
 {
-  "name": "Stage Light Tracker",
+  "name": "KCC Technical",
   "short_name": "KCC TECH",
   "description": "Stage lighting and crew schedule management",
   "id": "https://sankegod87.github.io/stage-light/",
@@ -7,8 +7,8 @@
   "scope": "/stage-light/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#080b10",
-  "theme_color": "#f0a500",
+  "background_color": "#f5f6f8",
+  "theme_color": "#185FA5",
   "icons": [
     {
       "src": "https://sankegod87.github.io/stage-light/icon-192.png",
