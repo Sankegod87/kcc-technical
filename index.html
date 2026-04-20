@@ -419,6 +419,42 @@ textarea { resize:vertical; min-height:70px; }
 .dept-filter-btn[data-dept="Cameras"].active  { background:var(--dept-cameras); }
 .dept-filter-btn[data-dept="IT"].active       { background:var(--dept-it); }
 
+
+/* ── Stage 3: Gear expansion ── */
+.gear-status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;}
+.gear-health-bar{height:5px;border-radius:3px;background:var(--s3);overflow:hidden;margin-top:4px;}
+.gear-health-fill{height:100%;border-radius:3px;transition:width .4s;}
+.co-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;transition:border-color .15s;}
+.co-card:hover{border-color:var(--border2);}
+.co-card .co-icon{font-size:24px;flex-shrink:0;margin-top:2px;}
+.co-badge-out{background:#FAEEDA;color:#633806;border:1px solid #FAC775;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.co-badge-in{background:#EAF3DE;color:#27500A;border:1px solid #C0DD97;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.co-badge-over{background:#FCEBEB;color:#791F1F;border:1px solid #F7C1C1;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.maint-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;transition:border-color .15s;}
+.maint-card:hover{border-color:var(--border2);}
+.maint-card.overdue{border-left:3px solid #E24B4A;}
+.maint-card.due-soon{border-left:3px solid #BA7517;}
+.maint-card.ok{border-left:3px solid #639922;}
+.maint-log-entry{padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.maint-log-entry:last-child{border-bottom:none;}
+
+/* ── Stage 4: Tech Requests + Announcements + Sign-off ── */
+.req-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;transition:border-color .15s;}
+.req-card:hover{border-color:var(--border2);}
+.req-card.urgent{border-left:3px solid #E24B4A;}
+.req-card.normal{border-left:3px solid #185FA5;}
+.req-card.low{border-left:3px solid #888780;}
+.req-badge-open{background:#E6F1FB;color:#0C447C;border:1px solid #B5D4F4;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.req-badge-progress{background:#FAEEDA;color:#633806;border:1px solid #FAC775;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.req-badge-done{background:#EAF3DE;color:#27500A;border:1px solid #C0DD97;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.req-badge-urgent{background:#FCEBEB;color:#791F1F;border:1px solid #F7C1C1;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.ann-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;}
+.ann-card.pinned{border-left:3px solid #0F6E56;}
+.signoff-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;}
+.signoff-row:last-child{border-bottom:none;}
+.signoff-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-family:var(--mono);font-weight:600;}
+.signoff-chip.signed{background:#EAF3DE;color:#27500A;border:1px solid #C0DD97;}
+.signoff-chip.pending{background:var(--s3);color:var(--dim2);border:1px solid var(--border2);}
 </style>
 </head>
 <body>
@@ -680,6 +716,25 @@ textarea { resize:vertical; min-height:70px; }
     <button class="snav-btn" id="snav-scan" onclick="go('scan')">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="4"/><path d="M10 10l4 4"/></svg>
       Scan
+    </button>
+    <div class="snav-label" style="margin-top:8px">Gear</div>
+    <button class="snav-btn" id="snav-checkout" onclick="go('checkout')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="10" height="8" rx="1"/><path d="M11 6l4-2v6l-4-2V6zM4 7h4"/></svg>
+      Asset Checkout
+    </button>
+    <button class="snav-btn" id="snav-maintenance" onclick="go('maintenance')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4"/></svg>
+      Maintenance
+    </button>
+    <div class="snav-label" style="margin-top:8px">Operations</div>
+    <button class="snav-btn" id="snav-requests" onclick="go('requests')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 6h6M5 9h4"/></svg>
+      Tech Requests
+      <span class="snav-badge" id="req-badge" style="display:none">0</span>
+    </button>
+    <button class="snav-btn" id="snav-announcements" onclick="go('announcements')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h10l1 6H2L3 5z"/><path d="M6 5V3.5a2 2 0 014 0V5"/></svg>
+      Announcements
     </button>
     <div class="snav-label" style="margin-top:8px">More</div>
     <button class="snav-btn" id="snav-showlog" onclick="go('showlog')">
@@ -960,6 +1015,82 @@ textarea { resize:vertical; min-height:70px; }
 </div>
 
 <!-- ── NFC MANAGER ── -->
+
+<!-- ── ASSET CHECKOUT ── -->
+
+<!-- ── TECH REQUESTS ── -->
+<div id="pg-requests" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Tech Requests</h2>
+      <div class="dim" style="margin-top:4px">AV and technical needs submitted by the team</div>
+    </div>
+    <button class="btn ba" onclick="openM('addRequest')">+ New Request</button>
+  </div>
+  <div class="stats mb16" id="req-stats"></div>
+  <div class="tabs" id="req-tabs">
+    <button class="tab active" onclick="reqSetTab('open',this)">Open</button>
+    <button class="tab" onclick="reqSetTab('progress',this)">In Progress</button>
+    <button class="tab" onclick="reqSetTab('done',this)">Completed</button>
+    <button class="tab" onclick="reqSetTab('all',this)">All</button>
+  </div>
+  <div id="req-list"></div>
+</div>
+
+<!-- ── ANNOUNCEMENTS ── -->
+<div id="pg-announcements" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Announcements</h2>
+      <div class="dim" style="margin-top:4px">Team-wide and department notices</div>
+    </div>
+    <button class="btn ba" data-perm="admin" onclick="openM('addAnnouncement')">+ Post</button>
+  </div>
+  <div id="ann-list"></div>
+</div>
+
+<div id="pg-checkout" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Asset Checkout</h2>
+      <div class="dim" style="margin-top:4px">Track who has what gear and when it's due back</div>
+    </div>
+    <div class="row gap8">
+      <button class="btn ba" data-perm="admin" onclick="openM('addGearItem')">+ Add Gear Item</button>
+      <button class="btn bb" onclick="openM('checkoutGear')">📤 Check Out</button>
+    </div>
+  </div>
+  <!-- Summary cards -->
+  <div class="stats" style="margin-bottom:16px" id="co-stats"></div>
+  <!-- Filter tabs -->
+  <div class="tabs" id="co-tabs">
+    <button class="tab active" onclick="coSetTab('active',this)">Checked Out</button>
+    <button class="tab" onclick="coSetTab('returned',this)">Returned</button>
+    <button class="tab" onclick="coSetTab('gear',this)">Gear Library</button>
+  </div>
+  <div id="co-list"></div>
+</div>
+
+<!-- ── MAINTENANCE LOG ── -->
+<div id="pg-maintenance" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Maintenance Log</h2>
+      <div class="dim" style="margin-top:4px">Service history and upcoming maintenance for all gear</div>
+    </div>
+    <button class="btn ba" data-perm="admin" onclick="openM('addMaintEntry')">+ Log Service</button>
+  </div>
+  <!-- Summary cards -->
+  <div class="stats" style="margin-bottom:16px" id="maint-stats"></div>
+  <!-- Filter tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="maintSetTab('due',this)">Due / Overdue</button>
+    <button class="tab" onclick="maintSetTab('all',this)">All Gear</button>
+    <button class="tab" onclick="maintSetTab('log',this)">Service History</button>
+  </div>
+  <div id="maint-list"></div>
+</div>
+
 <div id="pg-nfc" style="display:none">
   <div class="row jbet mb14">
     <div>
@@ -1019,8 +1150,13 @@ textarea { resize:vertical; min-height:70px; }
       <div class="dim" style="margin-top:4px">Select a station to view and complete its checklist</div>
     </div>
     <div class="row gap8">
-      <button class="btn bgh bsm" onclick="resetChecklist()">↺ Reset All</button>
+      <button class="btn bgh bsm" onclick="resetSignoffs();resetChecklist()">↺ Reset All</button>
     </div>
+  </div>
+  <!-- Dept sign-off bar -->
+  <div class="panel mb14" id="cl-signoff-panel">
+    <div class="ph row jbet"><span class="pt">Dept Sign-Off</span><span class="dim" style="font-size:11px">Tap your dept to sign off</span></div>
+    <div id="cl-signoff-list"></div>
   </div>
 
   <!-- Split layout: station list + checklist panel -->
@@ -1770,7 +1906,7 @@ let _charts={};
 // ── Storage ──
 function lsave(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
 function lload(){
-  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};}}catch(e){}
+  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};}}catch(e){}
 }
 window._onRemoteData=function(r){
   // Only overwrite technicians if Firebase has data; never wipe with empty (protects login)
@@ -1778,6 +1914,12 @@ window._onRemoteData=function(r){
   db.fixtures=r.fixtures||[];db.outages=r.outages||[];
   db.inventory=r.inventory||[];db.orders=r.orders||[];db.usageLog=r.usageLog||[];
   db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};db.availability=r.availability||{};db.checklistState=r.checklistState||{};db.shows=r.shows||[];if(r.attendanceData){db.attendanceData=r.attendanceData;if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};}if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};
+  if(!db.gearItems)db.gearItems=[];
+  if(!db.checkouts)db.checkouts=[];
+  if(!db.maintLogs)db.maintLogs=[];
+  if(!db.techRequests)db.techRequests=[];
+  if(!db.announcements)db.announcements=[];
+  if(!db.signoffs)db.signoffs={};
   lsave();
   // If login screen is visible, rebuild grid with fresh Firebase data
   const loginVisible = document.getElementById('loginScreen')?.style.display === 'flex';
@@ -2053,7 +2195,7 @@ function go(page){
     document.getElementById('nav-'+p)?.classList.toggle('active',p===page);
   });
   _curPage=page;
-  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule,checklist:renderChecklist,showlog:renderShowLog,nfc:renderNFC,attendance:renderAttendance,checkin:renderCheckin})[page]?.();
+  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule,checklist:renderChecklist,showlog:renderShowLog,nfc:renderNFC,attendance:renderAttendance,checkin:renderCheckin,checkout:renderCheckout,maintenance:renderMaintenance,requests:renderRequests,announcements:renderAnnouncements})[page]?.();
   applyPermissions();
   if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
   ['dashboard','fixtures','inventory','schedule'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
@@ -5138,6 +5280,641 @@ function ciCheckIn(status){
   save();renderCheckin();
   toast(ATT_ICONS[status]+' Checked in as '+ATT_LABELS[status]+' · '+now,'success');
 }
+
+// ══════════════════════════════════════════════════════════
+// STAGE 3 — Asset Checkout & Maintenance Log
+// ══════════════════════════════════════════════════════════
+
+// ── Helpers ──────────────────────────────────────────────
+const CAT_ICONS = {Camera:'📷',Lens:'🔭',Audio:'🎚️',Lighting:'💡',Cable:'🔌',Computer:'💻',Other:'📦'};
+function gearIcon(item){ return CAT_ICONS[item.category]||'📦'; }
+function fmtDate(ts){ if(!ts)return'—'; const d=new Date(ts); return d.toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}); }
+function fmtDateShort(ts){ if(!ts)return'—'; const d=new Date(ts); return d.toLocaleDateString('en-CA',{month:'short',day:'numeric'}); }
+function daysUntil(ts){ return Math.round((ts - Date.now())/(1000*60*60*24)); }
+function daysSince(ts){ return Math.round((Date.now()-ts)/(1000*60*60*24)); }
+function maintStatus(item){
+  const logs = (db.maintLogs||[]).filter(l=>l.gearId===item.id).sort((a,b)=>b.date-a.date);
+  const last = logs[0];
+  const interval = item.serviceInterval||90;
+  if(!last) return {status:'unknown',label:'Never serviced',color:'#888780'};
+  const age = daysSince(last.date);
+  if(age > interval) return {status:'overdue',label:'Overdue by '+(age-interval)+' days',color:'#E24B4A'};
+  if(age > interval*0.8) return {status:'due-soon',label:'Due in '+(interval-age)+' days',color:'#BA7517'};
+  return {status:'ok',label:'Serviced '+age+' days ago',color:'#639922'};
+}
+function activeCheckout(gearId){ return (db.checkouts||[]).find(c=>c.gearId===gearId&&!c.returnedAt); }
+function isOverdue(co){ return co.dueDate && !co.returnedAt && Date.now() > co.dueDate; }
+window._coTab = 'active';
+window._maintTab = 'due';
+
+// ── Populate selects ──────────────────────────────────────
+function _populateGearSelect(selId, onlyAvailable){
+  const sel = document.getElementById(selId); if(!sel)return;
+  const items = (db.gearItems||[]).filter(g=> onlyAvailable ? !activeCheckout(g.id) : true);
+  sel.innerHTML = '<option value="">— Select item —</option>' +
+    items.map(g=>`<option value="${g.id}">${gearIcon(g)} ${g.name}${g.assetId?' ('+g.assetId+')':''}</option>`).join('');
+}
+function _populatePersonSelect(selId){
+  const sel = document.getElementById(selId); if(!sel)return;
+  sel.innerHTML = '<option value="">— Select crew member —</option>' +
+    (db.technicians||[]).map(t=>`<option value="${t.id}">${t.avatar||'👤'} ${t.name}${t.dept?' · '+t.dept:''}</option>`).join('');
+}
+
+// ── GEAR LIBRARY ─────────────────────────────────────────
+function saveGearItem(){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const name=(document.getElementById('gi-name').value||'').trim();
+  if(!name){toast('Item name required','error');return;}
+  const item={
+    id:'gear_'+Date.now(),
+    name,
+    assetId:(document.getElementById('gi-id').value||'').trim(),
+    dept:document.getElementById('gi-dept').value||'',
+    category:document.getElementById('gi-cat').value||'Other',
+    notes:(document.getElementById('gi-notes').value||'').trim(),
+    serviceInterval:parseInt(document.getElementById('gi-interval').value)||90,
+    lastServiceDate:document.getElementById('gi-lastservice').value?new Date(document.getElementById('gi-lastservice').value+'T12:00:00').getTime():null,
+    addedAt:Date.now()
+  };
+  if(!db.gearItems)db.gearItems=[];
+  db.gearItems.push(item);
+  save();closeM('addGearItem');renderCheckout();
+  ['gi-name','gi-id','gi-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('gi-interval').value='90';
+  document.getElementById('gi-lastservice').value='';
+  toast(name+' added to gear library','success');
+}
+function openEditGearItem(id){
+  const g=(db.gearItems||[]).find(x=>x.id===id);if(!g)return;
+  document.getElementById('egi-id').value=g.id;
+  document.getElementById('egi-name').value=g.name;
+  document.getElementById('egi-assetid').value=g.assetId||'';
+  document.getElementById('egi-dept').value=g.dept||'';
+  document.getElementById('egi-cat').value=g.category||'Other';
+  document.getElementById('egi-notes').value=g.notes||'';
+  document.getElementById('egi-interval').value=g.serviceInterval||90;
+  document.getElementById('egi-lastservice').value=g.lastServiceDate?new Date(g.lastServiceDate).toISOString().slice(0,10):'';
+  openM('editGearItem');
+}
+function saveGearItemEdit(){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const id=document.getElementById('egi-id').value;
+  const g=(db.gearItems||[]).find(x=>x.id===id);if(!g)return;
+  g.name=(document.getElementById('egi-name').value||'').trim()||g.name;
+  g.assetId=(document.getElementById('egi-assetid').value||'').trim();
+  g.dept=document.getElementById('egi-dept').value||'';
+  g.category=document.getElementById('egi-cat').value||'Other';
+  g.notes=(document.getElementById('egi-notes').value||'').trim();
+  g.serviceInterval=parseInt(document.getElementById('egi-interval').value)||90;
+  g.lastServiceDate=document.getElementById('egi-lastservice').value?new Date(document.getElementById('egi-lastservice').value+'T12:00:00').getTime():null;
+  save();closeM('editGearItem');renderCheckout();renderMaintenance();
+  toast('Gear item updated','success');
+}
+function deleteGearItem(id){
+  if(!isAdmin())return;
+  const g=(db.gearItems||[]).find(x=>x.id===id);if(!g)return;
+  if(!confirm('Delete '+g.name+'? This will also remove its checkout and maintenance history.'))return;
+  db.gearItems=(db.gearItems||[]).filter(x=>x.id!==id);
+  db.checkouts=(db.checkouts||[]).filter(x=>x.gearId!==id);
+  db.maintLogs=(db.maintLogs||[]).filter(x=>x.gearId!==id);
+  save();closeM('editGearItem');renderCheckout();renderMaintenance();
+  toast(g.name+' deleted','info');
+}
+
+// ── CHECKOUT ─────────────────────────────────────────────
+function openM_checkoutGear(){
+  _populateGearSelect('co-item',true);
+  _populatePersonSelect('co-person');
+  const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+7);
+  document.getElementById('co-due').value=tomorrow.toISOString().slice(0,10);
+  openM('checkoutGear');
+}
+function doCheckout(){
+  const gearId=document.getElementById('co-item').value;
+  const personId=document.getElementById('co-person').value;
+  if(!gearId){toast('Select a gear item','error');return;}
+  if(!personId){toast('Select a crew member','error');return;}
+  if(activeCheckout(gearId)){toast('This item is already checked out','error');return;}
+  const dueVal=document.getElementById('co-due').value;
+  const co={
+    id:'co_'+Date.now(),
+    gearId,
+    personId,
+    checkedOutAt:Date.now(),
+    dueDate:dueVal?new Date(dueVal+'T23:59:00').getTime():null,
+    purpose:(document.getElementById('co-purpose').value||'').trim(),
+    notes:(document.getElementById('co-notes').value||'').trim(),
+    returnedAt:null,
+    returnCondition:null,
+    returnNotes:null
+  };
+  if(!db.checkouts)db.checkouts=[];
+  db.checkouts.unshift(co);
+  save();closeM('checkoutGear');renderCheckout();
+  const g=(db.gearItems||[]).find(x=>x.id===gearId);
+  const p=(db.technicians||[]).find(x=>x.id===personId);
+  toast((g?g.name:'Item')+' checked out to '+(p?p.name:'crew'),'success');
+  ['co-purpose','co-notes'].forEach(id=>document.getElementById(id).value='');
+}
+function openReturnModal(coId){
+  const co=(db.checkouts||[]).find(x=>x.id===coId);if(!co)return;
+  const g=(db.gearItems||[]).find(x=>x.id===co.gearId);
+  const p=(db.technicians||[]).find(x=>x.id===co.personId);
+  document.getElementById('rg-coId').value=coId;
+  document.getElementById('rg-summary').innerHTML=
+    '<div style="font-weight:700;margin-bottom:4px">'+(g?gearIcon(g)+' '+g.name:'Item')+'</div>'+
+    '<div class="dim">Checked out by <strong>'+(p?p.name:'—')+'</strong> on '+fmtDate(co.checkedOutAt)+'</div>'+
+    (co.dueDate?'<div class="dim">Due back: '+fmtDate(co.dueDate)+(isOverdue(co)?'&nbsp;<span class="co-badge-over">OVERDUE</span>':'')+'</div>':'');
+  document.getElementById('rg-notes').value='';
+  document.getElementById('rg-condition').value='Good';
+  openM('returnGear');
+}
+function doReturn(){
+  const coId=document.getElementById('rg-coId').value;
+  const co=(db.checkouts||[]).find(x=>x.id===coId);if(!co)return;
+  co.returnedAt=Date.now();
+  co.returnCondition=document.getElementById('rg-condition').value;
+  co.returnNotes=(document.getElementById('rg-notes').value||'').trim();
+  save();closeM('returnGear');renderCheckout();
+  const g=(db.gearItems||[]).find(x=>x.id===co.gearId);
+  toast((g?g.name:'Item')+' returned','success');
+}
+function coSetTab(tab, btn){
+  window._coTab=tab;
+  document.querySelectorAll('#co-tabs .tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderCheckout();
+}
+
+// ── RENDER CHECKOUT ───────────────────────────────────────
+function renderCheckout(){
+  if(!db.gearItems)db.gearItems=[];
+  if(!db.checkouts)db.checkouts=[];
+  // Stats
+  const checkedOut=(db.checkouts||[]).filter(c=>!c.returnedAt).length;
+  const overdue=(db.checkouts||[]).filter(c=>isOverdue(c)).length;
+  const totalGear=(db.gearItems||[]).length;
+  const available=totalGear-checkedOut;
+  document.getElementById('co-stats').innerHTML=
+    '<div class="sc ca"><div class="sc-label">Total Gear</div><div class="sc-val">'+totalGear+'</div></div>'+
+    '<div class="sc cb"><div class="sc-label">Available</div><div class="sc-val">'+available+'</div></div>'+
+    '<div class="sc '+(checkedOut?'cp':'cg')+'"><div class="sc-label">Checked Out</div><div class="sc-val">'+checkedOut+'</div></div>'+
+    '<div class="sc '+(overdue?'cr':'cg')+'"><div class="sc-label">Overdue</div><div class="sc-val">'+overdue+'</div></div>';
+
+  const tab=window._coTab||'active';
+  const listEl=document.getElementById('co-list');
+
+  if(tab==='gear'){
+    // Gear library view
+    if(!db.gearItems.length){listEl.innerHTML='<p class="dim" style="padding:16px">No gear items yet. Add your first item with the button above.</p>';return;}
+    listEl.innerHTML=db.gearItems.map(g=>{
+      const co=activeCheckout(g.id);
+      const p=co?(db.technicians||[]).find(x=>x.id===co.personId):null;
+      const ms=maintStatus(g);
+      const dept=g.dept?deptBadge(g.dept):'';
+      return'<div class="co-card">'+
+        '<div class="co-icon">'+gearIcon(g)+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+dept+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+'</div>'+
+          '<div class="dim">'+g.category+(g.notes?' · '+g.notes:'')+'</div>'+
+          '<div style="margin-top:6px;display:flex;align-items:center;gap:8px">'+
+            '<span class="gear-status-dot" style="background:'+ms.color+'"></span>'+
+            '<span style="font-size:11px;font-family:var(--mono);color:'+ms.color+'">'+ms.label+'</span>'+
+          '</div>'+
+          (co?'<div style="margin-top:4px;font-size:11px;font-family:var(--mono);color:var(--dim2)">With: '+(p?p.name:'unknown')+(co.dueDate?' · due '+fmtDateShort(co.dueDate):'')+'</div>':'')+
+        '</div>'+
+        '<div class="row gap6">'+
+          (co?'<button class="btn bb bsm" onclick="openReturnModal(''+co.id+'')">↩ Return</button>':'<button class="btn bg bsm" onclick="(()=>{_populateGearSelect('co-item',true);document.getElementById('co-item').value=''+g.id+'';_populatePersonSelect('co-person');const t=new Date();t.setDate(t.getDate()+7);document.getElementById('co-due').value=t.toISOString().slice(0,10);openM('checkoutGear')})()">📤 Out</button>')+
+          '<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem(''+g.id+'')">✏️</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    return;
+  }
+
+  if(tab==='active'){
+    const active=(db.checkouts||[]).filter(c=>!c.returnedAt);
+    if(!active.length){listEl.innerHTML='<p class="dim" style="padding:16px">Nothing currently checked out.</p>';return;}
+    listEl.innerHTML=active.map(co=>{
+      const g=(db.gearItems||[]).find(x=>x.id===co.gearId)||{name:'Unknown item',category:'Other'};
+      const p=(db.technicians||[]).find(x=>x.id===co.personId)||{name:'Unknown'};
+      const over=isOverdue(co);
+      const badge=over?'<span class="co-badge-over">OVERDUE</span>':'<span class="co-badge-out">OUT</span>';
+      return'<div class="co-card">'+
+        '<div class="co-icon">'+gearIcon(g)+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+badge+'</div>'+
+          '<div class="dim">With: <strong>'+p.name+'</strong>'+(p.dept?' · '+p.dept:'')+'</div>'+
+          '<div class="dim">Out since: '+fmtDate(co.checkedOutAt)+(co.dueDate?' · Due: '+fmtDate(co.dueDate):'')+'</div>'+
+          (co.purpose?'<div class="dim">Purpose: '+co.purpose+'</div>':'')+
+        '</div>'+
+        '<button class="btn bb bsm" onclick="openReturnModal(''+co.id+'')">↩ Return</button>'+
+      '</div>';
+    }).join('');
+    return;
+  }
+
+  if(tab==='returned'){
+    const returned=(db.checkouts||[]).filter(c=>c.returnedAt).sort((a,b)=>b.returnedAt-a.returnedAt);
+    if(!returned.length){listEl.innerHTML='<p class="dim" style="padding:16px">No return history yet.</p>';return;}
+    listEl.innerHTML=returned.map(co=>{
+      const g=(db.gearItems||[]).find(x=>x.id===co.gearId)||{name:'Unknown item',category:'Other'};
+      const p=(db.technicians||[]).find(x=>x.id===co.personId)||{name:'Unknown'};
+      const condColor=co.returnCondition==='Damaged'?'var(--red)':co.returnCondition==='Needs service'?'var(--amber)':'var(--green)';
+      return'<div class="co-card">'+
+        '<div class="co-icon">'+gearIcon(g)+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div><span class="co-badge-in">RETURNED</span></div>'+
+          '<div class="dim">Borrowed by <strong>'+p.name+'</strong> · Returned '+fmtDate(co.returnedAt)+'</div>'+
+          (co.returnCondition?'<div style="font-size:11px;font-family:var(--mono);color:'+condColor+';margin-top:3px">Condition: '+co.returnCondition+'</div>':'')+
+          (co.returnNotes?'<div class="dim" style="margin-top:2px">'+co.returnNotes+'</div>':'')+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+}
+
+// ── MAINTENANCE ───────────────────────────────────────────
+function openM_addMaintEntry(){
+  _populateGearSelect('me-item',false);
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('me-date').value=today;
+  document.getElementById('me-by').value='';
+  document.getElementById('me-notes').value='';
+  document.getElementById('me-cost').value='';
+  document.getElementById('me-nextdue').value='';
+  openM('addMaintEntry');
+}
+function saveMaintEntry(){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const gearId=document.getElementById('me-item').value;
+  const dateVal=document.getElementById('me-date').value;
+  if(!gearId){toast('Select a gear item','error');return;}
+  if(!dateVal){toast('Service date required','error');return;}
+  const entry={
+    id:'ml_'+Date.now(),
+    gearId,
+    date:new Date(dateVal+'T12:00:00').getTime(),
+    by:(document.getElementById('me-by').value||'').trim(),
+    type:document.getElementById('me-type').value||'Routine check',
+    notes:(document.getElementById('me-notes').value||'').trim(),
+    cost:parseFloat(document.getElementById('me-cost').value)||0,
+    nextDue:document.getElementById('me-nextdue').value?new Date(document.getElementById('me-nextdue').value+'T12:00:00').getTime():null
+  };
+  if(!db.maintLogs)db.maintLogs=[];
+  db.maintLogs.unshift(entry);
+  // Update lastServiceDate on gear item
+  const g=(db.gearItems||[]).find(x=>x.id===gearId);
+  if(g) g.lastServiceDate=entry.date;
+  save();closeM('addMaintEntry');renderMaintenance();
+  const gi=(db.gearItems||[]).find(x=>x.id===gearId);
+  toast('Service logged for '+(gi?gi.name:'item'),'success');
+}
+function maintSetTab(tab,btn){
+  window._maintTab=tab;
+  document.querySelectorAll('#pg-maintenance .tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderMaintenance();
+}
+
+// ── RENDER MAINTENANCE ────────────────────────────────────
+function renderMaintenance(){
+  if(!db.gearItems)db.gearItems=[];
+  if(!db.maintLogs)db.maintLogs=[];
+  const overdue=(db.gearItems||[]).filter(g=>maintStatus(g).status==='overdue').length;
+  const dueSoon=(db.gearItems||[]).filter(g=>maintStatus(g).status==='due-soon').length;
+  const ok=(db.gearItems||[]).filter(g=>maintStatus(g).status==='ok').length;
+  const never=(db.gearItems||[]).filter(g=>maintStatus(g).status==='unknown').length;
+  document.getElementById('maint-stats').innerHTML=
+    '<div class="sc cr"><div class="sc-label">Overdue</div><div class="sc-val">'+overdue+'</div></div>'+
+    '<div class="sc cp"><div class="sc-label">Due Soon</div><div class="sc-val">'+dueSoon+'</div></div>'+
+    '<div class="sc cg"><div class="sc-label">OK</div><div class="sc-val">'+ok+'</div></div>'+
+    '<div class="sc cb"><div class="sc-label">Never Serviced</div><div class="sc-val">'+never+'</div></div>';
+
+  const tab=window._maintTab||'due';
+  const listEl=document.getElementById('maint-list');
+
+  if(tab==='log'){
+    const logs=[...(db.maintLogs||[])].sort((a,b)=>b.date-a.date);
+    if(!logs.length){listEl.innerHTML='<p class="dim" style="padding:16px">No service history yet.</p>';return;}
+    listEl.innerHTML='<div class="panel"><div class="pb" style="padding:0">'+
+      logs.map(entry=>{
+        const g=(db.gearItems||[]).find(x=>x.id===entry.gearId)||{name:'Unknown item',category:'Other'};
+        return'<div class="maint-log-entry" style="padding:12px 16px">'+
+          '<div class="row jbet mb8">'+
+            '<div class="row gap8"><span style="font-size:18px">'+gearIcon(g)+'</span><div><div class="fw7">'+g.name+'</div><div class="dim">'+entry.type+'</div></div></div>'+
+            '<div style="text-align:right"><div style="font-size:12px;font-family:var(--mono)">'+fmtDate(entry.date)+'</div>'+(entry.cost?'<div style="font-size:11px;font-family:var(--mono);color:var(--amber)">$'+entry.cost.toFixed(2)+'</div>':'')+'</div>'+
+          '</div>'+
+          (entry.by?'<div class="dim">By: '+entry.by+'</div>':'')+
+          (entry.notes?'<div class="dim" style="margin-top:2px">'+entry.notes+'</div>':'')+
+          (entry.nextDue?'<div style="font-size:11px;font-family:var(--mono);color:var(--blue);margin-top:4px">Next due: '+fmtDate(entry.nextDue)+'</div>':'')+
+        '</div>';
+      }).join('')+
+    '</div></div>';
+    return;
+  }
+
+  // Due/Overdue or All gear
+  let items=[...(db.gearItems||[])];
+  if(tab==='due') items=items.filter(g=>['overdue','due-soon','unknown'].includes(maintStatus(g).status));
+  items.sort((a,b)=>{
+    const order={overdue:0,'due-soon':1,unknown:2,ok:3};
+    return (order[maintStatus(a).status]||3)-(order[maintStatus(b).status]||3);
+  });
+  if(!items.length){
+    listEl.innerHTML='<p class="dim" style="padding:16px">'+(tab==='due'?'Nothing overdue or due soon — all gear is up to date! ✅':'No gear items yet.')+'</p>';
+    return;
+  }
+  listEl.innerHTML=items.map(g=>{
+    const ms=maintStatus(g);
+    const logs=(db.maintLogs||[]).filter(l=>l.gearId===g.id).sort((a,b)=>b.date-a.date);
+    const lastLog=logs[0];
+    const co=activeCheckout(g.id);
+    const p=co?(db.technicians||[]).find(x=>x.id===co.personId):null;
+    return'<div class="maint-card '+ms.status+'">'+
+      '<div class="row jbet mb8">'+
+        '<div class="row gap8">'+
+          '<span style="font-size:22px">'+gearIcon(g)+'</span>'+
+          '<div>'+
+            '<div class="row gap6"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+(g.dept?deptBadge(g.dept):'')+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+'</div>'+
+            '<div style="font-size:12px;font-family:var(--mono);color:'+ms.color+';margin-top:2px">'+ms.label+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="row gap6">'+
+          '<button class="btn ba bsm" onclick="(()=>{_populateGearSelect('me-item',false);document.getElementById('me-item').value=''+g.id+'';document.getElementById('me-date').value=new Date().toISOString().slice(0,10);openM('addMaintEntry')})()">+ Log</button>'+
+          '<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem(''+g.id+'')">✏️</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="dim">Last service: '+(lastLog?fmtDate(lastLog.date)+' · '+lastLog.type:'Never')+'</div>'+
+      (co?'<div class="dim" style="margin-top:2px">Currently with: '+(p?p.name:'unknown')+'</div>':'')+
+      (logs.length>1?'<div style="margin-top:8px;font-size:11px;font-family:var(--mono);color:var(--dim2)">'+logs.length+' service records</div>':'')+
+    '</div>';
+  }).join('');
+}
+
+// ── Wire openM for checkout/maint to pre-populate selects ─
+const _origOpenM = window.openM || function(){};
+window.openM = function(id){
+  if(id==='checkoutGear') openM_checkoutGear();
+  else if(id==='addMaintEntry') openM_addMaintEntry();
+  else _origOpenM(id);
+};
+
+
+// ══════════════════════════════════════════════════════════
+// STAGE 4 — Tech Requests, Announcements, Dept Sign-Off
+// ══════════════════════════════════════════════════════════
+
+const REQ_PRIORITY_COLORS = {urgent:'#E24B4A',normal:'#185FA5',low:'#888780'};
+const REQ_STATUS_LABELS = {open:'Open',progress:'In Progress',done:'Completed',cancelled:'Cancelled'};
+window._reqTab = 'open';
+
+// ── TECH REQUESTS ─────────────────────────────────────────
+function saveRequest(){
+  const title=(document.getElementById('rq-title').value||'').trim();
+  if(!title){toast('Title required','error');return;}
+  const req={
+    id:'req_'+Date.now(),
+    title,
+    category:document.getElementById('rq-cat').value||'Other',
+    priority:document.getElementById('rq-priority').value||'normal',
+    neededBy:document.getElementById('rq-needed').value?new Date(document.getElementById('rq-needed').value+'T12:00:00').getTime():null,
+    requestedBy:document.getElementById('rq-by').value||'',
+    details:(document.getElementById('rq-details').value||'').trim(),
+    status:'open',
+    assignedTo:'',
+    adminNotes:'',
+    createdAt:Date.now()
+  };
+  if(!db.techRequests)db.techRequests=[];
+  db.techRequests.unshift(req);
+  save();closeM('addRequest');renderRequests();_updateReqBadge();
+  ['rq-title','rq-details','rq-needed'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('rq-priority').value='normal';
+  toast('Request submitted!','success');
+}
+function openEditRequest(id){
+  const r=(db.techRequests||[]).find(x=>x.id===id);if(!r)return;
+  const by=(db.technicians||[]).find(x=>x.id===r.requestedBy);
+  document.getElementById('er-id').value=r.id;
+  document.getElementById('er-summary').innerHTML=
+    '<div class="fw7 mb8">'+r.title+'</div>'+
+    '<div class="dim">'+r.category+' · '+(by?by.name:'Unknown')+'</div>'+
+    (r.details?'<div class="dim" style="margin-top:4px">'+r.details+'</div>':'');
+  document.getElementById('er-status').value=r.status||'open';
+  document.getElementById('er-notes').value=r.adminNotes||'';
+  _populatePersonSelect('er-assigned');
+  document.getElementById('er-assigned').value=r.assignedTo||'';
+  if(!isAdmin()){toast('Admin required to manage requests','error');return;}
+  openM('editRequest');
+}
+function saveRequestEdit(){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const id=document.getElementById('er-id').value;
+  const r=(db.techRequests||[]).find(x=>x.id===id);if(!r)return;
+  r.status=document.getElementById('er-status').value;
+  r.assignedTo=document.getElementById('er-assigned').value;
+  r.adminNotes=(document.getElementById('er-notes').value||'').trim();
+  r.updatedAt=Date.now();
+  save();closeM('editRequest');renderRequests();_updateReqBadge();
+  toast('Request updated','success');
+}
+function deleteRequest(id){
+  if(!isAdmin())return;
+  if(!confirm('Delete this request?'))return;
+  db.techRequests=(db.techRequests||[]).filter(x=>x.id!==id);
+  save();closeM('editRequest');renderRequests();_updateReqBadge();
+  toast('Request deleted','info');
+}
+function reqSetTab(tab,btn){
+  window._reqTab=tab;
+  document.querySelectorAll('#req-tabs .tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderRequests();
+}
+function _updateReqBadge(){
+  const open=(db.techRequests||[]).filter(r=>r.status==='open'||r.status==='progress').length;
+  const badge=document.getElementById('req-badge');
+  if(badge){badge.style.display=open?'':'none';badge.textContent=open;}
+}
+function renderRequests(){
+  if(!db.techRequests)db.techRequests=[];
+  _updateReqBadge();
+  // Stats
+  const open=(db.techRequests||[]).filter(r=>r.status==='open').length;
+  const progress=(db.techRequests||[]).filter(r=>r.status==='progress').length;
+  const done=(db.techRequests||[]).filter(r=>r.status==='done').length;
+  const urgent=(db.techRequests||[]).filter(r=>r.priority==='urgent'&&r.status!=='done'&&r.status!=='cancelled').length;
+  document.getElementById('req-stats').innerHTML=
+    '<div class="sc cb"><div class="sc-label">Open</div><div class="sc-val">'+open+'</div></div>'+
+    '<div class="sc cp"><div class="sc-label">In Progress</div><div class="sc-val">'+progress+'</div></div>'+
+    '<div class="sc cg"><div class="sc-label">Completed</div><div class="sc-val">'+done+'</div></div>'+
+    '<div class="sc '+(urgent?'cr':'ca')+'"><div class="sc-label">Urgent</div><div class="sc-val">'+urgent+'</div></div>';
+
+  const tab=window._reqTab||'open';
+  let items=[...(db.techRequests||[])];
+  if(tab!=='all') items=items.filter(r=>r.status===tab||(tab==='open'&&r.status==='open'));
+  items.sort((a,b)=>{
+    const p={urgent:0,normal:1,low:2};
+    return (p[a.priority]||1)-(p[b.priority]||1)||(b.createdAt-a.createdAt);
+  });
+
+  const listEl=document.getElementById('req-list');
+  if(!items.length){listEl.innerHTML='<p class="dim" style="padding:16px">No requests in this category.</p>';return;}
+  listEl.innerHTML=items.map(r=>{
+    const by=(db.technicians||[]).find(x=>x.id===r.requestedBy);
+    const assigned=(db.technicians||[]).find(x=>x.id===r.assignedTo);
+    const statusBadge={open:'<span class="req-badge-open">Open</span>',progress:'<span class="req-badge-progress">In Progress</span>',done:'<span class="req-badge-done">Done</span>',cancelled:'<span class="badge" style="background:var(--s3);color:var(--dim2)">Cancelled</span>'}[r.status]||'';
+    const priColor=REQ_PRIORITY_COLORS[r.priority]||'#888';
+    return'<div class="req-card '+r.priority+'">'+
+      '<div class="row jbet mb8">'+
+        '<div class="row gap6 fw7" style="font-size:14px;flex:1;min-width:0">'+
+          (r.priority==='urgent'?'<span style="color:#E24B4A;font-size:11px;font-family:var(--mono);font-weight:700">URGENT</span> ':'')
+          +r.title+
+        '</div>'+
+        statusBadge+
+      '</div>'+
+      '<div class="dim">'+r.category+(by?' · '+by.name:'')+(r.neededBy?' · Needed by '+fmtDate(r.neededBy):'')+'</div>'+
+      (r.details?'<div style="font-size:12px;color:var(--dim2);margin-top:4px;font-family:var(--mono)">'+r.details+'</div>':'')+
+      (assigned?'<div class="dim" style="margin-top:4px">Assigned: <strong>'+assigned.name+'</strong></div>':'')+
+      (r.adminNotes?'<div class="dim" style="margin-top:4px;font-style:italic">Note: '+r.adminNotes+'</div>':'')+
+      '<div style="margin-top:10px">'+
+        '<button class="btn bgh bsm" onclick="openEditRequest(''+r.id+'')">'+
+          (isAdmin()?'✏️ Manage':'View')+
+        '</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── ANNOUNCEMENTS ─────────────────────────────────────────
+function saveAnnouncement(){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const title=(document.getElementById('an-title').value||'').trim();
+  const body=(document.getElementById('an-body').value||'').trim();
+  if(!title||!body){toast('Title and message required','error');return;}
+  const tech=getCurTech();
+  const ann={
+    id:'ann_'+Date.now(),
+    title,body,
+    dept:document.getElementById('an-dept').value||'',
+    pinned:document.getElementById('an-pin').checked,
+    author:tech?tech.name:'Admin',
+    createdAt:Date.now()
+  };
+  if(!db.announcements)db.announcements=[];
+  db.announcements.unshift(ann);
+  save();closeM('addAnnouncement');renderAnnouncements();
+  ['an-title','an-body'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('an-dept').value='';
+  document.getElementById('an-pin').checked=false;
+  toast('Announcement posted!','success');
+}
+function deleteAnnouncement(id){
+  if(!isAdmin())return;
+  if(!confirm('Delete this announcement?'))return;
+  db.announcements=(db.announcements||[]).filter(x=>x.id!==id);
+  save();renderAnnouncements();toast('Deleted','info');
+}
+function renderAnnouncements(){
+  if(!db.announcements)db.announcements=[];
+  const listEl=document.getElementById('ann-list');if(!listEl)return;
+  const sorted=[...(db.announcements||[])].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.createdAt-a.createdAt));
+  if(!sorted.length){listEl.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">📢</div><div class="dim">No announcements yet</div>'+(isAdmin()?'<button class="btn ba bsm" style="margin-top:12px" onclick="openM('addAnnouncement')">+ Post First Announcement</button>':'')+'</div>';return;}
+  listEl.innerHTML=sorted.map(a=>{
+    const deptB=a.dept?deptBadge(a.dept):'<span class="badge blow">All depts</span>';
+    return'<div class="ann-card'+(a.pinned?' pinned':'')+'">'+
+      '<div class="row jbet mb8">'+
+        '<div class="row gap6">'+
+          (a.pinned?'<span style="font-size:12px;font-family:var(--mono);color:#0F6E56;font-weight:700">📌 PINNED</span>':'')+
+          '<div class="fw7" style="font-size:15px">'+a.title+'</div>'+
+        '</div>'+
+        deptB+
+      '</div>'+
+      '<div style="font-size:14px;line-height:1.6;color:var(--text);margin-bottom:8px">'+a.body+'</div>'+
+      '<div class="dim">'+a.author+' · '+fmtDate(a.createdAt)+
+        (isAdmin()?'&nbsp;<button onclick="deleteAnnouncement(''+a.id+'')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;font-family:var(--mono)">delete</button>':'')+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── DEPT SIGN-OFF ─────────────────────────────────────────
+const SIGNOFF_DEPTS = ['Lighting','Audio','Cameras','IT'];
+function _signoffKey(){ return 'signoff_'+new Date().toISOString().slice(0,10); }
+function renderSignoffs(){
+  const listEl=document.getElementById('cl-signoff-list');if(!listEl)return;
+  const key=_signoffKey();
+  if(!db.signoffs)db.signoffs={};
+  const record=db.signoffs[key]||{};
+  const tech=getCurTech();
+  listEl.innerHTML=SIGNOFF_DEPTS.map(dept=>{
+    const s=record[dept];
+    const signed=s&&s.name;
+    const chip=signed
+      ?('<span class="signoff-chip signed">✓ '+s.name+'</span>')
+      :'<span class="signoff-chip pending">Pending</span>';
+    const canSign=tech&&(tech.dept===dept||isAdmin());
+    return'<div class="signoff-row">'+
+      '<div class="row gap8">'+deptBadge(dept)+'</div>'+
+      '<div class="row gap8">'+chip+
+        (canSign&&!signed?'<button class="btn ba bsm" onclick="deptSignOff(\'''+dept+'\'')" style="padding:4px 10px">Sign Off</button>':'')
+      +'</div>'+
+    '</div>';
+  }).join('');
+}
+function deptSignOff(dept){
+  const tech=getCurTech();
+  if(!tech){toast('Log in first','error');return;}
+  if(tech.dept!==dept&&!isAdmin()){toast('You are not in the '+dept+' department','error');return;}
+  const key=_signoffKey();
+  if(!db.signoffs)db.signoffs={};
+  if(!db.signoffs[key])db.signoffs[key]={};
+  db.signoffs[key][dept]={name:tech.name,time:new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'}),ts:Date.now()};
+  save();renderSignoffs();
+  toast(dept+' signed off by '+tech.name,'success');
+}
+function resetSignoffs(){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const key=_signoffKey();
+  if(!db.signoffs)db.signoffs={};
+  db.signoffs[key]={};
+  save();renderSignoffs();
+  toast('Sign-offs reset','info');
+}
+
+// ── Wire openM for request "by" person select ─────────────
+const _s4OrigOpenM = window.openM || function(){};
+window.openM = function(id){
+  if(id==='addRequest'){
+    _populatePersonSelect('rq-by');
+    const tech=getCurTech();
+    if(tech) setTimeout(()=>{document.getElementById('rq-by').value=tech.id;},50);
+    _s4OrigOpenM(id);
+  } else {
+    _s4OrigOpenM(id);
+  }
+};
+
+// ── Patch renderChecklist to also render sign-offs ────────
+const _s4OrigRenderChecklist = typeof renderChecklist!=='undefined'?renderChecklist:null;
+window._s4_renderChecklist_patched = false;
+document.addEventListener('DOMContentLoaded',function(){
+  if(!window._s4_renderChecklist_patched){
+    const orig=window.renderChecklist;
+    window.renderChecklist=function(){
+      if(orig)orig();
+      renderSignoffs();
+    };
+    window._s4_renderChecklist_patched=true;
+  }
+});
+
+// ── Update badge on load ──────────────────────────────────
+document.addEventListener('DOMContentLoaded',function(){
+  setTimeout(_updateReqBadge,1200);
+});
+
 // Auto-go to check-in page if URL has ?checkin=1
 (function(){
   if(new URLSearchParams(window.location.search).get('checkin')==='1'){
@@ -5152,7 +5929,8 @@ const _PAGE_TITLES = {
   dashboard:'Dashboard',fixtures:'Fixtures',inventory:'Stock',history:'History',
   stats:'Analytics',scan:'Scan',crew:'Crew',schedule:'Schedule',nfc:'NFC',
   showlog:'Shows',checklist:'Checklist',settings:'Settings',
-  attendance:'Attendance',checkin:'Check-In'
+  attendance:'Attendance',checkin:'Check-In',
+  checkout:'Asset Checkout',maintenance:'Maintenance Log',requests:'Tech Requests',announcements:'Announcements'
 };
 const _origGo = typeof go !== 'undefined' ? go : null;
 window.go = function(page) {
@@ -5179,6 +5957,283 @@ document.addEventListener('DOMContentLoaded', function(){
   setInterval(_updateSidebarUser, 2000);
 });
 </script>
+
+
+<!-- Add Gear Item modal -->
+<div id="m-addGearItem" class="mover" style="display:none" onclick="mOut(event,'addGearItem')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Add Gear Item</span><button class="xb" onclick="closeM('addGearItem')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg"><label>Item Name *</label><input id="gi-name" placeholder="e.g. Canon XA55 Camera"></div>
+        <div class="fg"><label>Asset ID / Tag</label><input id="gi-id" placeholder="e.g. CAM-001"></div>
+        <div class="fg"><label>Department</label>
+          <select id="gi-dept">
+            <option value="">— Any dept —</option>
+            <option value="Lighting">💡 Lighting</option>
+            <option value="Audio">🎚️ Audio</option>
+            <option value="Cameras">📷 Cameras</option>
+            <option value="IT">💻 IT</option>
+          </select>
+        </div>
+        <div class="fg"><label>Category</label>
+          <select id="gi-cat">
+            <option value="Camera">Camera</option>
+            <option value="Lens">Lens</option>
+            <option value="Audio">Audio Equipment</option>
+            <option value="Lighting">Lighting</option>
+            <option value="Cable">Cable / Adapter</option>
+            <option value="Computer">Computer / Tablet</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="gi-notes" placeholder="Serial number, purchase date, condition..." style="min-height:50px"></textarea></div>
+        <div class="fg"><label>Service interval (days)</label><input id="gi-interval" type="number" placeholder="90" value="90" min="1"></div>
+        <div class="fg"><label>Last serviced</label><input id="gi-lastservice" type="date"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addGearItem')">Cancel</button>
+      <button class="btn ba" onclick="saveGearItem()">Add Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Gear Item modal -->
+<div id="m-editGearItem" class="mover" style="display:none" onclick="mOut(event,'editGearItem')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Edit Gear Item</span><button class="xb" onclick="closeM('editGearItem')">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="egi-id">
+      <div class="fgrid">
+        <div class="fg"><label>Item Name *</label><input id="egi-name" placeholder="e.g. Canon XA55 Camera"></div>
+        <div class="fg"><label>Asset ID / Tag</label><input id="egi-assetid" placeholder="e.g. CAM-001"></div>
+        <div class="fg"><label>Department</label>
+          <select id="egi-dept">
+            <option value="">— Any dept —</option>
+            <option value="Lighting">💡 Lighting</option>
+            <option value="Audio">🎚️ Audio</option>
+            <option value="Cameras">📷 Cameras</option>
+            <option value="IT">💻 IT</option>
+          </select>
+        </div>
+        <div class="fg"><label>Category</label>
+          <select id="egi-cat">
+            <option value="Camera">Camera</option>
+            <option value="Lens">Lens</option>
+            <option value="Audio">Audio Equipment</option>
+            <option value="Lighting">Lighting</option>
+            <option value="Cable">Cable / Adapter</option>
+            <option value="Computer">Computer / Tablet</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="egi-notes" style="min-height:50px"></textarea></div>
+        <div class="fg"><label>Service interval (days)</label><input id="egi-interval" type="number" min="1"></div>
+        <div class="fg"><label>Last serviced</label><input id="egi-lastservice" type="date"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn br bsm" data-perm="admin" onclick="deleteGearItem(document.getElementById('egi-id').value)">Delete</button>
+      <button class="btn bgh" onclick="closeM('editGearItem')">Cancel</button>
+      <button class="btn ba" onclick="saveGearItemEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Checkout Gear modal -->
+<div id="m-checkoutGear" class="mover" style="display:none" onclick="mOut(event,'checkoutGear')">
+  <div class="modal">
+    <div class="mh"><span class="mt">📤 Check Out Gear</span><button class="xb" onclick="closeM('checkoutGear')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1"><label>Gear Item *</label>
+          <select id="co-item">
+            <option value="">— Select item —</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Checked out by *</label>
+          <select id="co-person">
+            <option value="">— Select crew member —</option>
+          </select>
+        </div>
+        <div class="fg"><label>Due back</label><input id="co-due" type="date"></div>
+        <div class="fg"><label>Purpose / Event</label><input id="co-purpose" placeholder="e.g. Sunday service, recording session"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="co-notes" placeholder="Condition on checkout, accessories included..." style="min-height:50px"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('checkoutGear')">Cancel</button>
+      <button class="btn ba" onclick="doCheckout()">Check Out</button>
+    </div>
+  </div>
+</div>
+
+<!-- Return Gear modal -->
+<div id="m-returnGear" class="mover" style="display:none" onclick="mOut(event,'returnGear')">
+  <div class="modal">
+    <div class="mh"><span class="mt">📥 Return Gear</span><button class="xb" onclick="closeM('returnGear')">✕</button></div>
+    <div class="mb">
+      <div id="rg-summary" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px"></div>
+      <input type="hidden" id="rg-coId">
+      <div class="fg mb12"><label>Condition on return</label>
+        <select id="rg-condition">
+          <option value="Good">Good — no issues</option>
+          <option value="Minor wear">Minor wear</option>
+          <option value="Needs service">Needs service</option>
+          <option value="Damaged">Damaged</option>
+        </select>
+      </div>
+      <div class="fg"><label>Return notes</label><textarea id="rg-notes" placeholder="Any issues, missing accessories..." style="min-height:50px"></textarea></div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('returnGear')">Cancel</button>
+      <button class="btn ba" onclick="doReturn()">Mark Returned</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Maintenance Entry modal -->
+<div id="m-addMaintEntry" class="mover" style="display:none" onclick="mOut(event,'addMaintEntry')">
+  <div class="modal">
+    <div class="mh"><span class="mt">+ Log Service</span><button class="xb" onclick="closeM('addMaintEntry')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1"><label>Gear Item *</label>
+          <select id="me-item">
+            <option value="">— Select item —</option>
+          </select>
+        </div>
+        <div class="fg"><label>Service date *</label><input id="me-date" type="date"></div>
+        <div class="fg"><label>Serviced by</label><input id="me-by" placeholder="Name or company"></div>
+        <div class="fg"><label>Service type</label>
+          <select id="me-type">
+            <option value="Routine check">Routine check</option>
+            <option value="Cleaning">Cleaning</option>
+            <option value="Repair">Repair</option>
+            <option value="Firmware update">Firmware update</option>
+            <option value="Calibration">Calibration</option>
+            <option value="Part replacement">Part replacement</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="me-notes" placeholder="What was done, parts replaced, issues found..." style="min-height:60px"></textarea></div>
+        <div class="fg"><label>Cost (optional)</label><input id="me-cost" type="number" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="fg"><label>Next service due</label><input id="me-nextdue" type="date"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addMaintEntry')">Cancel</button>
+      <button class="btn ba" onclick="saveMaintEntry()">Log Service</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Add Tech Request modal -->
+<div id="m-addRequest" class="mover" style="display:none" onclick="mOut(event,'addRequest')">
+  <div class="modal">
+    <div class="mh"><span class="mt">New Tech Request</span><button class="xb" onclick="closeM('addRequest')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1"><label>Request title *</label><input id="rq-title" placeholder="e.g. Need a DI box for acoustic guitar Sunday"></div>
+        <div class="fg"><label>Category</label>
+          <select id="rq-cat">
+            <option value="AV">AV Equipment</option>
+            <option value="Lighting">Lighting</option>
+            <option value="Camera">Camera / Video</option>
+            <option value="IT">IT / Network</option>
+            <option value="Repair">Repair / Service</option>
+            <option value="Supply">Supply / Purchase</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>Priority</label>
+          <select id="rq-priority">
+            <option value="normal">Normal</option>
+            <option value="urgent">🔴 Urgent</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="fg"><label>Needed by</label><input id="rq-needed" type="date"></div>
+        <div class="fg"><label>Requested by</label>
+          <select id="rq-by">
+            <option value="">— Select —</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Details</label><textarea id="rq-details" placeholder="Describe what you need and why..." style="min-height:70px"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addRequest')">Cancel</button>
+      <button class="btn ba" onclick="saveRequest()">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit / Manage Request modal -->
+<div id="m-editRequest" class="mover" style="display:none" onclick="mOut(event,'editRequest')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Manage Request</span><button class="xb" onclick="closeM('editRequest')">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="er-id">
+      <div id="er-summary" style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px"></div>
+      <div class="fgrid">
+        <div class="fg"><label>Status</label>
+          <select id="er-status">
+            <option value="open">Open</option>
+            <option value="progress">In Progress</option>
+            <option value="done">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="fg"><label>Assigned to</label>
+          <select id="er-assigned">
+            <option value="">— Unassigned —</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Admin notes</label><textarea id="er-notes" placeholder="Notes on progress, resolution..." style="min-height:50px"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn br bsm" onclick="deleteRequest(document.getElementById('er-id').value)">Delete</button>
+      <button class="btn bgh" onclick="closeM('editRequest')">Cancel</button>
+      <button class="btn ba" onclick="saveRequestEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Announcement modal -->
+<div id="m-addAnnouncement" class="mover" style="display:none" onclick="mOut(event,'addAnnouncement')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Post Announcement</span><button class="xb" onclick="closeM('addAnnouncement')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1"><label>Title *</label><input id="an-title" placeholder="e.g. New mic stand policy"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Message *</label><textarea id="an-body" placeholder="Write your announcement..." style="min-height:80px"></textarea></div>
+        <div class="fg"><label>Target dept</label>
+          <select id="an-dept">
+            <option value="">All departments</option>
+            <option value="Lighting">💡 Lighting</option>
+            <option value="Audio">🎚️ Audio</option>
+            <option value="Cameras">📷 Cameras</option>
+            <option value="IT">💻 IT</option>
+          </select>
+        </div>
+        <div class="fg"><label>Pin to top</label>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-top:2px">
+            <input type="checkbox" id="an-pin" style="width:16px;height:16px;accent-color:var(--amber)">
+            <span style="font-size:13px">Pin this announcement</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addAnnouncement')">Cancel</button>
+      <button class="btn ba" onclick="saveAnnouncement()">Post</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
