@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+(function(){
+  var t = localStorage.getItem('slt_theme') || 'light';
+  if (t === 'light') {
+    document.documentElement.className = 'light-mode';
+  }
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>KCC Technical</title>
 
@@ -118,7 +126,7 @@ initFirebase();
 }
 
 body { background:var(--bg); color:var(--text); font-family:var(--head); font-size:15px; min-height:100vh; overflow-x:hidden; }
-body.light-mode { background:var(--bg); color:var(--text); }
+html.light-mode, body.light-mode { background:var(--bg); color:var(--text); }
 
 /* ── App shell ── */
 #appShell { display:flex; height:100vh; overflow:hidden; background:var(--bg); }
@@ -4432,6 +4440,7 @@ function handleURLScan(){
 function initTheme(){
   const saved=localStorage.getItem('slt_theme')||'light';
   if(saved==='light') document.body.classList.add('light-mode');
+  document.documentElement.classList.remove('light-mode'); // clean up early class
   updateThemeBtn();
 }
 function toggleTheme(){
