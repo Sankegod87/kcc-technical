@@ -343,6 +343,7 @@ textarea { resize:vertical; min-height:70px; }
   #appSidebar { display:none !important; }
   #appContent { margin-left:0; }
   #appTopbar { display:none; }
+  .dash-2col { grid-template-columns:1fr !important; }
   #bottomNav { display:flex !important; position:fixed; bottom:0; left:0; right:0; z-index:120; background:rgba(255,255,255,.97); border-top:1px solid var(--border); backdrop-filter:blur(12px); padding:6px 0 env(safe-area-inset-bottom,6px); }
   .bnn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:none; border:none; color:var(--dim2); cursor:pointer; font-family:var(--head); font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; padding:4px 2px; transition:color .15s; min-width:0; }
   .bnn .bni { font-size:18px; line-height:1; }
@@ -1021,26 +1022,60 @@ textarea { resize:vertical; min-height:70px; }
   <!-- Key stats row -->
   <div class="stats" id="statsRow" style="margin-bottom:16px"></div>
 
-  <!-- Active Outages — main focus -->
-  <div class="panel">
-    <div class="ph row jbet">
-      <span class="pt">Active Outages</span>
-      <button class="btn ba bsm" onclick="go('fixtures')">View All →</button>
+  <!-- Two column layout on desktop -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="dash-2col">
+
+    <!-- Active Outages -->
+    <div class="panel" style="margin-bottom:0">
+      <div class="ph row jbet">
+        <span class="pt">Active Outages</span>
+        <button class="btn ba bsm" onclick="go('fixtures')">View All →</button>
+      </div>
+      <div class="pb" id="activeOut"></div>
     </div>
-    <div class="pb" id="activeOut"></div>
+
+    <!-- Open Tech Requests -->
+    <div class="panel" style="margin-bottom:0">
+      <div class="ph row jbet">
+        <span class="pt">Tech Requests</span>
+        <button class="btn bb bsm" onclick="go('requests')">View All →</button>
+      </div>
+      <div class="pb" id="dash-requests"></div>
+    </div>
+
   </div>
 
-  <!-- Pre-show checklist quick launch -->
-  <div class="panel">
-    <div class="ph row jbet">
-      <span class="pt">Pre-Show Checklist</span>
-      <button class="btn ba bsm" onclick="go('checklist')">Open →</button>
+  <!-- Two column layout row 2 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="dash-2col">
+
+    <!-- Maintenance due -->
+    <div class="panel" style="margin-bottom:0">
+      <div class="ph row jbet">
+        <span class="pt">Maintenance Due</span>
+        <button class="btn bb bsm" onclick="go('maintenance')">View All →</button>
+      </div>
+      <div class="pb" id="maintDue"></div>
     </div>
-    <div class="pb" id="checklistSnap"></div>
+
+    <!-- Pre-show checklist -->
+    <div class="panel" style="margin-bottom:0">
+      <div class="ph row jbet">
+        <span class="pt">Pre-Show Checklist</span>
+        <button class="btn ba bsm" onclick="go('checklist')">Open →</button>
+      </div>
+      <div class="pb" id="checklistSnap"></div>
+    </div>
+
+  </div>
+
+  <!-- Recent Activity — full width -->
+  <div class="panel" style="margin-bottom:14px">
+    <div class="ph"><span class="pt">Recent Activity</span></div>
+    <div class="pb" style="padding:0" id="recentAct"></div>
   </div>
 
   <!-- Admin-only actions -->
-  <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px">
+  <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
     <button class="btn bgh bsm" data-perm="master" onclick="requirePin(resetAllData)" style="border-color:var(--red);color:var(--red)">⚠️ Reset All Data</button>
   </div>
 </div>
@@ -2186,14 +2221,17 @@ window._onRemoteData=function(r){
   if(r.technicians && r.technicians.length > 0) db.technicians=r.technicians;
   db.fixtures=r.fixtures||[];db.outages=r.outages||[];
   db.inventory=r.inventory||[];db.orders=r.orders||[];db.usageLog=r.usageLog||[];
-  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};db.availability=r.availability||{};db.checklistState=r.checklistState||{};db.shows=r.shows||[];if(r.attendanceData){db.attendanceData=r.attendanceData;if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};}if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};
-  if(!db.gearItems)db.gearItems=[];
-  if(!db.checkouts)db.checkouts=[];
-  if(!db.maintLogs)db.maintLogs=[];
-  if(!db.techRequests)db.techRequests=[];
-  if(!db.announcements)db.announcements=[];
-  if(!db.signoffs)db.signoffs={};
-  if(!db.trainingModules)db.trainingModules=[];
+  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};db.availability=r.availability||{};db.checklistState=r.checklistState||{};db.shows=r.shows||[];
+  if(r.attendanceData){db.attendanceData=r.attendanceData;if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};}
+  if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};
+  // Stage 3-5 collections — restore from Firebase if present, else keep existing or default
+  db.gearItems=r.gearItems||db.gearItems||[];
+  db.checkouts=r.checkouts||db.checkouts||[];
+  db.maintLogs=r.maintLogs||db.maintLogs||[];
+  db.techRequests=r.techRequests||db.techRequests||[];
+  db.announcements=r.announcements||db.announcements||[];
+  db.signoffs=r.signoffs||db.signoffs||{};
+  db.trainingModules=r.trainingModules||db.trainingModules||[];
   lsave();
   // If login screen is visible, rebuild grid with fresh Firebase data
   const loginVisible = document.getElementById('loginScreen')?.style.display === 'flex';
@@ -2561,7 +2599,26 @@ function renderDash(){
         <span class="maint-badge">DUE</span>
       </div>`).join(''));
   const recent=[...db.outages].sort((a,b)=>b.timestamp-a.timestamp).slice(0,6);
-  document.getElementById('recentAct').innerHTML=!recent.length
+  // Open tech requests summary
+  const dashReqEl = document.getElementById('dash-requests');
+  if(dashReqEl){
+    const openReqs=(db.techRequests||[]).filter(r=>r.status==='open'||r.status==='progress');
+    dashReqEl.innerHTML = !openReqs.length
+      ? '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;color:var(--green)"><span style="font-size:20px">✅</span><span>No open requests</span></div>'
+      : openReqs.slice(0,4).map(r=>{
+          const by=(db.technicians||[]).find(x=>x.id===r.requestedBy);
+          const priColor = r.priority==='urgent'?'var(--red)':r.priority==='low'?'var(--dim2)':'var(--blue)';
+          return `<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
+            <div style="flex:1;min-width:0">
+              <div class="fw7" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.title}</div>
+              <div class="dim">${r.category}${by?' · '+by.name:''}</div>
+            </div>
+            <span style="font-size:10px;font-family:var(--mono);color:${priColor};flex-shrink:0;margin-left:8px">${r.priority.toUpperCase()}</span>
+          </div>`;
+        }).join('') + (openReqs.length>4?`<div class="dim" style="padding:8px 0;font-size:12px">+${openReqs.length-4} more</div>`:'');
+  }
+
+  document.getElementById('recentAct') && (document.getElementById('recentAct').innerHTML=!recent.length
     ?'<p class="dim">No activity yet.</p>'
     :recent.map(o=>`<div class="row gap10" style="padding:9px 0;border-bottom:1px solid rgba(31,45,66,.6)">
         <span style="font-size:17px">${o.resolved?'✅':'🔴'}</span>
