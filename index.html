@@ -2283,7 +2283,7 @@ function applyPermissions(){
 function go(page){
   stopCamera();stopGsScanner&&stopGsScanner();
   closeMoreNav&&closeMoreNav();
-  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule','checklist','showlog','nfc','attendance','checkin'].forEach(p=>{
+  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule','checklist','showlog','nfc','attendance','checkin','checkout','maintenance','requests','announcements','training','profiles','leaderboard'].forEach(p=>{
     const el=document.getElementById('pg-'+p);if(el)el.style.display=p===page?'':'none';
     document.getElementById('nav-'+p)?.classList.toggle('active',p===page);
   });
@@ -2292,7 +2292,7 @@ function go(page){
   applyPermissions();
   if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
   ['dashboard','fixtures','inventory','schedule'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
-  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan','checklist','showlog','nfc','attendance','checkin'].includes(page)?' active':'');
+  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan','checklist','showlog','nfc','attendance','checkin','checkout','maintenance','requests','announcements','training','profiles','leaderboard'].includes(page)?' active':'');
   const navMore=document.getElementById('nav-more');if(navMore)navMore.className='nb'+(['inventory','stats','showlog','history','nfc','settings','scan','attendance','checkin'].includes(page)?' active':'');
 }
 function refreshPage(){go(_curPage);}
