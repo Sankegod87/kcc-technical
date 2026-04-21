@@ -455,6 +455,32 @@ textarea { resize:vertical; min-height:70px; }
 .signoff-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-family:var(--mono);font-weight:600;}
 .signoff-chip.signed{background:#EAF3DE;color:#27500A;border:1px solid #C0DD97;}
 .signoff-chip.pending{background:var(--s3);color:var(--dim2);border:1px solid var(--border2);}
+
+/* ── Stage 5: Training Hub + Crew Profiles + Leaderboard ── */
+.profile-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .15s;}
+.profile-card:hover{border-color:var(--border2);}
+.profile-header{padding:20px 18px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:14px;}
+.profile-avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:2px solid var(--border2);}
+.profile-body{padding:14px 18px;}
+.skill-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-family:var(--mono);font-size:10px;font-weight:600;background:var(--bglow);color:var(--blue);border:1px solid rgba(61,155,233,.3);}
+.cert-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-family:var(--mono);font-size:10px;font-weight:600;background:#EEEDFE;color:#3C3489;border:1px solid #CECBF6;}
+.lb-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);transition:background .15s;}
+.lb-row:last-child{border-bottom:none;}
+.lb-row:hover{background:var(--s2);}
+.lb-rank{font-family:var(--mono);font-size:13px;font-weight:700;width:28px;text-align:center;flex-shrink:0;}
+.lb-rank.gold{color:#BA7517;}
+.lb-rank.silver{color:#5F5E5A;}
+.lb-rank.bronze{color:#854F0B;}
+.lb-bar{height:6px;border-radius:3px;background:var(--s3);overflow:hidden;margin-top:4px;}
+.lb-fill{height:100%;border-radius:3px;background:#0F6E56;}
+.training-module{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:8px;transition:border-color .15s;}
+.training-module:hover{border-color:var(--border2);}
+.training-module.completed{border-left:3px solid #639922;}
+.tm-header{padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;}
+.tm-body{padding:0 16px 14px;display:none;}
+.tm-body.open{display:block;}
+.tm-resource{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.tm-resource:last-child{border-bottom:none;}
 </style>
 </head>
 <body>
@@ -735,6 +761,19 @@ textarea { resize:vertical; min-height:70px; }
     <button class="snav-btn" id="snav-announcements" onclick="go('announcements')">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h10l1 6H2L3 5z"/><path d="M6 5V3.5a2 2 0 014 0V5"/></svg>
       Announcements
+    </button>
+    <div class="snav-label" style="margin-top:8px">Growth</div>
+    <button class="snav-btn" id="snav-training" onclick="go('training')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4l6-2 6 2v5c0 3-6 5-6 5S2 12 2 9V4z"/></svg>
+      Training Hub
+    </button>
+    <button class="snav-btn" id="snav-profiles" onclick="go('profiles')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a3 3 0 100 6A3 3 0 008 1zm0 8c-3.3 0-6 1.3-6 3v1h12v-1c0-1.7-2.7-3-6-3z"/></svg>
+      Crew Profiles
+    </button>
+    <button class="snav-btn" id="snav-leaderboard" onclick="go('leaderboard')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="8" width="4" height="6" rx="1"/><rect x="6" y="5" width="4" height="9" rx="1"/><rect x="11" y="2" width="4" height="12" rx="1"/></svg>
+      Leaderboard
     </button>
     <div class="snav-label" style="margin-top:8px">More</div>
     <button class="snav-btn" id="snav-showlog" onclick="go('showlog')">
@@ -1019,6 +1058,59 @@ textarea { resize:vertical; min-height:70px; }
 <!-- ── ASSET CHECKOUT ── -->
 
 <!-- ── TECH REQUESTS ── -->
+
+<!-- ── TRAINING HUB ── -->
+<div id="pg-training" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Training Hub</h2>
+      <div class="dim" style="margin-top:4px">Guides, resources and onboarding for every department</div>
+    </div>
+    <button class="btn ba" data-perm="admin" onclick="openM('addTrainingModule')">+ Add Module</button>
+  </div>
+  <div class="dept-filter-row" id="training-dept-filter"></div>
+  <div id="training-list"></div>
+</div>
+
+<!-- ── CREW PROFILES ── -->
+<div id="pg-profiles" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Crew Profiles</h2>
+      <div class="dim" style="margin-top:4px">Skills, certifications and service history per crew member</div>
+    </div>
+  </div>
+  <div class="dept-filter-row" id="profiles-dept-filter"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" id="profiles-grid"></div>
+  <!-- Profile detail panel -->
+  <div id="profile-detail" style="display:none;margin-top:16px"></div>
+</div>
+
+<!-- ── LEADERBOARD ── -->
+<div id="pg-leaderboard" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Crew Leaderboard</h2>
+      <div class="dim" style="margin-top:4px">Attendance streaks, activity and engagement</div>
+    </div>
+    <select id="lb-metric" onchange="renderLeaderboard()" style="width:auto;padding:6px 10px;font-size:11px">
+      <option value="streak">Attendance streak</option>
+      <option value="attendance">Total sessions</option>
+      <option value="activity">Overall activity</option>
+    </select>
+  </div>
+  <div class="stats mb16" id="lb-stats"></div>
+  <div class="panel">
+    <div class="ph"><span class="pt">Rankings</span></div>
+    <div id="lb-list"></div>
+  </div>
+  <!-- Attendance trend chart -->
+  <div class="panel" style="margin-top:12px">
+    <div class="ph"><span class="pt">Attendance trend — last 8 Sundays</span></div>
+    <div class="pb"><div style="position:relative;height:220px"><canvas id="lb-att-chart" role="img" aria-label="Attendance trend chart over 8 Sundays">Attendance data across recent Sundays.</canvas></div></div>
+  </div>
+</div>
+
 <div id="pg-requests" style="display:none">
   <div class="row jbet mb14">
     <div>
@@ -1906,7 +1998,7 @@ let _charts={};
 // ── Storage ──
 function lsave(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
 function lload(){
-  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};}}catch(e){}
+  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};if(!db.trainingModules)db.trainingModules=[];}}catch(e){}
 }
 window._onRemoteData=function(r){
   // Only overwrite technicians if Firebase has data; never wipe with empty (protects login)
@@ -1920,6 +2012,7 @@ window._onRemoteData=function(r){
   if(!db.techRequests)db.techRequests=[];
   if(!db.announcements)db.announcements=[];
   if(!db.signoffs)db.signoffs={};
+  if(!db.trainingModules)db.trainingModules=[];
   lsave();
   // If login screen is visible, rebuild grid with fresh Firebase data
   const loginVisible = document.getElementById('loginScreen')?.style.display === 'flex';
@@ -2195,7 +2288,7 @@ function go(page){
     document.getElementById('nav-'+p)?.classList.toggle('active',p===page);
   });
   _curPage=page;
-  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule,checklist:renderChecklist,showlog:renderShowLog,nfc:renderNFC,attendance:renderAttendance,checkin:renderCheckin,checkout:renderCheckout,maintenance:renderMaintenance,requests:renderRequests,announcements:renderAnnouncements})[page]?.();
+  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule,checklist:renderChecklist,showlog:renderShowLog,nfc:renderNFC,attendance:renderAttendance,checkin:renderCheckin,checkout:renderCheckout,maintenance:renderMaintenance,requests:renderRequests,announcements:renderAnnouncements,training:renderTraining,profiles:renderProfiles,leaderboard:renderLeaderboard})[page]?.();
   applyPermissions();
   if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
   ['dashboard','fixtures','inventory','schedule'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
@@ -2680,6 +2773,7 @@ function renderCrew(){
           <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" id="avail-${t.id}"></div>
         </div>
         <div class="row gap6">
+          <button class="btn bb bsm" onclick="go('profiles');setTimeout(()=>openProfile('${t.id}'),80)">👤 Profile</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="adminResetPassword('${t.id}')" title="Admin: reset password">🔑</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="resendWelcomeEmail('${t.id}')" title="Resend welcome email">📧</button>
@@ -5915,6 +6009,360 @@ document.addEventListener('DOMContentLoaded',function(){
   setTimeout(_updateReqBadge,1200);
 });
 
+
+// ══════════════════════════════════════════════════════════
+// STAGE 5 — Training Hub, Crew Profiles, Leaderboard
+// ══════════════════════════════════════════════════════════
+
+const LEVEL_COLORS = {Beginner:'#0F6E56',Intermediate:'#185FA5',Advanced:'#534AB7'};
+const LEVEL_BG = {Beginner:'#E1F5EE',Intermediate:'#E6F1FB',Advanced:'#EEEDFE'};
+window._trainingDeptFilter = 'all';
+window._profilesDeptFilter = 'all';
+window._openProfileId = null;
+let _lbChart = null;
+
+// ── TRAINING HUB ──────────────────────────────────────────
+function saveTrainingModule(){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const title=(document.getElementById('tm-title').value||'').trim();
+  if(!title){toast('Title required','error');return;}
+  const mod={
+    id:'tm_'+Date.now(),
+    title,
+    dept:document.getElementById('tm-dept').value||'',
+    desc:(document.getElementById('tm-desc').value||'').trim(),
+    url:(document.getElementById('tm-url').value||'').trim(),
+    level:document.getElementById('tm-level').value||'Beginner',
+    duration:(document.getElementById('tm-duration').value||'').trim(),
+    required:document.getElementById('tm-required').checked,
+    createdAt:Date.now()
+  };
+  if(!db.trainingModules)db.trainingModules=[];
+  db.trainingModules.unshift(mod);
+  save();closeM('addTrainingModule');renderTraining();
+  ['tm-title','tm-desc','tm-url','tm-duration'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tm-required').checked=false;
+  toast(title+' added to training hub','success');
+}
+function deleteTrainingModule(id){
+  if(!isAdmin())return;
+  db.trainingModules=(db.trainingModules||[]).filter(x=>x.id!==id);
+  save();renderTraining();toast('Module removed','info');
+}
+function toggleTmBody(id){
+  const el=document.getElementById('tmb-'+id);
+  if(el)el.classList.toggle('open');
+}
+function markModuleComplete(techId,modId){
+  const t=db.technicians.find(x=>x.id===techId);if(!t)return;
+  if(!t.completedModules)t.completedModules=[];
+  if(t.completedModules.includes(modId)){
+    t.completedModules=t.completedModules.filter(x=>x!==modId);
+  } else {
+    t.completedModules.push(modId);
+  }
+  save();renderTraining();
+  toast((t.completedModules.includes(modId)?'Marked complete':'Unmarked'),'success');
+}
+function renderTraining(){
+  if(!db.trainingModules)db.trainingModules=[];
+  const tech=getCurTech();
+
+  // Dept filter
+  const filterWrap=document.getElementById('training-dept-filter');
+  if(filterWrap&&!filterWrap.hasChildNodes()){
+    filterWrap.innerHTML=deptFilterRow('training',(dept)=>{window._trainingDeptFilter=dept;renderTraining();});
+  }
+  const dept=window._trainingDeptFilter||'all';
+  let mods=[...db.trainingModules];
+  if(dept!=='all') mods=mods.filter(m=>!m.dept||m.dept===dept);
+
+  // Sort: required first, then by dept, then date
+  mods.sort((a,b)=>(b.required?1:0)-(a.required?1:0)||(a.dept||'').localeCompare(b.dept||'')||(b.createdAt-a.createdAt));
+
+  const listEl=document.getElementById('training-list');
+  if(!listEl)return;
+  if(!mods.length){
+    listEl.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">📚</div><div class="dim">No training modules yet</div>'+(isAdmin()?'<button class="btn ba bsm" style="margin-top:12px" onclick="openM('addTrainingModule')">+ Add First Module</button>':'')+'</div>';
+    return;
+  }
+  listEl.innerHTML=mods.map(m=>{
+    const completed=tech&&tech.completedModules&&tech.completedModules.includes(m.id);
+    const levelBg=LEVEL_BG[m.level]||'#E1F5EE';
+    const levelColor=LEVEL_COLORS[m.level]||'#0F6E56';
+    const deptB=m.dept?deptBadge(m.dept):'';
+    const requiredB=m.required?'<span style="background:#FCEBEB;color:#791F1F;border:1px solid #F7C1C1;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600">REQUIRED</span>':'';
+    const completedB=completed?'<span style="background:#EAF3DE;color:#27500A;border:1px solid #C0DD97;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600">✓ DONE</span>':'';
+    return'<div class="training-module'+(completed?' completed':'')+'">'+
+      '<div class="tm-header" onclick="toggleTmBody(''+m.id+'')">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="row gap6 mb8">'+
+            '<div class="fw7" style="font-size:14px">'+m.title+'</div>'+
+            requiredB+completedB+
+          '</div>'+
+          '<div class="row gap6">'+
+            deptB+
+            '<span style="background:'+levelBg+';color:'+levelColor+';border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600">'+m.level+'</span>'+
+            (m.duration?'<span class="dim" style="font-size:11px">⏱ '+m.duration+'</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<span style="font-size:18px;margin-left:8px;transition:transform .2s">›</span>'+
+      '</div>'+
+      '<div class="tm-body" id="tmb-'+m.id+'">'+
+        (m.desc?'<div style="font-size:13px;color:var(--text);margin-bottom:10px;line-height:1.6">'+m.desc+'</div>':'')+
+        (m.url?'<div class="tm-resource"><span style="font-size:18px">🔗</span><a href="'+m.url+'" target="_blank" style="color:var(--blue);font-size:13px;font-family:var(--mono)">Open resource →</a></div>':'')+
+        '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
+          (tech?'<button class="btn '+(completed?'bg':'ba')+' bsm" onclick="markModuleComplete(''+tech.id+'',''+m.id+'')">'+
+            (completed?'↺ Mark incomplete':'✓ Mark complete')+'</button>':'')+
+          (isAdmin()?'<button class="btn br bsm" onclick="deleteTrainingModule(''+m.id+'')">Delete</button>':'')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── CREW PROFILES ─────────────────────────────────────────
+function saveCert(){
+  const techId=document.getElementById('cert-techId').value;
+  const t=db.technicians.find(x=>x.id===techId);if(!t)return;
+  const name=(document.getElementById('cert-name').value||'').trim();
+  if(!name){toast('Certification name required','error');return;}
+  if(!t.certs)t.certs=[];
+  t.certs.push({
+    id:'cert_'+Date.now(),
+    name,
+    issuer:(document.getElementById('cert-issuer').value||'').trim(),
+    date:document.getElementById('cert-date').value||'',
+    expiry:document.getElementById('cert-expiry').value||'',
+    notes:(document.getElementById('cert-notes').value||'').trim()
+  });
+  save();closeM('addCert');openProfile(techId);
+  toast('Certification added','success');
+}
+function removeCert(techId,certId){
+  const t=db.technicians.find(x=>x.id===techId);if(!t)return;
+  t.certs=(t.certs||[]).filter(c=>c.id!==certId);
+  save();openProfile(techId);
+}
+function openProfile(techId){
+  window._openProfileId=techId;
+  renderProfiles();
+  const detail=document.getElementById('profile-detail');
+  if(detail)detail.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderProfiles(){
+  if(!db.technicians)return;
+
+  // Dept filter
+  const filterWrap=document.getElementById('profiles-dept-filter');
+  if(filterWrap&&!filterWrap.hasChildNodes()){
+    filterWrap.innerHTML=deptFilterRow('profiles',(dept)=>{window._profilesDeptFilter=dept;renderProfiles();});
+  }
+  const dept=window._profilesDeptFilter||'all';
+  const filtered=dept==='all'?db.technicians:db.technicians.filter(t=>t.dept===dept);
+
+  // Grid of profile cards
+  const grid=document.getElementById('profiles-grid');
+  if(grid){
+    grid.innerHTML=filtered.map(t=>{
+      const totalSessions=(db.attendanceData?.sessions||[]).length;
+      const attended=(db.attendanceData?.sessions||[]).filter(s=>{
+        return Object.values(db.attendanceData?.records||{}).some(rec=>rec[t.id]&&(rec[t.id].status==='present'||rec[t.id].status==='late'));
+      }).length;
+      const streak=calcStreak(t.id);
+      const completedCount=(t.completedModules||[]).length;
+      const totalMods=(db.trainingModules||[]).length;
+      const isActive=window._openProfileId===t.id;
+      return'<div class="profile-card'+(isActive?' '+' ':'')+(isActive?'" style="border:2px solid #0F6E56':'"')+' onclick="openProfile(''+t.id+'')" style="cursor:pointer'+(isActive?';border:2px solid #0F6E56':'')+' ">'+
+        '<div class="profile-header">'+
+          '<div class="profile-avatar" style="background:'+(_deptAvatarColor(t.dept))+';color:white">'+
+            (t.avatar||t.name[0]||'👤')+
+          '</div>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div class="fw7" style="font-size:15px;margin-bottom:4px">'+t.name+'</div>'+
+            '<div class="dim">'+( t.role||'Technician')+'</div>'+
+            '<div style="margin-top:6px">'+deptBadge(t.dept)+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="profile-body">'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;text-align:center">'+
+            '<div><div style="font-size:20px;font-weight:700;color:#0F6E56">'+streak+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">STREAK</div></div>'+
+            '<div><div style="font-size:20px;font-weight:700;color:#185FA5">'+attended+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">SESSIONS</div></div>'+
+            '<div><div style="font-size:20px;font-weight:700;color:#534AB7">'+completedCount+(totalMods?'/'+totalMods:'')+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">MODULES</div></div>'+
+          '</div>'+
+          (t.training&&t.training.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+t.training.map(s=>'<span class="skill-tag">'+s+'</span>').join('')+'</div>':'')+
+          ((t.certs||[]).length?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">'+t.certs.map(c=>'<span class="cert-tag">🏅 '+c.name+'</span>').join('')+'</div>':'')+
+          '<button class="btn bb bsm" style="margin-top:10px;width:100%;justify-content:center" onclick="event.stopPropagation();openProfile(''+t.id+'')">View full profile →</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  // Detailed profile panel
+  const detail=document.getElementById('profile-detail');
+  if(!detail)return;
+  if(!window._openProfileId){detail.style.display='none';return;}
+  const t=db.technicians.find(x=>x.id===window._openProfileId);
+  if(!t){detail.style.display='none';return;}
+  detail.style.display='';
+
+  const sessions=(db.attendanceData?.sessions||[]);
+  const streak=calcStreak(t.id);
+  const completedMods=(t.completedModules||[]);
+  const totalMods=(db.trainingModules||[]).length;
+  const gearOuts=(db.checkouts||[]).filter(c=>c.personId===t.id);
+  const maintDone=(db.maintLogs||[]).filter(l=>l.by===t.name).length;
+
+  detail.innerHTML='<div class="panel">'+
+    '<div class="ph row jbet">'+
+      '<div class="row gap12">'+
+        '<div class="profile-avatar" style="background:'+_deptAvatarColor(t.dept)+';color:white;width:48px;height:48px;font-size:22px">'+( t.avatar||t.name[0])+'</div>'+
+        '<div><div class="fw7" style="font-size:16px">'+t.name+'</div><div class="dim">'+( t.role||'Technician')+'</div><div style="margin-top:4px">'+deptBadge(t.dept)+'</div></div>'+
+      '</div>'+
+      '<div class="row gap6">'+
+        '<button class="btn ba bsm" onclick="document.getElementById('cert-techId').value=''+t.id+'';['cert-name','cert-issuer','cert-date','cert-expiry','cert-notes'].forEach(id=>document.getElementById(id).value='');openM('addCert')">+ Cert</button>'+
+        '<button class="btn bgh bsm" data-perm="admin" onclick="editTech(''+t.id+'')">✏️ Edit</button>'+
+        '<button class="btn bgh bsm" onclick="window._openProfileId=null;renderProfiles()">✕</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="pb">'+
+
+      // Stats row
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">'+
+        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#0F6E56">'+streak+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">STREAK</div></div>'+
+        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#185FA5">'+sessions.length+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">SESSIONS</div></div>'+
+        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#534AB7">'+completedMods.length+(totalMods?'/'+totalMods:'')+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">MODULES</div></div>'+
+        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#854F0B">'+gearOuts.length+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">GEAR OUTS</div></div>'+
+      '</div>'+
+
+      // Skills
+      '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);margin-bottom:8px">Skills</div>'+
+      ((t.training&&t.training.length)?'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">'+t.training.map(s=>'<span class="skill-tag">'+s+'</span>').join('')+'</div>':'<div class="dim" style="margin-bottom:14px">No skills tagged yet</div>')+
+
+      // Certs
+      '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);margin-bottom:8px">Certifications</div>'+
+      ((t.certs&&t.certs.length)?
+        '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+
+          t.certs.map(c=>
+            '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">'+
+              '<span style="font-size:20px">🏅</span>'+
+              '<div style="flex:1"><div class="fw7" style="font-size:13px">'+c.name+'</div>'+
+                (c.issuer?'<div class="dim">'+c.issuer+'</div>':'')+
+                (c.date?'<div class="dim">Earned: '+c.date+(c.expiry?' · Expires: '+c.expiry:'')+'</div>':'')+
+              '</div>'+
+              '<button onclick="removeCert(''+t.id+'',''+c.id+'')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px" title="Remove">✕</button>'+
+            '</div>'
+          ).join('')+
+        '</div>':
+        '<div class="dim" style="margin-bottom:14px">No certifications yet — <button onclick="document.getElementById('cert-techId').value=''+t.id+'';openM('addCert')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-family:var(--mono);font-size:11px">add one</button></div>')+
+
+      // Training progress
+      '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);margin-bottom:8px">Training progress</div>'+
+      (totalMods?
+        '<div style="display:flex;flex-direction:column;gap:6px">'+
+          (db.trainingModules||[]).map(m=>{
+            const done=completedMods.includes(m.id);
+            return'<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:6px">'+
+              '<div style="width:18px;height:18px;border-radius:50%;border:2px solid '+(done?'#0F6E56':'var(--border2)')+';background:'+(done?'#0F6E56':'transparent')+';display:flex;align-items:center;justify-content:center;font-size:11px;color:white;flex-shrink:0">'+(done?'✓':'')+'</div>'+
+              '<div style="flex:1;font-size:13px;'+(done?'text-decoration:line-through;color:var(--dim2)':'')+'">'+m.title+'</div>'+
+              (m.dept?deptBadge(m.dept):'')+
+            '</div>';
+          }).join('')+
+        '</div>':
+        '<div class="dim">No training modules added yet</div>')+
+
+    '</div>'+
+  '</div>';
+}
+function _deptAvatarColor(dept){
+  return {Lighting:'#0F6E56',Audio:'#185FA5',Cameras:'#854F0B',IT:'#5F5E5A'}[dept]||'#888780';
+}
+
+// ── LEADERBOARD ───────────────────────────────────────────
+function calcStreak(techId){
+  const sessions=[...(db.attendanceData?.sessions||[])].sort((a,b)=>b.date-a.date);
+  let streak=0;
+  for(const s of sessions){
+    const rec=Object.entries(db.attendanceData?.records||{}).find(([k])=>k.startsWith(s.id));
+    const attended=rec&&rec[1][techId]&&(rec[1][techId].status==='present'||rec[1][techId].status==='late');
+    if(attended) streak++;
+    else break;
+  }
+  return streak;
+}
+function renderLeaderboard(){
+  if(!db.technicians||!db.technicians.length){
+    document.getElementById('lb-list').innerHTML='<p class="dim" style="padding:16px">No crew yet.</p>';
+    return;
+  }
+  const metric=document.getElementById('lb-metric')?.value||'streak';
+  const sessions=(db.attendanceData?.sessions||[]);
+  const records=(db.attendanceData?.records||{});
+
+  // Score each tech
+  const scored=db.technicians.map(t=>{
+    const streak=calcStreak(t.id);
+    const attended=sessions.filter(s=>{
+      const rec=Object.entries(records).find(([k])=>k.startsWith(s.id));
+      return rec&&rec[1][t.id]&&(rec[1][t.id].status==='present'||rec[1][t.id].status==='late');
+    }).length;
+    const gearOuts=(db.checkouts||[]).filter(c=>c.personId===t.id).length;
+    const reqs=(db.techRequests||[]).filter(r=>r.requestedBy===t.id).length;
+    const activity=attended+gearOuts+reqs;
+    return{t,streak,attended,activity};
+  }).sort((a,b)=>b[metric]-a[metric]);
+
+  // Stats
+  const topStreak=scored[0]?.streak||0;
+  const totalSess=sessions.length;
+  const avgAtt=scored.length?Math.round(scored.reduce((s,x)=>s+x.attended,0)/scored.length):0;
+  document.getElementById('lb-stats').innerHTML=
+    '<div class="sc cg"><div class="sc-label">Top streak</div><div class="sc-val">'+topStreak+'</div></div>'+
+    '<div class="sc cb"><div class="sc-label">Total sessions</div><div class="sc-val">'+totalSess+'</div></div>'+
+    '<div class="sc ca"><div class="sc-label">Avg attendance</div><div class="sc-val">'+avgAtt+'</div></div>'+
+    '<div class="sc cp"><div class="sc-label">Crew size</div><div class="sc-val">'+db.technicians.length+'</div></div>';
+
+  const maxVal=scored[0]?scored[0][metric]||1:1;
+  const rankClass=(i)=>i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  const rankIcon=(i)=>i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+
+  document.getElementById('lb-list').innerHTML=scored.map((s,i)=>{
+    const pct=maxVal?Math.round((s[metric]/maxVal)*100):0;
+    return'<div class="lb-row">'+
+      '<div class="lb-rank '+rankClass(i)+'">'+(rankIcon(i)||'#'+(i+1))+'</div>'+
+      '<div style="font-size:22px;flex-shrink:0">'+(s.t.avatar||'👤')+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="row gap6"><div class="fw7" style="font-size:14px">'+s.t.name+'</div>'+deptBadge(s.t.dept)+'</div>'+
+        '<div class="lb-bar"><div class="lb-fill" style="width:'+pct+'%"></div></div>'+
+      '</div>'+
+      '<div style="text-align:right;flex-shrink:0">'+
+        '<div style="font-size:22px;font-weight:700;color:#0F6E56">'+s[metric]+'</div>'+
+        '<div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">'+(metric==='streak'?'week streak':metric==='attended'?'sessions':'pts')+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  // Attendance trend chart
+  if(_lbChart){try{_lbChart.destroy();}catch(e){}_lbChart=null;}
+  const last8=sessions.slice(0,8).reverse();
+  const labels=last8.map(s=>s.name||fmtDateShort(s.date));
+  const counts=last8.map(s=>{
+    const rec=Object.entries(records).find(([k])=>k.startsWith(s.id));
+    if(!rec)return 0;
+    return Object.values(rec[1]).filter(r=>r.status==='present'||r.status==='late').length;
+  });
+  const ctx=document.getElementById('lb-att-chart');
+  if(ctx){
+    _lbChart=new Chart(ctx,{
+      type:'line',
+      data:{labels,datasets:[{label:'Crew present',data:counts,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,.1)',borderWidth:2,pointRadius:4,fill:true,tension:.35}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#7a8fa8',font:{size:10}},grid:{display:false}},y:{beginAtZero:true,ticks:{stepSize:1,color:'#7a8fa8',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}}}}
+    });
+  }
+}
+
 // Auto-go to check-in page if URL has ?checkin=1
 (function(){
   if(new URLSearchParams(window.location.search).get('checkin')==='1'){
@@ -5930,7 +6378,7 @@ const _PAGE_TITLES = {
   stats:'Analytics',scan:'Scan',crew:'Crew',schedule:'Schedule',nfc:'NFC',
   showlog:'Shows',checklist:'Checklist',settings:'Settings',
   attendance:'Attendance',checkin:'Check-In',
-  checkout:'Asset Checkout',maintenance:'Maintenance Log',requests:'Tech Requests',announcements:'Announcements'
+  checkout:'Asset Checkout',maintenance:'Maintenance Log',requests:'Tech Requests',announcements:'Announcements',training:'Training Hub',profiles:'Crew Profiles',leaderboard:'Leaderboard'
 };
 const _origGo = typeof go !== 'undefined' ? go : null;
 window.go = function(page) {
@@ -6231,6 +6679,69 @@ document.addEventListener('DOMContentLoaded', function(){
     <div class="mf">
       <button class="btn bgh" onclick="closeM('addAnnouncement')">Cancel</button>
       <button class="btn ba" onclick="saveAnnouncement()">Post</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Add Training Module modal -->
+<div id="m-addTrainingModule" class="mover" style="display:none" onclick="mOut(event,'addTrainingModule')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Add Training Module</span><button class="xb" onclick="closeM('addTrainingModule')">✕</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="fg"><label>Module title *</label><input id="tm-title" placeholder="e.g. Mixing Console Basics"></div>
+        <div class="fg"><label>Department</label>
+          <select id="tm-dept">
+            <option value="">All depts</option>
+            <option value="Lighting">💡 Lighting</option>
+            <option value="Audio">🎚️ Audio</option>
+            <option value="Cameras">📷 Cameras</option>
+            <option value="IT">💻 IT</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Description</label><textarea id="tm-desc" placeholder="What crew will learn..." style="min-height:50px"></textarea></div>
+        <div class="fg" style="grid-column:1/-1"><label>Resource link (YouTube, Google Doc, etc.)</label><input id="tm-url" type="url" placeholder="https://..."></div>
+        <div class="fg"><label>Difficulty</label>
+          <select id="tm-level">
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+          </select>
+        </div>
+        <div class="fg"><label>Est. duration</label><input id="tm-duration" placeholder="e.g. 20 min"></div>
+        <div class="fg" style="grid-column:1/-1">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px">
+            <input type="checkbox" id="tm-required" style="width:16px;height:16px;accent-color:var(--amber)">
+            <span style="font-size:13px">Mark as required for new crew</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addTrainingModule')">Cancel</button>
+      <button class="btn ba" onclick="saveTrainingModule()">Add Module</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Cert / Qualification modal -->
+<div id="m-addCert" class="mover" style="display:none" onclick="mOut(event,'addCert')">
+  <div class="modal">
+    <div class="mh"><span class="mt">Add Certification</span><button class="xb" onclick="closeM('addCert')">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="cert-techId">
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1"><label>Certification / Qualification *</label><input id="cert-name" placeholder="e.g. ProPresenter Certified, First Aid"></div>
+        <div class="fg"><label>Issued by</label><input id="cert-issuer" placeholder="e.g. Church, Manufacturer"></div>
+        <div class="fg"><label>Date earned</label><input id="cert-date" type="date"></div>
+        <div class="fg"><label>Expires</label><input id="cert-expiry" type="date"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="cert-notes" style="min-height:40px" placeholder="Any extra details..."></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeM('addCert')">Cancel</button>
+      <button class="btn ba" onclick="saveCert()">Save</button>
     </div>
   </div>
 </div>
