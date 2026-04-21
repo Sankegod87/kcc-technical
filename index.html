@@ -64,7 +64,7 @@ function initFirebase() {
           try { window._onRemoteData(JSON.parse(remote.payload)); } catch(e) {}
         }
       }
-      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "ok", msg: "Live sync ✓" } }));
+      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "ok", msg: "Live sync ✓" } })); const _lsDot=document.getElementById('ls-sync-dot');if(_lsDot)_lsDot.style.background='#5DCAA5';
     }, (err) => {
       window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "error", msg: "Sync error: " + err.code } }));
     });
@@ -323,10 +323,7 @@ textarea { resize:vertical; min-height:70px; }
 .fw7{font-weight:700;} .fw9{font-weight:900;} .tu{text-transform:uppercase;} .ls2{letter-spacing:2px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
-.ls-user-btn { background:var(--s2); border:1px solid var(--border2); border-radius:10px; padding:14px 10px; cursor:pointer; text-align:center; font-family:var(--head); font-size:13px; font-weight:700; color:var(--dim2); transition:all .18s; display:flex; flex-direction:column; align-items:center; gap:4px; }
-.ls-user-btn:hover { border-color:#0F6E56; color:#0F6E56; background:#E1F5EE; transform:translateY(-2px); }
-.ls-user-btn .ls-av { font-size:28px; }
-.ls-role-tag { font-size:9px; font-family:var(--mono); letter-spacing:1px; padding:1px 6px; border-radius:10px; margin-top:2px; }
+
 .ci-sess-tabs { display:flex; gap:6px; margin-bottom:14px; }
 .ci-sess-tab { padding:8px 18px; font-size:12px; border-radius:8px; text-align:center; cursor:pointer; border:1.5px solid var(--border2); background:var(--s2); color:var(--dim2); font-family:var(--head); font-weight:700; letter-spacing:.5px; text-transform:uppercase; transition:all .15s; }
 .ci-sess-tab.active { background:#E1F5EE; border-color:#0F6E56; color:#0F6E56; }
@@ -337,7 +334,6 @@ textarea { resize:vertical; min-height:70px; }
 #schedGrid [onclick]:hover { border-color:#0F6E56 !important; transform:translateY(-1px); box-shadow:0 4px 16px rgba(15,110,86,.1); }
 @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 @keyframes lsSlideUp { from{transform:translateY(30px);opacity:0} to{transform:none;opacity:1} }
-#loginScreen>div>div:last-of-type { animation:lsSlideUp .4s ease-out; }
 @media print { body>*:not(#printArea){display:none !important;} #printArea{display:block !important;position:static;background:#fff;padding:16px;} .qr-item{border:1px solid #ccc;break-inside:avoid;} }
 #printArea { display:none; }
 @media(max-width:600px) { .mhide { display:none; } }
@@ -481,6 +477,230 @@ textarea { resize:vertical; min-height:70px; }
 .tm-body.open{display:block;}
 .tm-resource{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
 .tm-resource:last-child{border-bottom:none;}
+
+/* ── Login screen ── */
+#loginScreen {
+  position:fixed;inset:0;z-index:1000;
+  background:#0d1117;
+  display:none;align-items:center;justify-content:center;
+  padding:20px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  animation:fadeIn .3s;
+}
+.ls-bg-grid {
+  position:absolute;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(15,110,86,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15,110,86,.07) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+.ls-bg-glow {
+  position:absolute;top:-120px;left:50%;transform:translateX(-50%);
+  width:600px;height:400px;pointer-events:none;
+  background:radial-gradient(ellipse at center, rgba(15,110,86,.18) 0%, transparent 70%);
+}
+.ls-card {
+  position:relative;width:100%;max-width:400px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;
+  overflow:hidden;
+  backdrop-filter:blur(12px);
+  animation:lsSlideUp .4s ease-out;
+}
+.ls-card-header {
+  padding:36px 32px 28px;
+  text-align:center;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.ls-logo-box {
+  width:64px;height:64px;background:#0F6E56;border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;
+  box-shadow:0 0 40px rgba(15,110,86,.4);
+}
+.ls-wordmark { font-size:24px;font-weight:700;color:#fff;letter-spacing:-.5px;font-family:var(--head); }
+.ls-sub { font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.2em;text-transform:uppercase;margin-top:4px;font-family:var(--mono); }
+.ls-section-label {
+  padding:16px 24px 8px;
+  font-family:var(--mono);font-size:9px;letter-spacing:.15em;
+  text-transform:uppercase;color:rgba(255,255,255,.3);
+}
+#ls-userGrid {
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+  gap:8px;padding:0 16px 20px;
+}
+.ls-user-btn {
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;padding:14px 8px;
+  cursor:pointer;text-align:center;
+  transition:all .18s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.ls-user-btn:hover {
+  border-color:#0F6E56;
+  background:rgba(15,110,86,.15);
+  transform:translateY(-2px);
+}
+.ls-user-btn .ls-av { font-size:26px; }
+.ls-user-btn .ls-uname {
+  font-size:11px;font-weight:600;color:rgba(255,255,255,.8);
+  font-family:var(--head);line-height:1.2;
+}
+.ls-role-tag {
+  font-size:8px;font-family:var(--mono);letter-spacing:.05em;
+  padding:2px 6px;border-radius:8px;margin-top:1px;
+}
+/* Step 2 — password */
+#ls-step2 { padding:24px 24px 28px; }
+.ls-selected-user {
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  margin-bottom:20px;
+}
+.ls-sel-avatar { font-size:32px; }
+.ls-sel-name { font-size:16px;font-weight:700;color:#fff;font-family:var(--head); }
+.ls-sel-role { font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono); }
+.ls-pw-label {
+  font-family:var(--mono);font-size:9px;letter-spacing:.15em;
+  text-transform:uppercase;color:rgba(255,255,255,.4);
+  display:block;margin-bottom:8px;
+}
+.ls-pw-input {
+  width:100%;background:rgba(255,255,255,.06) !important;
+  border:1px solid rgba(255,255,255,.12) !important;
+  border-radius:10px !important;
+  color:#fff !important;
+  font-family:var(--mono) !important;font-size:15px !important;
+  padding:14px 16px !important;
+  transition:border-color .18s !important;
+  margin-bottom:14px;
+}
+.ls-pw-input:focus {
+  outline:none !important;
+  border-color:#0F6E56 !important;
+  box-shadow:0 0 0 3px rgba(15,110,86,.2) !important;
+}
+.ls-pw-input::placeholder { color:rgba(255,255,255,.2) !important; }
+.ls-login-btn {
+  width:100%;background:#0F6E56;color:#fff;border:none;
+  border-radius:10px;padding:14px;
+  font-family:var(--head);font-size:14px;font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .18s;
+}
+.ls-login-btn:hover { background:#1D9E75; }
+.ls-login-btn:active { transform:scale(.98); }
+.ls-back-btn {
+  background:none;border:none;
+  color:rgba(255,255,255,.35);
+  font-family:var(--mono);font-size:11px;
+  cursor:pointer;display:flex;align-items:center;gap:6px;
+  margin-bottom:20px;padding:0;
+  transition:color .15s;
+}
+.ls-back-btn:hover { color:rgba(255,255,255,.7); }
+.ls-err {
+  display:none;
+  color:#F09595;font-family:var(--mono);font-size:11px;
+  margin-bottom:12px;
+  padding:8px 12px;
+  background:rgba(224,75,74,.1);
+  border:1px solid rgba(224,75,74,.25);
+  border-radius:8px;
+}
+.ls-forgot {
+  background:none;border:none;
+  color:rgba(255,255,255,.3);font-family:var(--mono);font-size:11px;
+  cursor:pointer;text-decoration:underline;
+  display:block;text-align:center;margin-top:14px;
+  transition:color .15s;
+}
+.ls-forgot:hover { color:rgba(255,255,255,.6); }
+.ls-footer {
+  text-align:center;padding:16px;
+  font-family:var(--mono);font-size:9px;
+  color:rgba(255,255,255,.18);letter-spacing:.08em;
+  border-top:1px solid rgba(255,255,255,.05);
+}
+.ls-sync-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:#0F6E56;margin-right:5px;vertical-align:middle; }
+
+/* ── Home screen ── */
+#homeScreen {
+  position:fixed;inset:0;z-index:900;
+  background:#0d1117;
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:24px;overflow-y:auto;
+}
+.hs-bg-grid {
+  position:absolute;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(15,110,86,.06) 1px, transparent 1px),
+    linear-gradient(90deg,rgba(15,110,86,.06) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+.hs-inner { position:relative;width:100%;max-width:480px; }
+.hs-greeting {
+  text-align:center;margin-bottom:28px;
+}
+.hs-avatar-ring {
+  width:72px;height:72px;border-radius:50%;
+  border:2px solid rgba(15,110,86,.6);
+  background:rgba(15,110,86,.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:34px;margin:0 auto 14px;
+  box-shadow:0 0 24px rgba(15,110,86,.25);
+}
+.hs-welcome { font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.3);font-family:var(--mono);margin-bottom:4px; }
+.hs-name { font-size:28px;font-weight:900;color:#fff;font-family:var(--head); }
+.hs-role-tag {
+  display:inline-block;margin-top:8px;
+  font-size:10px;font-family:var(--mono);letter-spacing:.1em;
+  padding:3px 12px;border-radius:20px;
+  background:rgba(15,110,86,.2);color:#5DCAA5;
+  border:1px solid rgba(15,110,86,.4);
+}
+.hs-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px; }
+.hs-card {
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;padding:24px 14px;
+  text-align:center;cursor:pointer;
+  transition:all .2s;
+}
+.hs-card:hover {
+  border-color:rgba(15,110,86,.5);
+  background:rgba(15,110,86,.1);
+  transform:translateY(-2px);
+}
+.hs-card-icon { font-size:40px;margin-bottom:10px; }
+.hs-card-label { font-size:16px;font-weight:700;color:#9FE1CB;font-family:var(--head); }
+.hs-card-sub { font-size:9px;font-family:var(--mono);color:rgba(255,255,255,.3);margin-top:5px;line-height:1.6; }
+.hs-sunday {
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:12px;padding:14px 16px;margin-bottom:14px;
+}
+.hs-sunday-label {
+  font-family:var(--mono);font-size:9px;letter-spacing:.15em;
+  text-transform:uppercase;color:#5DCAA5;margin-bottom:8px;
+}
+.hs-signout {
+  text-align:center;
+}
+.hs-signout button {
+  background:none;border:none;
+  color:rgba(255,255,255,.25);font-family:var(--mono);font-size:11px;
+  cursor:pointer;text-decoration:underline;transition:color .15s;
+}
+.hs-signout button:hover { color:rgba(255,255,255,.5); }
+
 </style>
 </head>
 <body>
@@ -490,140 +710,101 @@ textarea { resize:vertical; min-height:70px; }
 <!-- ═══════════════════════════════════════
      HOME SCREEN (shown after login)
      ═══════════════════════════════════════ -->
-<div id="homeScreen" style="
-  position:fixed;inset:0;z-index:900;
-  background:var(--bg);
-  display:none;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:24px;
-">
-  <!-- Noise overlay -->
-  <div style="position:absolute;inset:0;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.35"></div>
-
-  <div style="position:relative;width:100%;max-width:480px">
-
-    <!-- Greeting -->
-    <div style="text-align:center;margin-bottom:32px">
-      <div style="font-size:40px;margin-bottom:10px" id="hs-avatar">👤</div>
-      <div style="font-family:var(--head);font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:4px">Welcome back</div>
-      <div style="font-family:var(--head);font-size:28px;font-weight:900;color:var(--text)" id="hs-name">—</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:4px" id="hs-role">—</div>
+<div id="homeScreen">
+  <div class="hs-bg-grid"></div>
+  <div class="hs-inner">
+    <div class="hs-greeting">
+      <div class="hs-avatar-ring" id="hs-avatar">👤</div>
+      <div class="hs-welcome">Welcome back</div>
+      <div class="hs-name" id="hs-name">—</div>
+      <div id="hs-role-wrap"><span class="hs-role-tag" id="hs-role">—</span></div>
     </div>
-
-    <!-- Two big choice cards -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
-
-      <!-- Lights -->
-      <div onclick="hsGo('dashboard')" style="
-        background:var(--s1);border:1px solid var(--border2);border-radius:14px;
-        padding:28px 16px;text-align:center;cursor:pointer;
-        transition:all .2s;
-      " onmouseover="this.style.borderColor='var(--amber)';this.style.background='var(--aglow)';this.style.transform='translateY(-3px)'"
-         onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--s1)';this.style.transform='none'">
-        <div style="font-size:48px;margin-bottom:12px;">💡</div>
-        <div style="font-family:var(--head);font-size:18px;font-weight:700;color:#0F6E56">Lights</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:6px;line-height:1.5">Fixtures · Outages<br>Inventory · Scan</div>
+    <div class="hs-grid">
+      <div class="hs-card" onclick="hsGo('dashboard')">
+        <div class="hs-card-icon">💡</div>
+        <div class="hs-card-label">Lights</div>
+        <div class="hs-card-sub">Fixtures · Outages<br>Inventory · Scan</div>
       </div>
-
-      <!-- Schedule -->
-      <div onclick="hsGo('schedule')" style="
-        background:var(--s1);border:1px solid var(--border2);border-radius:14px;
-        padding:28px 16px;text-align:center;cursor:pointer;
-        transition:all .2s;
-      " onmouseover="this.style.borderColor='var(--blue)';this.style.background='var(--bglow)';this.style.transform='translateY(-3px)'"
-         onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--s1)';this.style.transform='none'">
-        <div style="font-size:48px;margin-bottom:12px;">📅</div>
-        <div style="font-family:var(--head);font-size:18px;font-weight:700;color:#0F6E56">Schedule</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:6px;line-height:1.5">Sunday roster<br>Station assignments</div>
+      <div class="hs-card" onclick="hsGo('schedule')">
+        <div class="hs-card-icon">📅</div>
+        <div class="hs-card-label">Schedule</div>
+        <div class="hs-card-sub">Sunday roster<br>Station assignments</div>
       </div>
-
+      <div class="hs-card" onclick="hsGo('checkout')">
+        <div class="hs-card-icon">📦</div>
+        <div class="hs-card-label">Gear</div>
+        <div class="hs-card-sub">Checkout · Maintenance<br>Asset tracking</div>
+      </div>
+      <div class="hs-card" onclick="hsGo('checkin')">
+        <div class="hs-card-icon">✅</div>
+        <div class="hs-card-label">Check In</div>
+        <div class="hs-card-sub">Session attendance<br>QR check-in</div>
+      </div>
     </div>
-
-    <!-- This Sunday preview — always shown -->
-    <div id="hs-sunday" style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
-      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#0F6E56;margin-bottom:8px">📅 THIS SUNDAY</div>
-      <div id="hs-sunday-content"></div>
+    <div class="hs-sunday">
+      <div class="hs-sunday-label">📅 This Sunday</div>
+      <div id="hs-sunday-content" style="font-size:13px;color:rgba(255,255,255,.6);font-family:var(--mono)"></div>
     </div>
-
-    <!-- Sign out link -->
-    <div style="text-align:center">
-      <button onclick="lsLogout()" style="background:none;border:none;color:var(--dim2);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline">Sign out</button>
+    <div class="hs-signout">
+      <button onclick="lsLogout()">Sign out</button>
     </div>
-
   </div>
 </div>
 
 <!-- ═══════════════════════════════════════
      FULL SCREEN LOGIN
      ═══════════════════════════════════════ -->
-<div id="loginScreen" style="
-  position:fixed;inset:0;z-index:1000;
-  background:var(--bg);
-  display:none;align-items:flex-start;justify-content:center;
-  padding:20px;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  animation:fadeIn .3s;
-">
-  <!-- Noise overlay -->
-  <div style="position:absolute;inset:0;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.35"></div>
+<div id="loginScreen">
+  <div class="ls-bg-grid"></div>
+  <div class="ls-bg-glow"></div>
 
-  <div style="width:100%;max-width:420px;position:relative">
-
-    <!-- Logo -->
-    <div style="text-align:center;margin-bottom:36px">
-      <div style="width:64px;height:64px;background:#0F6E56;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><svg width="40" height="52" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="0" y="0" width="40" height="8" rx="4" fill="white"/>
-  <rect x="0" y="14" width="29" height="8" rx="4" fill="rgba(255,255,255,0.8)"/>
-  <rect x="0" y="28" width="17" height="8" rx="4" fill="rgba(255,255,255,0.55)"/>
-  <rect x="0" y="42" width="8" height="8" rx="4" fill="rgba(255,255,255,0.3)"/>
-</svg></div>
-      <div style="font-family:var(--head);font-weight:700;font-size:28px;color:var(--text);line-height:1">KCC Technical</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);letter-spacing:3px;text-transform:uppercase;margin-top:6px">Crew Portal</div>
+  <div class="ls-card">
+    <!-- Header / branding -->
+    <div class="ls-card-header">
+      <div class="ls-logo-box">
+        <svg width="32" height="42" viewBox="0 0 40 52" fill="none">
+          <rect x="0" y="0"  width="40" height="8" rx="4" fill="white"/>
+          <rect x="0" y="14" width="29" height="8" rx="4" fill="rgba(255,255,255,0.8)"/>
+          <rect x="0" y="28" width="17" height="8" rx="4" fill="rgba(255,255,255,0.55)"/>
+          <rect x="0" y="42" width="8"  height="8" rx="4" fill="rgba(255,255,255,0.3)"/>
+        </svg>
+      </div>
+      <div class="ls-wordmark">KCC Technical</div>
+      <div class="ls-sub">Crew Portal</div>
     </div>
 
-    <!-- Login card -->
-    <div style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;overflow:hidden">
-
-      <!-- Step 1 — pick user -->
-      <div id="ls-step1">
-        <div style="padding:20px 20px 0;font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);margin-bottom:12px">Select your name</div>
-        <div id="ls-userGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;padding:0 20px 20px"></div>
-        <div style="padding:0 20px 20px;border-top:1px solid var(--border);padding-top:14px;margin-top:4px" id="ls-noUsers" style="display:none">
-          <p style="font-family:var(--mono);font-size:12px;color:var(--dim2);margin-bottom:12px">No crew members yet. The app needs at least one technician added first.</p>
-        </div>
+    <!-- Step 1 — pick user -->
+    <div id="ls-step1">
+      <div class="ls-section-label">Select your name</div>
+      <div id="ls-userGrid"></div>
+      <div id="ls-noUsers" style="display:none;padding:0 24px 20px">
+        <p style="font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.3);line-height:1.6">No crew members yet. Ask your admin to add you to the app first.</p>
       </div>
-
-      <!-- Step 2 — enter password -->
-      <div id="ls-step2" style="display:none;padding:24px">
-        <button onclick="lsBack()" style="background:none;border:none;color:var(--dim2);cursor:pointer;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px;margin-bottom:20px;padding:0">← Back</button>
-        <div style="text-align:center;margin-bottom:20px">
-          <div style="font-size:44px" id="ls-avatar">👤</div>
-          <div style="font-family:var(--head);font-size:22px;font-weight:900;margin-top:8px" id="ls-name">—</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);margin-top:2px" id="ls-role">—</div>
-        </div>
-        <div style="margin-bottom:12px">
-          <label style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim2);display:block;margin-bottom:6px">Password</label>
-          <input type="password" id="ls-pw" placeholder="Enter your password"
-            style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:14px;padding:12px 14px"
-            onkeydown="if(event.key==='Enter')lsSubmit()">
-        </div>
-        <div id="ls-err" style="display:none;color:var(--red);font-family:var(--mono);font-size:11px;margin-bottom:10px">❌ Incorrect password. Try again.</div>
-        <button onclick="lsSubmit()" style="width:100%;background:#0F6E56;color:#fff;border:none;border-radius:6px;padding:13px;font-family:var(--head);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background .18s;-webkit-tap-highlight-color:rgba(0,0,0,.1);">
-          Log In
-        </button>
-        <div style="text-align:center;margin-top:12px">
-          <button onclick="lsForgot()" style="background:none;border:none;color:var(--dim2);font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline">Forgot password?</button>
-        </div>
-      </div>
-
     </div>
 
-    <!-- Version tag -->
-    <div style="text-align:center;margin-top:16px;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px">
-      KCC Technical · <span id="ls-syncStatus">Connecting…</span>
+    <!-- Step 2 — password -->
+    <div id="ls-step2" style="display:none">
+      <button class="ls-back-btn" onclick="lsBack()">← Back</button>
+      <div class="ls-selected-user">
+        <div class="ls-sel-avatar" id="ls-avatar">👤</div>
+        <div>
+          <div class="ls-sel-name" id="ls-name">—</div>
+          <div class="ls-sel-role" id="ls-role">—</div>
+        </div>
+      </div>
+      <label class="ls-pw-label">Password</label>
+      <input type="password" id="ls-pw" class="ls-pw-input"
+        placeholder="Enter your password"
+        onkeydown="if(event.key==='Enter')lsSubmit()">
+      <div class="ls-err" id="ls-err">❌ Incorrect password. Try again.</div>
+      <button class="ls-login-btn" onclick="lsSubmit()">Log In</button>
+      <button class="ls-forgot" onclick="lsForgot()">Forgot password?</button>
+    </div>
+
+    <!-- Footer -->
+    <div class="ls-footer">
+      <span class="ls-sync-dot" id="ls-sync-dot"></span>
+      KCC Technical &nbsp;·&nbsp; <span id="ls-syncStatus">Connecting…</span>
     </div>
   </div>
 </div>
@@ -2075,12 +2256,15 @@ function buildLsGrid(){
   }
   if(noUsers) noUsers.style.display = 'none';
   grid.innerHTML = db.technicians.map(t=>{
-    const roleColor = t.userRole==='master'?'var(--amber)':t.userRole==='admin'?'var(--blue)':'var(--dim2)';
+    const roleColor = t.userRole==='master'?'#FAC775':t.userRole==='admin'?'#9FE1CB':'rgba(255,255,255,0.4)';
+    const roleBg    = t.userRole==='master'?'rgba(186,117,23,.2)':t.userRole==='admin'?'rgba(15,110,86,.2)':'rgba(255,255,255,.05)';
     const roleLabel = t.userRole==='master'?'👑 Master':t.userRole==='admin'?'🔑 Admin':'👤 User';
+    const deptColor = {Lighting:'#5DCAA5',Audio:'#85B7EB',Cameras:'#EF9F27',IT:'#B4B2A9'}[t.dept]||'rgba(255,255,255,.3)';
     return `<div class="ls-user-btn" onclick="lsSelectUser('${t.id}')">
       <div class="ls-av">${t.avatar||'👤'}</div>
-      <div>${t.name.split(' ')[0]}</div>
-      <div class="ls-role-tag" style="background:rgba(0,0,0,.3);color:${roleColor}">${roleLabel}</div>
+      <div class="ls-uname">${t.name.split(' ')[0]}</div>
+      ${t.dept?`<div class="ls-role-tag" style="background:rgba(0,0,0,.3);color:${deptColor}">${t.dept}</div>`:''}
+      <div class="ls-role-tag" style="background:${roleBg};color:${roleColor}">${roleLabel}</div>
     </div>`;
   }).join('');
 }
@@ -2182,25 +2366,25 @@ function showHomeScreen(){
     const dateStr = sun.toLocaleDateString('en-CA',{month:'long',day:'numeric'});
     const stationIcon = Object.fromEntries(getScheduleRoles().map(r=>[r.name,r.icon]));
     sundayContent.innerHTML =
-      '<div style="font-size:13px;font-weight:700;margin-bottom:6px">'+dateStr+'</div>' +
+      '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8);margin-bottom:6px">'+dateStr+'</div>' +
       (myEntry
-        ? '<div style="color:var(--green);font-size:13px;margin-bottom:8px">✅ You are on the roster · <strong>'+(stationIcon[myRole]||'')+(myRole||'No station set')+'</strong></div>'
-        : '<div style="color:var(--red);font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">🚫</span> You are <strong>not scheduled</strong> this week</div>') +
+        ? '<div style="color:#5DCAA5;font-size:13px;margin-bottom:8px">✅ You are on the roster · <strong>'+(stationIcon[myRole]||'')+(myRole||'No station set')+'</strong></div>'
+        : '<div style="color:#F09595;font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">🚫</span> You are <strong>not scheduled</strong> this week</div>') +
       '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
       entry.crew.map(id=>{
         const cr=db.technicians.find(x=>x.id===id);
         if(!cr) return '';
         const role=entry.roles?.[id]||'';
         const isMe = id === t.id;
-        return '<div style="background:var(--s1);border:1px solid '+(isMe?'rgba(240,165,0,.5)':'var(--border)')+';border-radius:20px;padding:3px 10px;font-size:11px;font-family:var(--mono);'+(isMe?'color:var(--amber);font-weight:700':'')+'">'+
+        return '<div style="background:rgba(255,255,255,.06);border:1px solid '+(isMe?'rgba(15,110,86,.6)':'rgba(255,255,255,.1)')+';border-radius:20px;padding:3px 10px;font-size:11px;font-family:var(--mono);color:'+(isMe?'#9FE1CB':'rgba(255,255,255,.5)')+(isMe?';font-weight:700':'')+'">'+
           (cr.avatar||'👤')+' '+cr.name.split(' ')[0]+(role?' · '+(stationIcon[role]||role):'')+'</div>';
       }).join('') + '</div>';
   } else {
     sundayEl.style.display = '';
     const dateStr = sun.toLocaleDateString('en-CA',{month:'long',day:'numeric'});
     sundayContent.innerHTML =
-      '<div style="font-size:13px;font-weight:700;margin-bottom:6px">'+dateStr+'</div>' +
-      '<div style="color:var(--dim2);font-size:12px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">📋</span> No roster set yet for this Sunday</div>';
+      '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8);margin-bottom:6px">'+dateStr+'</div>' +
+      '<div style="color:rgba(255,255,255,.35);font-size:12px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">📋</span> No roster set yet for this Sunday</div>';
   }
 
   document.getElementById('homeScreen').style.display = 'flex';
