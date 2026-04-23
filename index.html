@@ -2624,7 +2624,7 @@ function renderDash(){
         <span style="font-size:17px">${o.resolved?'✅':'🔴'}</span>
         <div><div style="font-size:13px">${o.resolved?'<span class="cg">Resolved</span>':'<span class="cr">Outage</span>'}: <strong>${o.fixtureName}</strong></div>
         <div class="dim">${fmtD(o.timestamp)} · ${o.reportedBy}</div></div>
-      </div>`).join('');
+      </div>`).join(''));
 }
 
 // ── Maintenance ──
@@ -5819,8 +5819,8 @@ function renderCheckout(){
           (co?'<div style="margin-top:4px;font-size:11px;font-family:var(--mono);color:var(--dim2)">With: '+(p?p.name:'unknown')+(co.dueDate?' · due '+fmtDateShort(co.dueDate):'')+'</div>':'')+
         '</div>'+
         '<div class="row gap6">'+
-          (co?'<button class="btn bb bsm" onclick="openReturnModal(''+co.id+'')">↩ Return</button>':'<button class="btn bg bsm" onclick="(()=>{_populateGearSelect('co-item',true);document.getElementById('co-item').value=''+g.id+'';_populatePersonSelect('co-person');const t=new Date();t.setDate(t.getDate()+7);document.getElementById('co-due').value=t.toISOString().slice(0,10);openM('checkoutGear')})()">📤 Out</button>')+
-          '<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem(''+g.id+'')">✏️</button>'+
+          (co?`<button class="btn bb bsm" onclick="openReturnModal('${co.id}')">↩ Return</button>`:`<button class="btn bg bsm" onclick="(()=>{_populateGearSelect('co-item',true);document.getElementById('co-item').value='${g.id}';_populatePersonSelect('co-person');const t=new Date();t.setDate(t.getDate()+7);document.getElementById('co-due').value=t.toISOString().slice(0,10);openM('checkoutGear')})()">📤 Out</button>`)+
+          `<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem('${g.id}')">✏️</button>`+
         '</div>'+
       '</div>';
     }).join('');
@@ -5843,7 +5843,7 @@ function renderCheckout(){
           '<div class="dim">Out since: '+fmtDate(co.checkedOutAt)+(co.dueDate?' · Due: '+fmtDate(co.dueDate):'')+'</div>'+
           (co.purpose?'<div class="dim">Purpose: '+co.purpose+'</div>':'')+
         '</div>'+
-        '<button class="btn bb bsm" onclick="openReturnModal(''+co.id+'')">↩ Return</button>'+
+        `<button class="btn bb bsm" onclick="openReturnModal('${co.id}')">↩ Return</button>`+
       '</div>';
     }).join('');
     return;
@@ -5976,8 +5976,8 @@ function renderMaintenance(){
           '</div>'+
         '</div>'+
         '<div class="row gap6">'+
-          '<button class="btn ba bsm" onclick="(()=>{_populateGearSelect('me-item',false);document.getElementById('me-item').value=''+g.id+'';document.getElementById('me-date').value=new Date().toISOString().slice(0,10);openM('addMaintEntry')})()">+ Log</button>'+
-          '<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem(''+g.id+'')">✏️</button>'+
+          `<button class="btn ba bsm" onclick="(()=>{_populateGearSelect('me-item',false);document.getElementById('me-item').value='${g.id}';document.getElementById('me-date').value=new Date().toISOString().slice(0,10);openM('addMaintEntry')})()">+ Log</button>`+
+          `<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem('${g.id}')">✏️</button>`+
         '</div>'+
       '</div>'+
       '<div class="dim">Last service: '+(lastLog?fmtDate(lastLog.date)+' · '+lastLog.type:'Never')+'</div>'+
@@ -6114,9 +6114,7 @@ function renderRequests(){
       (assigned?'<div class="dim" style="margin-top:4px">Assigned: <strong>'+assigned.name+'</strong></div>':'')+
       (r.adminNotes?'<div class="dim" style="margin-top:4px;font-style:italic">Note: '+r.adminNotes+'</div>':'')+
       '<div style="margin-top:10px">'+
-        '<button class="btn bgh bsm" onclick="openEditRequest(''+r.id+'')">'+
-          (isAdmin()?'✏️ Manage':'View')+
-        '</button>'+
+        `<button class="btn bgh bsm" onclick="openEditRequest('${r.id}')">${isAdmin()?'✏️ Manage':'View'}</button>`+
       '</div>'+
     '</div>';
   }).join('');
@@ -6155,7 +6153,7 @@ function renderAnnouncements(){
   if(!db.announcements)db.announcements=[];
   const listEl=document.getElementById('ann-list');if(!listEl)return;
   const sorted=[...(db.announcements||[])].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.createdAt-a.createdAt));
-  if(!sorted.length){listEl.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">📢</div><div class="dim">No announcements yet</div>'+(isAdmin()?'<button class="btn ba bsm" style="margin-top:12px" onclick="openM('addAnnouncement')">+ Post First Announcement</button>':'')+'</div>';return;}
+  if(!sorted.length){listEl.innerHTML=`<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">📢</div><div class="dim">No announcements yet</div>${isAdmin()?`<button class="btn ba bsm" style="margin-top:12px" onclick="openM('addAnnouncement')">+ Post First Announcement</button>`:''}</div>`;return;}
   listEl.innerHTML=sorted.map(a=>{
     const deptB=a.dept?deptBadge(a.dept):'<span class="badge blow">All depts</span>';
     return'<div class="ann-card'+(a.pinned?' pinned':'')+'">'+
@@ -6168,7 +6166,7 @@ function renderAnnouncements(){
       '</div>'+
       '<div style="font-size:14px;line-height:1.6;color:var(--text);margin-bottom:8px">'+a.body+'</div>'+
       '<div class="dim">'+a.author+' · '+fmtDate(a.createdAt)+
-        (isAdmin()?'&nbsp;<button onclick="deleteAnnouncement(''+a.id+'')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;font-family:var(--mono)">delete</button>':'')+
+        (isAdmin()?`&nbsp;<button onclick="deleteAnnouncement('${a.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;font-family:var(--mono)">delete</button>`:'')+
       '</div>'+
     '</div>';
   }).join('');
@@ -6193,7 +6191,7 @@ function renderSignoffs(){
     return'<div class="signoff-row">'+
       '<div class="row gap8">'+deptBadge(dept)+'</div>'+
       '<div class="row gap8">'+chip+
-        (canSign&&!signed?'<button class="btn ba bsm" onclick="deptSignOff(\'''+dept+'\'')" style="padding:4px 10px">Sign Off</button>':'')
+        (canSign&&!signed?`<button class="btn ba bsm" onclick="deptSignOff('${dept}')" style="padding:4px 10px">Sign Off</button>`:'')
       +'</div>'+
     '</div>';
   }).join('');
@@ -6324,7 +6322,7 @@ function renderTraining(){
   const listEl=document.getElementById('training-list');
   if(!listEl)return;
   if(!mods.length){
-    listEl.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">📚</div><div class="dim">No training modules yet</div>'+(isAdmin()?'<button class="btn ba bsm" style="margin-top:12px" onclick="openM('addTrainingModule')">+ Add First Module</button>':'')+'</div>';
+    listEl.innerHTML=`<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">📚</div><div class="dim">No training modules yet</div>${isAdmin()?`<button class="btn ba bsm" style="margin-top:12px" onclick="openM('addTrainingModule')">+ Add First Module</button>`:''}</div>`;
     return;
   }
   listEl.innerHTML=mods.map(m=>{
@@ -6335,7 +6333,7 @@ function renderTraining(){
     const requiredB=m.required?'<span style="background:#FCEBEB;color:#791F1F;border:1px solid #F7C1C1;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600">REQUIRED</span>':'';
     const completedB=completed?'<span style="background:#EAF3DE;color:#27500A;border:1px solid #C0DD97;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600">✓ DONE</span>':'';
     return'<div class="training-module'+(completed?' completed':'')+'">'+
-      '<div class="tm-header" onclick="toggleTmBody(''+m.id+'')">'+
+      `<div class="tm-header" onclick="toggleTmBody('${m.id}')">` +
         '<div style="flex:1;min-width:0">'+
           '<div class="row gap6 mb8">'+
             '<div class="fw7" style="font-size:14px">'+m.title+'</div>'+
@@ -6353,9 +6351,8 @@ function renderTraining(){
         (m.desc?'<div style="font-size:13px;color:var(--text);margin-bottom:10px;line-height:1.6">'+m.desc+'</div>':'')+
         (m.url?'<div class="tm-resource"><span style="font-size:18px">🔗</span><a href="'+m.url+'" target="_blank" style="color:var(--blue);font-size:13px;font-family:var(--mono)">Open resource →</a></div>':'')+
         '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
-          (tech?'<button class="btn '+(completed?'bg':'ba')+' bsm" onclick="markModuleComplete(''+tech.id+'',''+m.id+'')">'+
-            (completed?'↺ Mark incomplete':'✓ Mark complete')+'</button>':'')+
-          (isAdmin()?'<button class="btn br bsm" onclick="deleteTrainingModule(''+m.id+'')">Delete</button>':'')+
+          (tech?`<button class="btn ${completed?'bg':'ba'} bsm" onclick="markModuleComplete('${tech.id}','${m.id}')">${completed?'↺ Mark incomplete':'✓ Mark complete'}</button>`:'')+
+          (isAdmin()?`<button class="btn br bsm" onclick="deleteTrainingModule('${m.id}')">Delete</button>`:'')+
         '</div>'+
       '</div>'+
     '</div>';
@@ -6414,7 +6411,7 @@ function renderProfiles(){
       const completedCount=(t.completedModules||[]).length;
       const totalMods=(db.trainingModules||[]).length;
       const isActive=window._openProfileId===t.id;
-      return'<div class="profile-card'+(isActive?' '+' ':'')+(isActive?'" style="border:2px solid #0F6E56':'"')+' onclick="openProfile(''+t.id+'')" style="cursor:pointer'+(isActive?';border:2px solid #0F6E56':'')+' ">'+
+      return`<div class="profile-card ${isActive?'selected':''}" onclick="openProfile('${t.id}')" style="cursor:pointer;${isActive?'border:2px solid #0F6E56;':''}">` +
         '<div class="profile-header">'+
           '<div class="profile-avatar" style="background:'+(_deptAvatarColor(t.dept))+';color:white">'+
             (t.avatar||t.name[0]||'👤')+
@@ -6433,7 +6430,7 @@ function renderProfiles(){
           '</div>'+
           (t.training&&t.training.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+t.training.map(s=>'<span class="skill-tag">'+s+'</span>').join('')+'</div>':'')+
           ((t.certs||[]).length?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">'+t.certs.map(c=>'<span class="cert-tag">🏅 '+c.name+'</span>').join('')+'</div>':'')+
-          '<button class="btn bb bsm" style="margin-top:10px;width:100%;justify-content:center" onclick="event.stopPropagation();openProfile(''+t.id+'')">View full profile →</button>'+
+          `<button class="btn bb bsm" style="margin-top:10px;width:100%;justify-content:center" onclick="event.stopPropagation();openProfile('${t.id}')">View full profile →</button>`+
         '</div>'+
       '</div>';
     }).join('');
@@ -6461,8 +6458,8 @@ function renderProfiles(){
         '<div><div class="fw7" style="font-size:16px">'+t.name+'</div><div class="dim">'+( t.role||'Technician')+'</div><div style="margin-top:4px">'+deptBadge(t.dept)+'</div></div>'+
       '</div>'+
       '<div class="row gap6">'+
-        '<button class="btn ba bsm" onclick="document.getElementById('cert-techId').value=''+t.id+'';['cert-name','cert-issuer','cert-date','cert-expiry','cert-notes'].forEach(id=>document.getElementById(id).value='');openM('addCert')">+ Cert</button>'+
-        '<button class="btn bgh bsm" data-perm="admin" onclick="editTech(''+t.id+'')">✏️ Edit</button>'+
+        `<button class="btn ba bsm" onclick="document.getElementById('cert-techId').value='${t.id}';['cert-name','cert-issuer','cert-date','cert-expiry','cert-notes'].forEach(id=>document.getElementById(id).value='');openM('addCert')">+ Cert</button>`+
+        `<button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️ Edit</button>`+
         '<button class="btn bgh bsm" onclick="window._openProfileId=null;renderProfiles()">✕</button>'+
       '</div>'+
     '</div>'+
@@ -6491,11 +6488,11 @@ function renderProfiles(){
                 (c.issuer?'<div class="dim">'+c.issuer+'</div>':'')+
                 (c.date?'<div class="dim">Earned: '+c.date+(c.expiry?' · Expires: '+c.expiry:'')+'</div>':'')+
               '</div>'+
-              '<button onclick="removeCert(''+t.id+'',''+c.id+'')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px" title="Remove">✕</button>'+
+              `<button onclick="removeCert('${t.id}','${c.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px" title="Remove">✕</button>`+
             '</div>'
           ).join('')+
         '</div>':
-        '<div class="dim" style="margin-bottom:14px">No certifications yet — <button onclick="document.getElementById('cert-techId').value=''+t.id+'';openM('addCert')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-family:var(--mono);font-size:11px">add one</button></div>')+
+        `<div class="dim" style="margin-bottom:14px">No certifications yet — <button onclick="document.getElementById('cert-techId').value='${t.id}';openM('addCert')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-family:var(--mono);font-size:11px">add one</button></div>`)+''
 
       // Training progress
       '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);margin-bottom:8px">Training progress</div>'+
