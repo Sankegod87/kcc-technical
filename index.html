@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+A<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -42,7 +42,7 @@ const firebaseConfig = {
   appId:             "1:268758980349:web:111d497335e8bbefb65094"
 };
 // ═══════════════════════════════════════════════════
-const DB_DOC = "kcc-technical/main";
+const DB_DOC = "stage-light-tracker/main";
 let app, fsdb;
 let _firebaseReady = false;
 function initFirebase() {
@@ -480,155 +480,145 @@ textarea { resize:vertical; min-height:70px; }
 .tm-resource{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
 .tm-resource:last-child{border-bottom:none;}
 
-/* ── Login screen ── */
+/* ── Login screen — split panel ── */
 #loginScreen {
   position:fixed;inset:0;z-index:1000;
   background:#0d1117;
-  display:none;align-items:center;justify-content:center;
-  padding:20px;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  animation:fadeIn .3s;
+  display:none;align-items:stretch;justify-content:center;
+  overflow:hidden;
 }
 .ls-bg-grid {
   position:absolute;inset:0;pointer-events:none;
   background-image:
-    linear-gradient(rgba(15,110,86,.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15,110,86,.07) 1px, transparent 1px);
-  background-size:40px 40px;
+    linear-gradient(rgba(15,110,86,.06) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(15,110,86,.06) 1px,transparent 1px);
+  background-size:44px 44px;
 }
-.ls-bg-glow {
-  position:absolute;top:-120px;left:50%;transform:translateX(-50%);
-  width:600px;height:400px;pointer-events:none;
-  background:radial-gradient(ellipse at center, rgba(15,110,86,.18) 0%, transparent 70%);
+/* Split layout */
+.ls-split {
+  position:relative;display:flex;width:100%;z-index:1;
 }
-.ls-card {
-  position:relative;width:100%;max-width:400px;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:20px;
-  overflow:hidden;
-  backdrop-filter:blur(12px);
-  animation:lsSlideUp .4s ease-out;
+/* LEFT PANEL — branding + crew grid */
+.ls-panel-left {
+  flex:1;display:flex;flex-direction:column;
+  padding:36px 32px;border-right:0.5px solid rgba(255,255,255,.07);
+  overflow-y:auto;min-width:0;
 }
-.ls-card-header {
-  padding:36px 32px 28px;
-  text-align:center;
-  border-bottom:1px solid rgba(255,255,255,.07);
+/* RIGHT PANEL — password step */
+.ls-panel-right {
+  width:340px;flex-shrink:0;display:flex;flex-direction:column;
+  padding:36px 32px;overflow-y:auto;
 }
+/* Branding */
 .ls-logo-box {
-  width:64px;height:64px;background:#0F6E56;border-radius:16px;
+  width:52px;height:52px;background:#0F6E56;border-radius:14px;
   display:flex;align-items:center;justify-content:center;
-  margin:0 auto 20px;
-  box-shadow:0 0 40px rgba(15,110,86,.4);
+  margin-bottom:18px;
+  box-shadow:0 0 32px rgba(15,110,86,.35);
 }
-.ls-wordmark { font-size:24px;font-weight:700;color:#fff;letter-spacing:-.5px;font-family:var(--head); }
-.ls-sub { font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.2em;text-transform:uppercase;margin-top:4px;font-family:var(--mono); }
-.ls-section-label {
-  padding:16px 24px 8px;
-  font-family:var(--mono);font-size:9px;letter-spacing:.15em;
-  text-transform:uppercase;color:rgba(255,255,255,.3);
+.ls-wordmark { font-size:22px;font-weight:700;color:#fff;letter-spacing:-.4px;margin-bottom:4px;font-family:var(--head); }
+.ls-sub { font-size:9px;color:rgba(255,255,255,.3);letter-spacing:.2em;text-transform:uppercase;margin-bottom:28px;font-family:var(--mono); }
+/* Step indicators */
+.ls-steps {
+  display:flex;align-items:center;gap:6px;margin-bottom:24px;
 }
+.ls-step-dot {
+  width:6px;height:6px;border-radius:50%;transition:background .2s;
+}
+.ls-step-dot.on { background:#0F6E56; }
+.ls-step-dot.off { background:rgba(255,255,255,.15); }
+.ls-step-label { font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.3);font-family:var(--mono);margin-left:4px; }
+/* Section label */
+.ls-section-label { font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.3);font-family:var(--mono);margin-bottom:12px; }
+/* Crew grid */
 #ls-userGrid {
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
-  gap:8px;padding:0 16px 20px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-bottom:8px;
 }
 .ls-user-btn {
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:12px;padding:14px 8px;
-  cursor:pointer;text-align:center;
-  transition:all .18s;
-  display:flex;flex-direction:column;align-items:center;gap:6px;
+  background:rgba(255,255,255,.04);border:0.5px solid rgba(255,255,255,.09);
+  border-radius:10px;padding:12px 6px;cursor:pointer;text-align:center;
+  transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:4px;
 }
-.ls-user-btn:hover {
-  border-color:#0F6E56;
-  background:rgba(15,110,86,.15);
-  transform:translateY(-2px);
+.ls-user-btn:hover { border-color:#0F6E56;background:rgba(15,110,86,.12);transform:translateY(-2px); }
+.ls-user-btn.selected { border-color:#0F6E56;background:rgba(15,110,86,.18); }
+.ls-av { font-size:24px;line-height:1; }
+.ls-uname { font-size:11px;font-weight:600;color:rgba(255,255,255,.8);font-family:var(--head);line-height:1.2; }
+.ls-dept-tag { font-size:9px;font-family:var(--mono);color:#5DCAA5;margin-top:1px; }
+.ls-role-tag { font-size:8px;font-family:var(--mono);padding:2px 6px;border-radius:8px;margin-top:2px; }
+/* No users state */
+#ls-noUsers { padding:12px 0 0; }
+/* Right panel — password step */
+.ls-step2-inner { display:flex;flex-direction:column;height:100%; }
+.ls-back-btn {
+  background:none;border:none;color:rgba(255,255,255,.3);
+  font-family:var(--mono);font-size:11px;cursor:pointer;
+  display:flex;align-items:center;gap:5px;padding:0;margin-bottom:24px;
+  transition:color .15s;
 }
-.ls-user-btn .ls-av { font-size:26px; }
-.ls-user-btn .ls-uname {
-  font-size:11px;font-weight:600;color:rgba(255,255,255,.8);
-  font-family:var(--head);line-height:1.2;
-}
-.ls-role-tag {
-  font-size:8px;font-family:var(--mono);letter-spacing:.05em;
-  padding:2px 6px;border-radius:8px;margin-top:1px;
-}
-/* Step 2 — password */
-#ls-step2 { padding:24px 24px 28px; }
+.ls-back-btn:hover { color:rgba(255,255,255,.65); }
 .ls-selected-user {
-  display:flex;align-items:center;gap:14px;
-  padding:14px 16px;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:12px;
-  margin-bottom:20px;
+  display:flex;align-items:center;gap:12px;
+  background:rgba(255,255,255,.04);border:0.5px solid rgba(255,255,255,.1);
+  border-radius:10px;padding:14px;margin-bottom:24px;
 }
-.ls-sel-avatar { font-size:32px; }
+.ls-sel-avatar { font-size:30px;flex-shrink:0; }
 .ls-sel-name { font-size:16px;font-weight:700;color:#fff;font-family:var(--head); }
-.ls-sel-role { font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono); }
-.ls-pw-label {
-  font-family:var(--mono);font-size:9px;letter-spacing:.15em;
-  text-transform:uppercase;color:rgba(255,255,255,.4);
-  display:block;margin-bottom:8px;
-}
+.ls-sel-role { font-size:10px;color:#5DCAA5;font-family:var(--mono);margin-top:3px; }
+.ls-pw-label { font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);font-family:var(--mono);display:block;margin-bottom:8px; }
 .ls-pw-input {
-  width:100%;background:rgba(255,255,255,.06) !important;
-  border:1px solid rgba(255,255,255,.12) !important;
-  border-radius:10px !important;
-  color:#fff !important;
-  font-family:var(--mono) !important;font-size:15px !important;
-  padding:14px 16px !important;
-  transition:border-color .18s !important;
-  margin-bottom:14px;
+  width:100%;box-sizing:border-box;
+  background:rgba(255,255,255,.06)!important;border:0.5px solid rgba(255,255,255,.12)!important;
+  border-radius:9px!important;color:#fff!important;
+  font-family:var(--mono)!important;font-size:15px!important;
+  padding:13px 14px!important;transition:border-color .18s!important;
+  margin-bottom:12px;outline:none!important;
 }
-.ls-pw-input:focus {
-  outline:none !important;
-  border-color:#0F6E56 !important;
-  box-shadow:0 0 0 3px rgba(15,110,86,.2) !important;
+.ls-pw-input:focus { border-color:#0F6E56!important;box-shadow:0 0 0 3px rgba(15,110,86,.2)!important; }
+.ls-pw-input::placeholder { color:rgba(255,255,255,.2)!important; }
+.ls-err {
+  display:none;color:#F09595;font-size:11px;font-family:var(--mono);
+  padding:8px 12px;background:rgba(224,75,74,.1);
+  border:0.5px solid rgba(224,75,74,.25);border-radius:7px;margin-bottom:12px;
 }
-.ls-pw-input::placeholder { color:rgba(255,255,255,.2) !important; }
 .ls-login-btn {
   width:100%;background:#0F6E56;color:#fff;border:none;
-  border-radius:10px;padding:14px;
-  font-family:var(--head);font-size:14px;font-weight:700;
-  letter-spacing:.5px;text-transform:uppercase;
-  cursor:pointer;transition:all .18s;
+  border-radius:9px;padding:14px;font-family:var(--head);
+  font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  cursor:pointer;transition:background .18s;margin-bottom:12px;
 }
 .ls-login-btn:hover { background:#1D9E75; }
 .ls-login-btn:active { transform:scale(.98); }
-.ls-back-btn {
-  background:none;border:none;
-  color:rgba(255,255,255,.35);
-  font-family:var(--mono);font-size:11px;
-  cursor:pointer;display:flex;align-items:center;gap:6px;
-  margin-bottom:20px;padding:0;
-  transition:color .15s;
-}
-.ls-back-btn:hover { color:rgba(255,255,255,.7); }
-.ls-err {
-  display:none;
-  color:#F09595;font-family:var(--mono);font-size:11px;
-  margin-bottom:12px;
-  padding:8px 12px;
-  background:rgba(224,75,74,.1);
-  border:1px solid rgba(224,75,74,.25);
-  border-radius:8px;
-}
 .ls-forgot {
-  background:none;border:none;
-  color:rgba(255,255,255,.3);font-family:var(--mono);font-size:11px;
-  cursor:pointer;text-decoration:underline;
-  display:block;text-align:center;margin-top:14px;
-  transition:color .15s;
+  background:none;border:none;color:rgba(255,255,255,.25);
+  font-family:var(--mono);font-size:11px;cursor:pointer;
+  text-decoration:underline;display:block;text-align:center;
+  transition:color .15s;margin-bottom:0;
 }
-.ls-forgot:hover { color:rgba(255,255,255,.6); }
+.ls-forgot:hover { color:rgba(255,255,255,.55); }
+/* Helper note at bottom of right panel */
+.ls-helper-note {
+  margin-top:auto;padding-top:20px;
+  border-top:0.5px solid rgba(255,255,255,.06);
+  font-size:10px;color:rgba(255,255,255,.22);line-height:1.6;font-family:var(--mono);
+}
+/* Footer */
 .ls-footer {
-  text-align:center;padding:16px;
-  font-family:var(--mono);font-size:9px;
-  color:rgba(255,255,255,.18);letter-spacing:.08em;
-  border-top:1px solid rgba(255,255,255,.05);
+  margin-top:auto;padding-top:20px;
+  border-top:0.5px solid rgba(255,255,255,.06);
+  display:flex;align-items:center;gap:6px;
+  font-size:9px;color:rgba(255,255,255,.2);letter-spacing:.08em;font-family:var(--mono);
+}
+.ls-sync-dot { width:5px;height:5px;border-radius:50%;background:#0F6E56;flex-shrink:0; }
+/* Mobile — stack panels vertically */
+@media(max-width:640px){
+  #loginScreen { align-items:flex-start;overflow-y:auto; }
+  .ls-split { flex-direction:column;min-height:100%; }
+  .ls-panel-left { border-right:none;border-bottom:0.5px solid rgba(255,255,255,.07);padding:28px 20px 24px;overflow:visible; }
+  .ls-panel-right { width:auto;padding:24px 20px 32px;overflow:visible; }
+  .ls-logo-box { width:44px;height:44px;border-radius:12px;margin-bottom:14px; }
+  .ls-wordmark { font-size:18px; }
+  .ls-sub { margin-bottom:20px; }
+  #ls-userGrid { grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:7px; }
 }
 .ls-sync-dot { display:inline-block;width:5px;height:5px;border-radius:50%;background:#0F6E56;margin-right:5px;vertical-align:middle; }
 
@@ -807,56 +797,77 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
      ═══════════════════════════════════════ -->
 <div id="loginScreen">
   <div class="ls-bg-grid"></div>
-  <div class="ls-bg-glow"></div>
 
-  <div class="ls-card">
-    <!-- Header / branding -->
-    <div class="ls-card-header">
+  <div class="ls-split">
+
+    <!-- LEFT — branding + crew grid -->
+    <div class="ls-panel-left">
       <div class="ls-logo-box">
-        <svg width="32" height="42" viewBox="0 0 40 52" fill="none">
-          <rect x="0" y="0"  width="40" height="8" rx="4" fill="white"/>
-          <rect x="0" y="14" width="29" height="8" rx="4" fill="rgba(255,255,255,0.8)"/>
-          <rect x="0" y="28" width="17" height="8" rx="4" fill="rgba(255,255,255,0.55)"/>
-          <rect x="0" y="42" width="8"  height="8" rx="4" fill="rgba(255,255,255,0.3)"/>
+        <svg width="28" height="36" viewBox="0 0 28 36" fill="none">
+          <rect x="0" y="0"  width="28" height="6" rx="3" fill="white"/>
+          <rect x="0" y="10" width="20" height="6" rx="3" fill="rgba(255,255,255,0.78)"/>
+          <rect x="0" y="20" width="12" height="6" rx="3" fill="rgba(255,255,255,0.52)"/>
+          <rect x="0" y="30" width="5"  height="6" rx="2.5" fill="rgba(255,255,255,0.28)"/>
         </svg>
       </div>
       <div class="ls-wordmark">KCC Technical</div>
       <div class="ls-sub">Crew Portal</div>
-    </div>
 
-    <!-- Step 1 — pick user -->
-    <div id="ls-step1">
-      <div class="ls-section-label">Select your name</div>
+      <!-- Step dots -->
+      <div class="ls-steps" id="ls-step-dots">
+        <span class="ls-step-dot on" id="ls-dot-1"></span>
+        <span class="ls-step-dot off" id="ls-dot-2"></span>
+        <span class="ls-step-label" id="ls-step-label">Step 1 of 2 — Select your name</span>
+      </div>
+
+      <div class="ls-section-label">Who are you?</div>
       <div id="ls-userGrid"></div>
-      <div id="ls-noUsers" style="display:none;padding:0 24px 20px">
-        <p style="font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.3);line-height:1.6">No crew members yet. Ask your admin to add you to the app first.</p>
+      <div id="ls-noUsers" style="display:none">
+        <p style="font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.3);line-height:1.6">No crew members yet. Ask your admin to add you in the Crew section.</p>
+      </div>
+
+      <div class="ls-footer">
+        <span class="ls-sync-dot" id="ls-sync-dot"></span>
+        KCC Technical &nbsp;·&nbsp; <span id="ls-syncStatus">Connecting…</span>
       </div>
     </div>
 
-    <!-- Step 2 — password -->
-    <div id="ls-step2" style="display:none">
-      <button class="ls-back-btn" onclick="lsBack()">← Back</button>
-      <div class="ls-selected-user">
-        <div class="ls-sel-avatar" id="ls-avatar">👤</div>
-        <div>
-          <div class="ls-sel-name" id="ls-name">—</div>
-          <div class="ls-sel-role" id="ls-role">—</div>
+    <!-- RIGHT — password step -->
+    <div class="ls-panel-right" id="ls-step2" style="display:none">
+      <div class="ls-step2-inner">
+        <!-- Step dots mirror -->
+        <div class="ls-steps" style="margin-bottom:24px">
+          <span class="ls-step-dot off"></span>
+          <span class="ls-step-dot on"></span>
+          <span class="ls-step-label">Step 2 of 2 — Enter password</span>
+        </div>
+
+        <button class="ls-back-btn" onclick="lsBack()">← Back to crew list</button>
+
+        <div class="ls-selected-user">
+          <div class="ls-sel-avatar" id="ls-avatar">👤</div>
+          <div>
+            <div class="ls-sel-name" id="ls-name">—</div>
+            <div class="ls-sel-role" id="ls-role">—</div>
+          </div>
+        </div>
+
+        <label class="ls-pw-label">Password</label>
+        <input type="password" id="ls-pw" class="ls-pw-input"
+          placeholder="Enter your password"
+          onkeydown="if(event.key==='Enter')lsSubmit()">
+
+        <div class="ls-err" id="ls-err">Incorrect password — try again.</div>
+
+        <button class="ls-login-btn" onclick="lsSubmit()">Log In →</button>
+        <button class="ls-forgot" onclick="lsForgot()">Forgot password?</button>
+
+        <div class="ls-helper-note">
+          Not on the list? Ask your admin to add<br>you in the Crew section of the app.
         </div>
       </div>
-      <label class="ls-pw-label">Password</label>
-      <input type="password" id="ls-pw" class="ls-pw-input"
-        placeholder="Enter your password"
-        onkeydown="if(event.key==='Enter')lsSubmit()">
-      <div class="ls-err" id="ls-err">❌ Incorrect password. Try again.</div>
-      <button class="ls-login-btn" onclick="lsSubmit()">Log In</button>
-      <button class="ls-forgot" onclick="lsForgot()">Forgot password?</button>
     </div>
 
-    <!-- Footer -->
-    <div class="ls-footer">
-      <span class="ls-sync-dot" id="ls-sync-dot"></span>
-      KCC Technical &nbsp;·&nbsp; <span id="ls-syncStatus">Connecting…</span>
-    </div>
   </div>
 </div>
 
@@ -2387,14 +2398,17 @@ window._onRemoteData=function(r){
   if(_techId){
     const stillExists = db.technicians.some(t=>t.id===_techId);
     if(!stillExists){
-      // Tech no longer in DB — log out
+      // Tech no longer in DB — force logout
       _techId=null;
       try{localStorage.removeItem(TECH_KEY);}catch(e){}
       buildLsGrid();showLoginScreen();return;
     }
     updTechUI();applyPermissions();
+    refreshPage();checkScheduleEmails();
+  } else {
+    // No one logged in — just rebuild login grid with fresh crew data
+    if(loginVisible) buildLsGrid();
   }
-  refreshPage();checkScheduleEmails();
 };
 async function save(){
   lsave();
@@ -2419,7 +2433,15 @@ let _lsSelectedId = null;
 function showLoginScreen(){
   const screen = document.getElementById('loginScreen');
   screen.style.display = 'flex';
-  lsBack(); // reset to step 1
+  // Reset to step 1
+  const rp=document.getElementById('ls-step2');if(rp)rp.style.display='none';
+  const d1=document.getElementById('ls-dot-1'),d2=document.getElementById('ls-dot-2');
+  if(d1)d1.className='ls-step-dot on';if(d2)d2.className='ls-step-dot off';
+  const sl=document.getElementById('ls-step-label');if(sl)sl.textContent='Step 1 of 2 — Select your name';
+  const tile=document.querySelector('.ls-user-btn[data-id="'+id+'"]');
+  if(document.getElementById('ls-pw'))document.getElementById('ls-pw').value='';
+  if(document.getElementById('ls-err'))document.getElementById('ls-err').style.display='none';
+  _lsSelectedId=null;
   buildLsGrid();
 }
 
@@ -2441,30 +2463,32 @@ function buildLsGrid(){
   }
   if(noUsers) noUsers.style.display = 'none';
   grid.innerHTML = db.technicians.map(t=>{
-    const roleColor = t.userRole==='master'?'#FAC775':t.userRole==='admin'?'#9FE1CB':'rgba(255,255,255,0.4)';
-    const roleBg    = t.userRole==='master'?'rgba(186,117,23,.2)':t.userRole==='admin'?'rgba(15,110,86,.2)':'rgba(255,255,255,.05)';
-    const roleLabel = t.userRole==='master'?'👑 Master':t.userRole==='admin'?'🔑 Admin':'👤 User';
+    const roleLabel = t.userRole==='master'?'👑 Master':t.userRole==='admin'?'🔑 Admin':'';
     const deptColor = {Lighting:'#5DCAA5',Audio:'#85B7EB',Cameras:'#EF9F27',IT:'#B4B2A9'}[t.dept]||'rgba(255,255,255,.3)';
-    return `<div class="ls-user-btn" onclick="lsSelectUser('${t.id}')">
+    return `<div class="ls-user-btn" data-id="${t.id}" onclick="lsSelectUser('${t.id}')">
       <div class="ls-av">${t.avatar||'👤'}</div>
       <div class="ls-uname">${t.name.split(' ')[0]}</div>
-      ${t.dept?`<div class="ls-role-tag" style="background:rgba(0,0,0,.3);color:${deptColor}">${t.dept}</div>`:''}
-      <div class="ls-role-tag" style="background:${roleBg};color:${roleColor}">${roleLabel}</div>
+      ${t.dept?`<div class="ls-dept-tag">${t.dept}</div>`:''}
+      ${roleLabel?`<div class="ls-role-tag" style="font-size:8px;background:rgba(15,110,86,.2);color:#5DCAA5;padding:1px 5px;border-radius:6px">${roleLabel}</div>`:''}
     </div>`;
   }).join('');
 }
 
 function lsSelectUser(id){
-  const t = db.technicians.find(x=>x.id===id);
-  if(!t) return;
-  // If no password set, log in directly
-  if(!t.passwordHash){
-    lsLogin(id);
-    return;
-  }
-  _lsSelectedId = id;
-  document.getElementById('ls-step1').style.display = 'none';
-  document.getElementById('ls-step2').style.display = '';
+  _lsSelectedId=id;
+  const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  // Highlight selected tile
+  document.querySelectorAll('.ls-user-btn').forEach(b=>b.classList.remove('selected'));
+  const tile=document.querySelector('.ls-user-btn[data-id="'+id+'"]');
+  if(tile) tile.classList.add('selected');
+  // Show right panel
+  const rp=document.getElementById('ls-step2');
+  if(rp){rp.style.display='';rp.style.animation='lsSlideUp .3s ease-out';}
+  // Update step dots on left
+  const d1=document.getElementById('ls-dot-1'),d2=document.getElementById('ls-dot-2');
+  const sl=document.getElementById('ls-step-label');
+  if(d1){d1.className='ls-step-dot off';}if(d2){d2.className='ls-step-dot on';}
+  if(sl) sl.textContent='Step 2 of 2 — Enter password';
   document.getElementById('ls-avatar').textContent = t.avatar||'👤';
   document.getElementById('ls-name').textContent = t.name;
   const roleLabel = t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User';
@@ -2478,9 +2502,17 @@ function lsSelectUser(id){
 }
 
 function lsBack(){
-  _lsSelectedId = null;
-  document.getElementById('ls-step1').style.display = '';
-  document.getElementById('ls-step2').style.display = 'none';
+  document.getElementById('ls-step2').style.display='none';
+  document.getElementById('ls-pw').value='';
+  document.getElementById('ls-err').style.display='none';
+  _lsSelectedId=null;
+  // Reset step dots
+  const d1=document.getElementById('ls-dot-1'),d2=document.getElementById('ls-dot-2');
+  const sl=document.getElementById('ls-step-label');
+  if(d1){d1.className='ls-step-dot on';}if(d2){d2.className='ls-step-dot off';}
+  if(sl) sl.textContent='Step 1 of 2 — Select your name';
+  // Remove selected highlight from tiles
+  document.querySelectorAll('.ls-user-btn').forEach(b=>b.classList.remove('selected'));
 }
 
 function lsSubmit(){
@@ -2650,6 +2682,11 @@ function applyPermissions(){
 
 // ── Navigation ──
 function go(page){
+  // Always enforce auth — if no one is logged in, show login screen
+  if(!_techId){
+    showLoginScreen();
+    return;
+  }
   stopCamera();stopGsScanner&&stopGsScanner();
   closeMoreNav&&closeMoreNav();
   ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule','checklist','showlog','nfc','attendance','checkin','checkout','maintenance','requests','announcements','training','profiles','leaderboard'].forEach(p=>{
@@ -2664,7 +2701,10 @@ function go(page){
   const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan','checklist','showlog','nfc','attendance','checkin','checkout','maintenance','requests','announcements','training','profiles','leaderboard'].includes(page)?' active':'');
   const navMore=document.getElementById('nav-more');if(navMore)navMore.className='nb'+(['inventory','stats','showlog','history','nfc','settings','scan','attendance','checkin'].includes(page)?' active':'');
 }
-function refreshPage(){go(_curPage);}
+function refreshPage(){
+  // Only refresh if someone is logged in — never accidentally expose the app shell
+  if(_techId) go(_curPage);
+}
 function toggleMoreNav(){
   const drop=document.getElementById('moreNavDrop');
   if(drop) drop.style.display=drop.style.display==='none'?'':'none';
@@ -5285,21 +5325,23 @@ function resendWelcomeEmail(techId) {
 // ── BOOT ──
 lload();
 initTheme();
+applyTheme();
 loadTech();
-go('dashboard');
-handleURLScan(); // render app behind login screen
+handleURLScan();
 applyPermissions();
-// Resume session — if a tech ID was saved, trust it and skip login
+// Always check auth on boot — never show the app without a logged-in user
 (function(){
   const savedId = (()=>{ try{ return localStorage.getItem(TECH_KEY); }catch(e){ return null; } })();
-  if(savedId){
-    // Resume session — go straight to dashboard, skip the home screen chooser
+  if(savedId && db.technicians.some(t=>t.id===savedId)){
+    // Valid saved session — resume straight to dashboard
     _techId = savedId;
     updTechUI();
     applyPermissions();
-    go("dashboard");
+    go('dashboard');
   } else {
-    // No saved session — show login
+    // No session or tech no longer exists — always show login
+    _techId = null;
+    try{ localStorage.removeItem(TECH_KEY); }catch(e){}
     buildLsGrid();
     showLoginScreen();
   }
