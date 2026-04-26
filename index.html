@@ -945,7 +945,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
       Dashboard
     </button>
-    <button class="snav-btn" id="snav-crew" onclick="go('crew')">
+    <button class="snav-btn" id="snav-crew" onclick="window._crewDeptFilter='all';go('crew')">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a4 4 0 100 8A4 4 0 008 1zm0 10c-3 0-7 1.5-7 3v1h14v-1c0-1.5-4-3-7-3z"/></svg>
       Crew
     </button>
@@ -1925,6 +1925,8 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <span>Sign Out</span>
     </button>
 
+  </div><!-- /grid -->
+</div><!-- /mobileMoreMenu -->
 
 <!-- ══════════ MODALS ══════════ -->
 
@@ -2464,7 +2466,6 @@ function showLoginScreen(){
   const d1=document.getElementById('ls-dot-1'),d2=document.getElementById('ls-dot-2');
   if(d1)d1.className='ls-step-dot on';if(d2)d2.className='ls-step-dot off';
   const sl=document.getElementById('ls-step-label');if(sl)sl.textContent='Step 1 of 2 — Select your name';
-  const tile=document.querySelector('.ls-user-btn[data-id="'+id+'"]');
   if(document.getElementById('ls-pw'))document.getElementById('ls-pw').value='';
   if(document.getElementById('ls-err'))document.getElementById('ls-err').style.display='none';
   _lsSelectedId=null;
@@ -3208,9 +3209,11 @@ function renderStats(){
 // ── Crew ──
 function renderCrew(){
   renderAvailability();
-  // Dept filter UI
+  // Always reset dept filter to 'all' when navigating directly to crew page
+  if(typeof window._crewDeptFilter === 'undefined') window._crewDeptFilter = 'all';
+  // Dept filter UI — always rebuild so active state stays in sync
   const filterWrap=document.getElementById('crew-dept-filter-wrap');
-  if(filterWrap&&!filterWrap.hasChildNodes()){
+  if(filterWrap){
     filterWrap.innerHTML=deptFilterRow('crew',(dept)=>{window._crewDeptFilter=dept;renderCrew();});
   }
   const filtered=window._crewDeptFilter==='all'?db.technicians:db.technicians.filter(t=>t.dept===window._crewDeptFilter);
