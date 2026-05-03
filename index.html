@@ -45,33 +45,72 @@ const firebaseConfig = {
 const DB_DOC = "stage-light-tracker/main";
 let app, fsdb;
 let _firebaseReady = false;
+function syncUI(state, msg) {
+  // Call setSyncState directly if ready, otherwise dispatch event
+  if (typeof window.setSyncState === 'function') {
+    window.setSyncState(state, msg);
+    if (state === 'ok') { try { window.updSyncTime && window.updSyncTime(); } catch(e){} }
+  } else {
+    window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state, msg } }));
+  }
+  // Also update login screen status text
+  const el = document.getElementById('ls-syncStatus');
+  if (el) el.textContent = msg;
+}
 function initFirebase() {
   try {
     if (firebaseConfig.apiKey === "YOUR_API_KEY") {
       window._syncMode = "local";
-      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "local", msg: "Local mode — no Firebase config" } }));
+      syncUI("local", "Local mode — no Firebase config");
       return;
     }
     app = initializeApp(firebaseConfig);
     fsdb = getFirestore(app);
     window._syncMode = "firebase";
     window._fbDoc = () => doc(fsdb, DB_DOC);
-    window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "syncing", msg: "Connecting…" } }));
+    syncUI("syncing", "Connecting…");
+    // If Firebase hasn't connected in 8 seconds, warn the user
+    const _connTimeout = setTimeout(()=>{
+      if(_firebaseReady) return;
+      syncUI("error", "Check internet connection");
+    }, 8000);
     onSnapshot(doc(fsdb, DB_DOC), (snap) => {
       if (snap.exists()) {
         const remote = snap.data();
         if (remote && remote.payload) {
-          try { window._onRemoteData(JSON.parse(remote.payload)); } catch(e) {}
+          // Wait for _onRemoteData to be ready (timing fix)
+          const applyData = () => {
+            try { window._onRemoteData(JSON.parse(remote.payload)); } catch(e) { console.warn('Firebase data parse error', e); }
+          };
+          if (typeof window._onRemoteData === 'function') {
+            applyData();
+          } else {
+            // Poll until ready (max 5s)
+            let attempts = 0;
+            const wait = setInterval(() => {
+              attempts++;
+              if (typeof window._onRemoteData === 'function') {
+                clearInterval(wait);
+                applyData();
+              } else if (attempts > 50) {
+                clearInterval(wait);
+                console.warn('Firebase: _onRemoteData never became available');
+              }
+            }, 100);
+          }
         }
       }
-      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "ok", msg: "Live sync ✓" } })); const _lsDot=document.getElementById('ls-sync-dot');if(_lsDot)_lsDot.style.background='#5DCAA5';
+      syncUI("ok", "Live sync ✓");
+      clearTimeout(_connTimeout);
+      const _lsDot=document.getElementById('ls-sync-dot');if(_lsDot)_lsDot.style.background='#5DCAA5';
     }, (err) => {
-      window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "error", msg: "Sync error: " + err.code } }));
+      console.error('Firebase snapshot error:', err);
+      syncUI("error", "Sync error: " + err.code);
     });
     _firebaseReady = true;
   } catch(e) {
     window._syncMode = "local";
-    window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state: "error", msg: "Firebase init failed" } }));
+    syncUI("error", "Firebase init failed");
   }
 }
 window._saveToFirebase = async (data) => {
@@ -305,7 +344,7 @@ textarea { resize:vertical; min-height:70px; }
 /* ── Misc ── */
 .who-banner { background:#E1F5EE; border:1px solid #9FE1CB; border-radius:10px; padding:14px 18px; margin-bottom:16px; display:flex; align-items:center; gap:14px; }
 .tcards { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:16px; }
-.tcard { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:16px; display:flex; align-items:flex-start; gap:12px; }
+.tcard { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:16px; display:flex; align-items:flex-start; gap:12px; min-width:0; }
 .note-box { background:var(--s2); border:1px solid var(--border); border-radius:6px; padding:10px 12px; margin-top:8px; font-size:12px; font-family:var(--mono); color:var(--dim2); font-style:italic; }
 .maint-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:20px; font-family:var(--mono); font-size:9px; font-weight:600; background:#EEEDFE; color:#534AB7; border:1px solid #CECBF6; }
 .chart-wrap { position:relative; height:220px; margin-top:8px; }
@@ -1092,6 +1131,19 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       What's New
       <span class="snav-badge" id="changelog-badge" style="display:none;background:#0F6E56">NEW</span>
     </button>
+    <button class="snav-btn" onclick="document.getElementById('m-feedback').style.display='flex'">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12v9H9l-3 3v-3H2z"/></svg>
+      Feedback
+    </button>
+    <button class="snav-btn" id="snav-feedbackadmin" data-perm="admin" onclick="go('feedbackadmin')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12v9H9l-3 3v-3H2z"/><path d="M5 6h6M5 9h4"/></svg>
+      Feedback Inbox
+      <span class="snav-badge" id="feedback-badge" style="display:none">0</span>
+    </button>
+    <button class="snav-btn" id="snav-auditlog" data-perm="admin" onclick="go('auditlog')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10v12H3z"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>
+      Audit Log
+    </button>
   </div>
   <div class="sidebar-footer">
     <div class="sf-avatar" id="sfAvatar">👤</div>
@@ -1195,6 +1247,33 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
   <div class="panel" style="margin-bottom:14px">
     <div class="ph"><span class="pt">Recent Activity</span></div>
     <div class="pb" style="padding:0" id="recentAct"></div>
+  </div>
+
+  <!-- Phase 5: Attendance trend + Top crew row -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="dash-2col">
+    <div class="panel" style="margin-bottom:0">
+      <div class="ph row jbet">
+        <span class="pt">📊 Attendance Trend</span>
+        <button class="btn bb bsm" onclick="go('attendance')">View All →</button>
+      </div>
+      <div class="pb" id="dash-attendance-chart"></div>
+    </div>
+    <div class="panel" style="margin-bottom:0">
+      <div class="ph row jbet">
+        <span class="pt">🏆 Top Crew by Hours</span>
+        <button class="btn bb bsm" onclick="go('leaderboard')">Leaderboard →</button>
+      </div>
+      <div class="pb" id="dash-top-crew"></div>
+    </div>
+  </div>
+
+  <!-- Phase 5: Admin alerts panel -->
+  <div class="panel" style="margin-bottom:14px" data-perm="admin">
+    <div class="ph row jbet">
+      <span class="pt">🔔 Admin Alerts</span>
+      <button class="btn bg bsm" onclick="exportReport()">📄 Export Report</button>
+    </div>
+    <div class="pb" id="dash-admin-alerts"></div>
   </div>
 
   <!-- Admin-only actions -->
@@ -1392,13 +1471,20 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
 <div id="pg-schedule" style="display:none">
   <div class="row jbet mb14">
     <div>
-      <h2 class="fw9 tu ls2" style="font-size:14px">Sunday Schedule</h2>
-      <div class="dim" style="margin-top:4px">Team assignments for every Sunday this year</div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Schedule</h2>
+      <div class="dim" style="margin-top:4px">Sunday services, rehearsals & crew assignments</div>
     </div>
     <div class="row gap8">
       <select id="schedYear" onchange="renderSchedule()" style="width:auto;padding:6px 10px;font-size:11px"></select>
+      <button data-perm="admin" class="btn bg bsm" onclick="openAddRehearsalModal()">+ Rehearsal</button>
       <button data-perm="admin" class="btn bb bsm" onclick="manualSendScheduleEmail()" title="Send schedule email to assigned crew for the upcoming Sunday">📧 Send This Week</button>
     </div>
+  </div>
+
+  <!-- Service tabs -->
+  <div class="tabs" id="sched-service-tabs" style="margin-bottom:14px">
+    <button class="tab active" onclick="schedSetServiceTab('service',this)">📅 Sunday Schedule</button>
+    <button class="tab" onclick="schedSetServiceTab('rehearsals',this)">🎸 Rehearsals</button>
   </div>
 
   <!-- No scheduler warning -->
@@ -1410,6 +1496,14 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
   <div id="sched-dept-filter-wrap"></div>
   <!-- Schedule grid -->
   <div id="schedGrid"></div>
+
+  <!-- Swap Requests panel (admin only) -->
+  <div data-perm="admin" style="margin-top:20px">
+    <div class="row jbet mb10">
+      <div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2)">↔️ Pending Swap Requests</div>
+    </div>
+    <div id="swap-list"></div>
+  </div>
 </div>
 
 <!-- ── NFC MANAGER ── -->
@@ -1500,6 +1594,53 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
   <div id="ann-list"></div>
 </div>
 
+<!-- ── FEEDBACK INBOX (admin only) ── -->
+<div id="pg-feedbackadmin" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">💬 Feedback Inbox</h2>
+      <div class="dim" style="margin-top:4px">Crew feedback and suggestions — admin only</div>
+    </div>
+    <button class="btn br bsm" data-perm="admin" onclick="clearFeedback()">🗑️ Clear All</button>
+  </div>
+  <div id="feedback-list"></div>
+</div>
+
+<!-- ── AUDIT LOG (admin only) ── -->
+<div id="pg-auditlog" style="display:none">
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">📋 Audit Log</h2>
+      <div class="dim" style="margin-top:4px">Admin action history — last 100 events</div>
+    </div>
+    <button class="btn bg bsm" onclick="exportReport()">📄 Export Report</button>
+  </div>
+  <div id="audit-list"></div>
+</div>
+  <div class="row jbet mb14">
+    <div>
+      <h2 class="fw9 tu ls2" style="font-size:14px">Asset Checkout</h2>
+      <div class="dim" style="margin-top:4px">Track who has what gear and when it's due back</div>
+    </div>
+    <div class="row gap8">
+      <button class="btn bgh" data-perm="admin" onclick="downloadImportTemplate('gear')">📄 Template</button>
+      <button class="btn bgh" data-perm="admin" onclick="openImportModal('gear')">⬆️ Import Gear</button>
+      <button class="btn ba" data-perm="admin" onclick="openM('addGearItem')">+ Add Gear Item</button>
+      <button class="btn bb" onclick="openM('checkoutGear')">📤 Check Out</button>
+    </div>
+  </div>
+  <!-- Summary cards -->
+  <div class="stats" style="margin-bottom:16px" id="co-stats"></div>
+  <!-- Filter tabs -->
+  <div class="tabs" id="co-tabs">
+    <button class="tab active" onclick="coSetTab('active',this)">Checked Out</button>
+    <button class="tab" onclick="coSetTab('returned',this)">Returned</button>
+    <button class="tab" onclick="coSetTab('gear',this)">Gear Library</button>
+    <button class="tab" onclick="coSetTab('incidents',this)">⚠️ Incidents</button>
+  </div>
+  <div id="co-list"></div>
+</div>
+
 <div id="pg-checkout" style="display:none">
   <div class="row jbet mb14">
     <div>
@@ -1520,6 +1661,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
     <button class="tab active" onclick="coSetTab('active',this)">Checked Out</button>
     <button class="tab" onclick="coSetTab('returned',this)">Returned</button>
     <button class="tab" onclick="coSetTab('gear',this)">Gear Library</button>
+    <button class="tab" onclick="coSetTab('incidents',this)">⚠️ Incidents</button>
   </div>
   <div id="co-list"></div>
 </div>
@@ -2031,6 +2173,12 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
         <textarea id="schedBriefing" placeholder="e.g. Sermon series: Grace & Truth. Song list in ProPresenter folder. Camera 2 has loose cable — check before service. Call time 8:00 AM sharp." style="min-height:80px"></textarea>
       </div>
 
+      <!-- Order of service / Rundown -->
+      <div class="fg mb14">
+        <label>📝 Order of Service / Rundown <span style="font-size:9px;color:var(--dim2);letter-spacing:0;text-transform:none;font-family:var(--mono)">(setlist, service flow, cues)</span></label>
+        <textarea id="schedRundown" placeholder="e.g. Welcome · Worship (3 songs) · Announcements · Offering · Sermon · Response · Dismiss. Song keys: Way Maker (E), Goodness of God (G)..." style="min-height:90px"></textarea>
+      </div>
+
       <!-- Recurring template controls -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:14px">
         <span style="font-family:var(--mono);font-size:10px;color:var(--dim2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0">Templates</span>
@@ -2045,6 +2193,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <div style="padding:10px 12px;background:var(--bglow);border:1px solid rgba(61,155,233,.3);border-radius:6px;font-size:12px;color:var(--blue)">📧 Schedule emails automatically send every <strong>Thursday</strong> for the upcoming Sunday.</div>
     </div>
     <div class="mf">
+      <button class="btn bg bsm" onclick="openSwapRequestModal(_schedEditKey)" title="Request a shift swap with another crew member">↔️ Request Swap</button>
       <button class="btn bgh" onclick="closeM('editSchedule')">Cancel</button>
       <button class="btn ba" onclick="saveScheduleEntry()">Save Schedule</button>
     </div>
@@ -2111,6 +2260,8 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
         </div>
         <div class="fg"><label>Avatar Emoji</label><input id="ta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
         <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="tem" type="email" placeholder="jane@example.com"></div>
+        <div class="fg"><label>Phone Number</label><input id="tphone" type="tel" placeholder="e.g. 403-555-0123"></div>
+        <div class="fg"><label>Emergency Contact</label><input id="temergency" placeholder="e.g. John Smith · 403-555-9876"></div>
         <div class="fg"><label>Password *</label><input id="tpw" type="password" placeholder="Set a password"></div>
         <div class="fg"><label>Confirm Password *</label><input id="tpw2" type="password" placeholder="Confirm password"></div>
         <div class="fg" style="grid-column:1/-1"><label>Training / Skills</label>
@@ -2152,6 +2303,8 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
         </div>
         <div class="fg"><label>Avatar Emoji</label><input id="eta" placeholder="👷" maxlength="2" style="font-size:20px;text-align:center"></div>
         <div class="fg" style="grid-column:1/-1"><label>Email (for alerts)</label><input id="etem" type="email" placeholder="jane@example.com"></div>
+        <div class="fg"><label>Phone Number</label><input id="etphone" type="tel" placeholder="e.g. 403-555-0123"></div>
+        <div class="fg"><label>Emergency Contact</label><input id="etemergency" placeholder="e.g. John Smith · 403-555-9876"></div>
         <div class="fg" style="grid-column:1/-1"><label>Training / Skills</label>
           <div id="ettrainingGrid" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;padding:10px;background:var(--s2);border:1px solid var(--border2);border-radius:6px;min-height:44px"></div>
         </div>
@@ -2475,7 +2628,7 @@ let _charts={};
 // ── Storage ──
 function lsave(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
 function lload(){
-  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};if(!db.trainingModules)db.trainingModules=[];}}catch(e){}
+  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};if(!db.trainingModules)db.trainingModules=[];if(!db.feedbackItems)db.feedbackItems=[];if(!db.incidentReports)db.incidentReports=[];if(!db.rehearsals)db.rehearsals=[];if(!db.swapRequests)db.swapRequests=[];if(!db.auditLog)db.auditLog=[];}}catch(e){}
 }
 window._onRemoteData=function(r){
   // Only overwrite technicians if Firebase has data; never wipe with empty (protects login)
@@ -2493,6 +2646,11 @@ window._onRemoteData=function(r){
   db.announcements=r.announcements||db.announcements||[];
   db.signoffs=r.signoffs||db.signoffs||{};
   db.trainingModules=r.trainingModules||db.trainingModules||[];
+  db.feedbackItems=r.feedbackItems||db.feedbackItems||[];
+  db.incidentReports=r.incidentReports||db.incidentReports||[];
+  db.rehearsals=r.rehearsals||db.rehearsals||[];
+  db.swapRequests=r.swapRequests||db.swapRequests||[];
+  db.auditLog=r.auditLog||db.auditLog||[];
   // Schedule templates
   if(r.settings&&r.settings.scheduleTemplates) db.settings.scheduleTemplates=r.settings.scheduleTemplates;
   lsave();
@@ -2542,7 +2700,9 @@ async function save(){
 
 // ── Sync UI ──
 function setSyncState(s,m){document.getElementById('sdot').className='sdot '+s;document.getElementById('stxt').textContent=m;}
+window.setSyncState=setSyncState;
 function updSyncTime(){document.getElementById('stime').textContent='Last sync: '+new Date().toLocaleTimeString();}
+window.updSyncTime=updSyncTime;
 window.addEventListener('syncStatus',e=>{const{state,msg}=e.detail;setSyncState(state,msg);if(state==='ok')updSyncTime();});
 
 // ══════════════════════════════════════════════════
@@ -2811,12 +2971,12 @@ function go(page){
   }
   stopCamera();stopGsScanner&&stopGsScanner();
   closeMoreNav&&closeMoreNav();
-  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule','checklist','showlog','nfc','attendance','checkin','checkout','maintenance','requests','announcements','training','profiles','leaderboard'].forEach(p=>{
+  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule','checklist','showlog','nfc','attendance','checkin','checkout','maintenance','requests','announcements','training','profiles','leaderboard','feedbackadmin','auditlog'].forEach(p=>{
     const el=document.getElementById('pg-'+p);if(el)el.style.display=p===page?'':'none';
     document.getElementById('nav-'+p)?.classList.toggle('active',p===page);
   });
   _curPage=page;
-  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:renderSchedule,checklist:renderChecklist,showlog:renderShowLog,nfc:renderNFC,attendance:renderAttendance,checkin:renderCheckin,checkout:renderCheckout,maintenance:renderMaintenance,requests:renderRequests,announcements:renderAnnouncements,training:renderTraining,profiles:renderProfiles,leaderboard:renderLeaderboard})[page]?.();
+  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:()=>{renderSchedule();renderSwapRequests();},checklist:renderChecklist,showlog:renderShowLog,nfc:renderNFC,attendance:renderAttendance,checkin:renderCheckin,checkout:renderCheckout,maintenance:renderMaintenance,requests:renderRequests,announcements:renderAnnouncements,training:renderTraining,profiles:renderProfiles,leaderboard:renderLeaderboard,feedbackadmin:renderFeedbackAdmin,auditlog:renderAuditLog})[page]?.();
   applyPermissions();
   if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
   ['dashboard','schedule','checkin','requests'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
@@ -2856,21 +3016,79 @@ function renderDash(){
   const total=db.inventory.reduce((s,i)=>s+i.inStock,0);
   const maintDue=getMaintDue();
   const okFix=db.fixtures.filter(f=>f.status==='ok').length;
+  const pendingSwaps=(db.swapRequests||[]).filter(s=>s.status==='pending').length;
+  const openIncidents=(db.incidentReports||[]).filter(r=>!r.resolved).length;
+  const unreadFeedback=(db.feedbackItems||[]).filter(f=>!f.read).length;
+  const totalVolHours=(db.technicians||[]).reduce((s,t)=>s+(t.volunteerHours||0),0);
+
   document.getElementById('statsRow').innerHTML=`
     <div class="sc ${actOuts.length?'cr':'cg'}"><div class="sc-label">Active Outages</div><div class="sc-val">${actOuts.length}</div></div>
     <div class="sc ca"><div class="sc-label">Fixtures</div><div class="sc-val">${db.fixtures.length}</div></div>
     <div class="sc ${lows.length?'cr':'cg'}"><div class="sc-label">Low Stock</div><div class="sc-val">${lows.length}</div></div>
-    <div class="sc cb"><div class="sc-label">Crew</div><div class="sc-val">${db.technicians.length}</div></div>`;
-  document.getElementById('activeOut').innerHTML=!actOuts.length
-    ?'<div style="display:flex;align-items:center;gap:10px;padding:6px 0;color:var(--green)"><span style="font-size:20px">✅</span><span>All fixtures operational</span></div>'
-    :actOuts.map(o=>`<div class="row jbet" style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div class="fw7">${o.fixtureName}</div>
-          <div class="dim">${ago(o.timestamp)} · ${o.reportedBy}</div>
+    <div class="sc cb"><div class="sc-label">Crew</div><div class="sc-val">${db.technicians.length}</div></div>
+    <div class="sc" style="border-color:rgba(168,85,247,.3)"><div class="sc-label">Vol. Hours</div><div class="sc-val" style="color:#a855f7">${totalVolHours}</div></div>
+    <div class="sc ${openIncidents?'cr':'cg'}"><div class="sc-label">Open Incidents</div><div class="sc-val">${openIncidents}</div></div>`;
+
+  // ── Attendance trend mini-chart ──────────────────────────
+  const attendEl = document.getElementById('dash-attendance-chart');
+  if(attendEl){
+    const sessions=(db.attendanceData?.sessions||[]).sort((a,b)=>a.date-b.date).slice(-8);
+    if(sessions.length>=2){
+      const maxCount = Math.max(...sessions.map(s=>(s.present||[]).length),1);
+      attendEl.innerHTML = `
+        <div style="display:flex;align-items:flex-end;gap:6px;height:64px;padding:0 4px">
+          ${sessions.map(s=>{
+            const cnt=(s.present||[]).length;
+            const pct=Math.round(cnt/maxCount*100);
+            const d=new Date(s.date);
+            return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+              <div style="font-size:9px;font-family:var(--mono);color:var(--dim2)">${cnt}</div>
+              <div style="width:100%;background:#0F6E56;border-radius:3px 3px 0 0;height:${Math.max(pct*0.52,4)}px;transition:height .3s"></div>
+              <div style="font-size:8px;font-family:var(--mono);color:var(--dim2)">${d.toLocaleDateString('en',{month:'numeric',day:'numeric'})}</div>
+            </div>`;
+          }).join('')}
         </div>
-        <button class="btn bg bsm" onclick="openRepModal('${o.fixtureId}')">Fix</button>
-      </div>`).join('');
-  // Checklist snapshot
+        <div style="font-size:10px;font-family:var(--mono);color:var(--dim2);text-align:right;margin-top:4px">Last ${sessions.length} services</div>`;
+    } else {
+      attendEl.innerHTML='<div class="dim" style="font-size:12px;padding:12px 0">No attendance data yet</div>';
+    }
+  }
+
+  // ── Top crew by volunteer hours ─────────────────────────
+  const topCrewEl = document.getElementById('dash-top-crew');
+  if(topCrewEl){
+    const sorted=[...db.technicians].sort((a,b)=>(b.volunteerHours||0)-(a.volunteerHours||0)).slice(0,5);
+    const max=sorted[0]?.volunteerHours||1;
+    topCrewEl.innerHTML = sorted.length
+      ? sorted.map(t=>`
+          <div class="row gap10" style="padding:7px 0;border-bottom:1px solid var(--border)">
+            <div style="width:22px;text-align:center;font-size:16px;flex-shrink:0">${t.avatar||'👤'}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>
+              <div style="height:4px;background:var(--border);border-radius:2px;margin-top:4px;overflow:hidden">
+                <div style="height:100%;width:${Math.round((t.volunteerHours||0)/max*100)}%;background:#0F6E56;border-radius:2px"></div>
+              </div>
+            </div>
+            <div style="font-size:12px;font-family:var(--mono);color:#0F6E56;flex-shrink:0;font-weight:700">${t.volunteerHours||0}h</div>
+          </div>`).join('')
+      : '<div class="dim" style="font-size:12px">No hours logged yet</div>';
+  }
+
+  // ── Admin alerts panel ───────────────────────────────────
+  const alertsEl = document.getElementById('dash-admin-alerts');
+  if(alertsEl && isAdmin()){
+    const alerts = [];
+    if(pendingSwaps) alerts.push(`<div class="row gap8" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>↔️</span><span style="flex:1;font-size:13px">${pendingSwaps} pending shift swap${pendingSwaps>1?'s':''}</span><button class="btn bg bsm" onclick="go('schedule')">View</button></div>`);
+    if(openIncidents) alerts.push(`<div class="row gap8" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>⚠️</span><span style="flex:1;font-size:13px">${openIncidents} unresolved incident${openIncidents>1?'s':''}</span><button class="btn bg bsm" onclick="go('checkout')">View</button></div>`);
+    if(unreadFeedback) alerts.push(`<div class="row gap8" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>💬</span><span style="flex:1;font-size:13px">${unreadFeedback} unread feedback submission${unreadFeedback>1?'s':''}</span><button class="btn bg bsm" onclick="go('feedbackadmin')">View</button></div>`);
+    const lowStockGear=(db.gearItems||[]).filter(g=>g.lowStockAt&&g.qty<=g.lowStockAt);
+    if(lowStockGear.length) alerts.push(`<div class="row gap8" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>📦</span><span style="flex:1;font-size:13px">${lowStockGear.length} gear item${lowStockGear.length>1?'s':''} low on stock</span><button class="btn bg bsm" onclick="go('checkout')">View</button></div>`);
+    alertsEl.innerHTML = alerts.length
+      ? alerts.join('')
+      : '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;color:var(--green)"><span>✅</span><span style="font-size:13px">All clear — no pending actions</span></div>';
+  }
+
+  // ── Checklist snapshot ───────────────────────────────────
   const clSnap=document.getElementById('checklistSnap');
   if(clSnap){
     const stations=typeof getScheduleRoles==='function'?getScheduleRoles():[];
@@ -2901,6 +3119,7 @@ function renderDash(){
       </div>
       ${stationRows||'<div class="dim" style="padding:6px 0;font-size:12px">No station tasks set up yet</div>'}`;
   }
+
   document.getElementById('maintDue') && (document.getElementById('maintDue').innerHTML=!maintDue.length
     ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ No maintenance due</p>'
     :maintDue.slice(0,5).map(f=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
@@ -2908,7 +3127,6 @@ function renderDash(){
         <span class="maint-badge">DUE</span>
       </div>`).join(''));
   const recent=[...db.outages].sort((a,b)=>b.timestamp-a.timestamp).slice(0,6);
-  // Open tech requests summary
   const dashReqEl = document.getElementById('dash-requests');
   if(dashReqEl){
     const openReqs=(db.techRequests||[]).filter(r=>r.status==='open'||r.status==='progress');
@@ -2926,7 +3144,6 @@ function renderDash(){
           </div>`;
         }).join('') + (openReqs.length>4?`<div class="dim" style="padding:8px 0;font-size:12px">+${openReqs.length-4} more</div>`:'');
   }
-
   document.getElementById('recentAct') && (document.getElementById('recentAct').innerHTML=!recent.length
     ?'<p class="dim">No activity yet.</p>'
     :recent.map(o=>`<div class="row gap10" style="padding:9px 0;border-bottom:1px solid rgba(31,45,66,.6)">
@@ -3413,21 +3630,25 @@ function renderCrew(){
   document.getElementById('crewCards').innerHTML=!filtered.length
     ?'<p class="dim">No technicians yet.</p>'
     :filtered.map(t=>`<div class="tcard">
-        <div style="font-size:28px;flex-shrink:0">${t.avatar||'👤'}</div>
-        <div style="flex:1;min-width:0">
-          <div class="row gap6 mb8"><div class="fw7" style="font-size:14px">${t.name}</div>${deptBadge(t.dept)}</div>
-          <div class="dim">${t.role||'Technician'}</div>
-          ${t.notes?`<div class="dim" style="font-size:11px;font-style:italic;margin-top:2px">📝 ${t.notes}</div>`:''}
-          ${t.training&&t.training.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${t.training.map(tr=>`<span style="background:var(--bglow);color:var(--blue);border:1px solid rgba(61,155,233,.3);border-radius:20px;padding:2px 8px;font-size:10px;font-family:var(--mono)">${tr}</span>`).join('')}</div>`:''}
-          <div class="dim" style="color:${t.email?'var(--blue)':'var(--red)'}">${t.email||'No email set'}</div>
-          <div class="dim" style="color:${t.passwordHash?'var(--green)':'var(--red)'}">${t.passwordHash?'🔒 Password set':'⚠️ No password'}</div>
-          <div class="dim" style="color:${t.userRole==='master'?'var(--amber)':t.userRole==='admin'?'var(--blue)':'var(--dim2)'}">
-            ${t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User'}
+        <div class="row gap12" style="align-items:flex-start">
+          <div style="font-size:28px;flex-shrink:0">${t.avatar||'👤'}</div>
+          <div style="flex:1;min-width:0">
+            <div class="row gap6 mb8"><div class="fw7" style="font-size:14px">${t.name}</div>${deptBadge(t.dept)}</div>
+            <div class="dim">${t.role||'Technician'}</div>
+            ${t.notes?`<div class="dim" style="font-size:11px;font-style:italic;margin-top:2px">📝 ${t.notes}</div>`:''}
+            ${t.training&&t.training.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${t.training.map(tr=>`<span style="background:var(--bglow);color:var(--blue);border:1px solid rgba(61,155,233,.3);border-radius:20px;padding:2px 8px;font-size:10px;font-family:var(--mono)">${tr}</span>`).join('')}</div>`:''}
+            <div class="dim" style="color:${t.email?'var(--blue)':'var(--red)'}">${t.email||'No email set'}</div>
+            ${t.phone?`<div class="dim">📱 ${t.phone}</div>`:''}
+            ${t.emergency?`<div class="dim" style="color:var(--amber)">🆘 ${t.emergency}</div>`:''}
+            <div class="dim" style="color:${t.passwordHash?'var(--green)':'var(--red)'}">${t.passwordHash?'🔒 Password set':'⚠️ No password'}</div>
+            <div class="dim" style="color:${t.userRole==='master'?'var(--amber)':t.userRole==='admin'?'var(--blue)':'var(--dim2)'}">
+              ${t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User'}
+            </div>
+            ${t.canSchedule?'<div class="dim" style="color:var(--amber)">📅 Can edit schedule</div>':''}
+            <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" id="avail-${t.id}"></div>
           </div>
-          ${t.canSchedule?'<div class="dim" style="color:var(--amber)">📅 Can edit schedule</div>':''}
-          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" id="avail-${t.id}"></div>
         </div>
-        <div class="row gap6">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
           <button class="btn bb bsm" onclick="go('profiles');setTimeout(()=>openProfile('${t.id}'),80)">👤 Profile</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="adminResetPassword('${t.id}')" title="Admin: reset password">🔑</button>
@@ -3706,10 +3927,11 @@ function addTech(){
   const techNotes=document.getElementById('tnotes').value.trim();
   const techTraining=getSelectedTraining('t');
   const techDept=document.getElementById('tdept').value||'';
-  const newTech = {id:'t'+Date.now(),name,role,dept:techDept,avatar:av,email,passwordHash:simpleHash(pw),canSchedule:canSched,userRole,notes:techNotes,training:techTraining};
+  const newTech = {id:'t'+Date.now(),name,role,dept:techDept,avatar:av,email,phone:document.getElementById('tphone').value.trim(),emergency:document.getElementById('temergency').value.trim(),passwordHash:simpleHash(pw),canSchedule:canSched,userRole,notes:techNotes,training:techTraining,joinedAt:Date.now(),volunteerHours:0,onboarding:{}};
   db.technicians.push(newTech);
+  logAudit('Crew Added', newTech.name+' ('+newTech.role+')');
   save();closeM('addTech');renderCrew();
-  ['tn','tr','ta','tem','tpw','tpw2'].forEach(id=>document.getElementById(id).value='');
+  ['tn','tr','ta','tem','tphone','temergency','tpw','tpw2'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('tcanschedule').checked=false;
   document.getElementById('tuserrole').value='user';
   document.getElementById('tdept').value='';
@@ -3724,6 +3946,8 @@ function editTech(id){
   document.getElementById('etr').value=t.role||'';
   document.getElementById('eta').value=t.avatar||'👤';
   document.getElementById('etem').value=t.email||'';
+  document.getElementById('etphone').value=t.phone||'';
+  document.getElementById('etemergency').value=t.emergency||'';
   document.getElementById('etcanschedule').checked=t.canSchedule||false;
   document.getElementById('etuserrole').value=t.userRole||'user';
   document.getElementById('etnotes').value=t.notes||'';
@@ -3738,6 +3962,8 @@ function saveTechEdit(){
   t.role=document.getElementById('etr').value.trim();
   t.avatar=document.getElementById('eta').value.trim()||'👤';
   t.email=document.getElementById('etem').value.trim();
+  t.phone=document.getElementById('etphone').value.trim();
+  t.emergency=document.getElementById('etemergency').value.trim();
   t.canSchedule=document.getElementById('etcanschedule').checked;
   t.notes=document.getElementById('etnotes').value.trim();
   t.dept=document.getElementById('etdept').value||'';
@@ -4848,12 +5074,19 @@ function schedKey(date){
   return y+'-'+m+'-'+d;
 }
 
+let _schedServiceTab = 'service';
+function schedSetServiceTab(tab, btn){
+  _schedServiceTab = tab;
+  document.querySelectorAll('#sched-service-tabs .tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderSchedule();
+}
+
 function renderSchedule(){
   const yearSel = document.getElementById('schedYear');
   const now = new Date();
   const curYear = now.getFullYear();
 
-  // Populate year selector if empty
   if(!yearSel.options.length){
     [curYear, curYear+1].forEach(y=>{
       const opt = document.createElement('option');
@@ -4864,18 +5097,44 @@ function renderSchedule(){
   }
 
   const year = parseInt(yearSel.value) || curYear;
-  const sundays = getSundaysOfYear(year);
-
-  // Show/hide edit button based on permissions
   const canEdit = canEditSchedule();
   document.getElementById('schedNoPerms').style.display = canEdit ? 'none' : '';
+  const grid = document.getElementById('schedGrid');
 
-  // Filter to rest of year if current year
+  // ── Rehearsals tab ──────────────────────────────────────
+  if(_schedServiceTab === 'rehearsals'){
+    const rehearsals = (db.rehearsals||[]).sort((a,b)=>a.date-b.date);
+    if(!rehearsals.length){
+      grid.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">🎸</div><div class="dim">No rehearsals scheduled yet</div>'+
+        (canEdit?'<br><button class="btn ba bsm" style="margin-top:12px" onclick="openAddRehearsalModal()">+ Add Rehearsal</button>':'')+'</div>';
+      return;
+    }
+    grid.innerHTML = rehearsals.map(r=>{
+      const isPast = r.date < Date.now();
+      const crew = (r.crew||[]).map(id=>db.technicians.find(t=>t.id===id)).filter(Boolean);
+      return`<div style="background:${isPast?'var(--s1)':'var(--s2)'};border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:14px">
+        <div style="font-size:28px;flex-shrink:0">🎸</div>
+        <div style="flex:1;min-width:0">
+          <div class="fw7" style="font-size:15px;margin-bottom:4px">${r.title||'Rehearsal'}</div>
+          <div class="dim" style="font-size:12px;font-family:var(--mono)">${fmtDate(r.date)}${r.time?' · '+r.time:''} · ${r.location||'Location TBD'}</div>
+          ${r.notes?`<div style="font-size:12px;color:var(--dim2);margin-top:4px;font-style:italic">${r.notes}</div>`:''}
+          ${r.rundown?`<div style="margin-top:8px;padding:8px 10px;background:#E1F5EE;border-radius:6px;font-size:12px;color:#085041">📋 ${r.rundown.length>120?r.rundown.slice(0,120)+'…':r.rundown}</div>`:''}
+          ${crew.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${crew.map(t=>`<div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px"><span>${t.avatar||'👤'}</span><span>${t.name.split(' ')[0]}</span></div>`).join('')}</div>`:'<div class="dim" style="font-size:12px;margin-top:6px">No crew assigned</div>'}
+        </div>
+        ${canEdit?`<div class="row gap6"><button class="btn ba bsm" onclick="openEditRehearsalModal('${r.id}')">✏️ Edit</button><button class="btn br bsm" onclick="deleteRehearsal('${r.id}')">🗑</button></div>`:''}
+      </div>`;
+    }).join('');
+    applyPermissions();
+    return;
+  }
+
+  // ── Single Sunday service ────────────────────────────────
+  const serviceSlot = 'service';
+  const sundays = getSundaysOfYear(year);
   const filtered = year === curYear
     ? sundays.filter(s => s >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7))
     : sundays;
 
-  const grid = document.getElementById('schedGrid');
   if(!filtered.length){ grid.innerHTML='<p class="dim">No Sundays to show.</p>'; return; }
 
   // Group by month
@@ -4896,6 +5155,16 @@ function renderSchedule(){
           const isToday = schedKey(d) === schedKey(now);
           const isPast = d < now;
           const assignedTechs = entry ? (entry.crew||[]).map(id=>db.technicians.find(t=>t.id===id)).filter(Boolean) : [];
+          const availCount = (db.technicians||[]).filter(t=>{
+            const av=(db.availability[t.id]||{})[schedKey(d)];
+            return av==='yes';
+          }).length;
+          const unavailCount = (db.technicians||[]).filter(t=>{
+            const av=(db.availability[t.id]||{})[schedKey(d)];
+            return av==='no';
+          }).length;
+          // Swap requests for this date+service
+          const swapCount = (db.swapRequests||[]).filter(s=>s.dateKey===schedKey(d)&&s.serviceSlot===serviceSlot&&s.status==='pending').length;
           return `<div style="background:${isToday?'var(--aglow)':isPast?'var(--s1)':'var(--s2)'};border:1px solid ${isToday?'rgba(240,165,0,.4)':isPast?'var(--border)':'var(--border2)'};border-radius:8px;padding:14px;transition:border-color .18s;${!isPast&&canEdit?'cursor:pointer':''}"
             ${canEdit&&!isPast?`onclick="openScheduleEdit('${key}',this)"`:''}
           >
@@ -4904,21 +5173,29 @@ function renderSchedule(){
                 <div style="font-weight:900;font-size:15px">${d.toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'})}</div>
                 ${isToday?'<span style="font-size:10px;color:var(--amber);font-family:var(--mono);letter-spacing:1px">THIS SUNDAY</span>':''}
               </div>
-              ${entry&&assignedTechs.length?`<span class="badge bok">${assignedTechs.length} crew</span>`:(isPast?'<span class="badge" style="background:var(--s3);color:var(--dim);border:1px solid var(--border)">Past</span>':'<span class="badge blow">Unscheduled</span>')}
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                ${entry&&assignedTechs.length?`<span class="badge bok">${assignedTechs.length} crew</span>`:(isPast?'<span class="badge" style="background:var(--s3);color:var(--dim);border:1px solid var(--border)">Past</span>':'<span class="badge blow">Unscheduled</span>')}
+                ${swapCount?`<span class="badge" style="background:#fff3cd;color:#854F0B;font-size:9px">↔️ ${swapCount} swap${swapCount>1?'s':''}</span>`:''}
+              </div>
             </div>
             ${assignedTechs.length
-              ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${entry.notes?'8px':'0'}">
+              ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${entry&&(entry.notes||entry.briefing)?'8px':'0'}">
                   ${assignedTechs.map(t=>`
                     <div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px">
                       <span>${t.avatar||'👤'}</span>
                       <span>${t.name.split(' ')[0]}</span>
-                      ${entry.roles&&entry.roles[t.id]?`<span style="color:var(--dim2);font-size:10px;font-family:var(--mono)">· ${entry.roles[t.id]}</span>`:''}
+                      ${entry&&entry.roles&&entry.roles[t.id]?`<span style="color:var(--dim2);font-size:10px;font-family:var(--mono)">· ${entry.roles[t.id]}</span>`:''}
                     </div>`).join('')}
                 </div>`
               : (!isPast&&canEdit?`<div class="dim" style="font-size:12px">Tap to assign crew</div>`:`<div class="dim" style="font-size:12px">No crew assigned</div>`)
             }
             ${entry&&entry.notes?`<div style="font-size:11px;color:var(--dim2);font-family:var(--mono);margin-top:4px;font-style:italic">${entry.notes}</div>`:''}
             ${entry&&entry.briefing?`<div style="font-size:11px;color:#0F6E56;font-family:var(--mono);margin-top:4px;padding:4px 8px;background:#E1F5EE;border-radius:4px">📋 ${entry.briefing.length>80?entry.briefing.slice(0,80)+'…':entry.briefing}</div>`:''}
+            ${entry&&entry.rundown?`<div style="font-size:11px;color:#534AB7;font-family:var(--mono);margin-top:4px;padding:4px 8px;background:#F0EEFF;border-radius:4px">📝 ${entry.rundown.length>80?entry.rundown.slice(0,80)+'…':entry.rundown}</div>`:''}
+            ${!isPast?`<div style="display:flex;gap:10px;margin-top:8px;font-size:10px;font-family:var(--mono);color:var(--dim2)">
+              <span style="color:#0F6E56">✓ ${availCount} avail</span>
+              <span style="color:var(--red)">✗ ${unavailCount} unavail</span>
+            </div>`:''}
           </div>`;
         }).join('')}
       </div>
@@ -4938,6 +5215,7 @@ function openScheduleEdit(key, el){
   const entry = db.schedules[key] || {crew:[],roles:{},notes:'',briefing:''};
   document.getElementById('schedNotes').value = entry.notes||'';
   document.getElementById('schedBriefing').value = entry.briefing||'';
+  document.getElementById('schedRundown').value = entry.rundown||'';
   // Populate templates dropdown
   const tplSel = document.getElementById('schedTemplateSelect');
   if(tplSel){
@@ -5005,18 +5283,295 @@ function saveScheduleEntry(){
   const entry = db.schedules[_schedEditKey] || {crew:[],roles:{},notes:''};
   entry.notes = document.getElementById('schedNotes').value.trim();
   entry.briefing = document.getElementById('schedBriefing').value.trim();
+  entry.rundown = document.getElementById('schedRundown').value.trim();
   if(!entry.roles) entry.roles = {};
   (entry.crew||[]).forEach(id=>{
     const roleEl = document.getElementById('schedrole-'+id);
     if(roleEl) entry.roles[id] = roleEl.value.trim();
   });
   db.schedules[_schedEditKey] = entry;
+  logAudit('Schedule Saved', 'Key: '+_schedEditKey);
   save();
   closeM('editSchedule');
   renderSchedule();
   toast('Schedule saved','success');
 
   // Emails auto-send every Thursday — no manual send needed
+}
+
+// ══════════════════════════════════════════════════════════
+// PHASE 5 — Reporting, Audit Log, Performance Notes
+// ══════════════════════════════════════════════════════════
+
+// ── AUDIT LOG ─────────────────────────────────────────────
+function logAudit(action, detail=''){
+  if(!db.auditLog) db.auditLog=[];
+  const tech=getCurTech();
+  db.auditLog.unshift({
+    id:'al_'+Date.now(),
+    action, detail,
+    by: tech?tech.name:'System',
+    byId: tech?tech.id:'',
+    at: Date.now()
+  });
+  // Keep last 200 entries
+  if(db.auditLog.length>200) db.auditLog=db.auditLog.slice(0,200);
+}
+
+function renderAuditLog(){
+  const el=document.getElementById('audit-list');if(!el)return;
+  if(!isAdmin()){el.innerHTML='<div class="dim" style="padding:12px">Admin access only</div>';return;}
+  if(!db.auditLog||!db.auditLog.length){
+    el.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">📋</div><div class="dim">No audit events yet</div></div>';
+    return;
+  }
+  const ACTION_ICONS={
+    'Crew Added':'👤','Crew Removed':'🗑️','Crew Edited':'✏️',
+    'Schedule Saved':'📅','Swap Approved':'↔️','Swap Denied':'↔️',
+    'Incident Reported':'⚠️','Incident Resolved':'✅',
+    'Announcement Posted':'📢','Feedback Cleared':'🗑️',
+    'Gear Added':'📦','Gear Returned':'↩️','Gear Checked Out':'📤',
+    'Hours Logged':'⏱️','Admin Login':'🔑','Report Exported':'📄',
+  };
+  el.innerHTML=db.auditLog.slice(0,100).map(e=>`
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:16px;flex-shrink:0;margin-top:1px">${ACTION_ICONS[e.action]||'🔷'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${e.action}</div>
+        ${e.detail?`<div class="dim" style="font-size:12px">${e.detail}</div>`:''}
+        <div class="dim" style="font-size:11px;font-family:var(--mono)">${e.by} · ${fmtDate(e.at)}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── EXPORT REPORT ─────────────────────────────────────────
+function exportReport(){
+  logAudit('Report Exported','Full system report (CSV)');
+  save();
+  const lines=[];
+  const sep=',';
+  const q=v=>`"${String(v||'').replace(/"/g,'""')}"`;
+
+  lines.push('KCC TECHNICAL — FULL REPORT');
+  lines.push('Generated: '+new Date().toLocaleString('en-CA'));
+  lines.push('');
+
+  // Crew summary
+  lines.push('== CREW SUMMARY ==');
+  lines.push(['Name','Role','Dept','Email','Phone','Vol Hours','Onboarding %','Joined'].map(q).join(sep));
+  (db.technicians||[]).forEach(t=>{
+    const ONBOARD_STEPS=['intro','app','shadow','station','checklist','training'];
+    const onb=t.onboarding||{};
+    const pct=Math.round(ONBOARD_STEPS.filter(s=>onb[s]).length/ONBOARD_STEPS.length*100);
+    lines.push([t.name,t.role||'',t.dept||'',t.email||'',t.phone||'',t.volunteerHours||0,pct+'%',t.joinedAt?new Date(t.joinedAt).toLocaleDateString('en-CA'):''].map(q).join(sep));
+  });
+  lines.push('');
+
+  // Attendance summary
+  lines.push('== ATTENDANCE SUMMARY ==');
+  lines.push(['Date','Present Count','Crew Names'].map(q).join(sep));
+  (db.attendanceData?.sessions||[]).sort((a,b)=>b.date-a.date).slice(0,20).forEach(s=>{
+    const names=(s.present||[]).map(id=>(db.technicians||[]).find(t=>t.id===id)?.name||id).join('; ');
+    lines.push([new Date(s.date).toLocaleDateString('en-CA'),(s.present||[]).length,names].map(q).join(sep));
+  });
+  lines.push('');
+
+  // Incidents
+  lines.push('== INCIDENTS ==');
+  lines.push(['Gear','Severity','Description','Reported By','Date','Resolved'].map(q).join(sep));
+  (db.incidentReports||[]).forEach(r=>{
+    lines.push([r.gearName||'',r.severity,r.description,r.reportedBy,new Date(r.date).toLocaleDateString('en-CA'),r.resolved?'Yes':'No'].map(q).join(sep));
+  });
+  lines.push('');
+
+  // Gear inventory
+  lines.push('== GEAR INVENTORY ==');
+  lines.push(['Name','Category','Asset ID','Qty','Low Stock At','Hours Used','Expected Life Hrs','Damaged'].map(q).join(sep));
+  (db.gearItems||[]).forEach(g=>{
+    lines.push([g.name,g.category||'',g.assetId||'',g.qty||1,g.lowStockAt||0,g.hoursUsed||0,g.expectedLifeHours||0,g.damaged?'Yes':'No'].map(q).join(sep));
+  });
+  lines.push('');
+
+  // Volunteer hours log
+  lines.push('== VOLUNTEER HOURS LOG ==');
+  lines.push(['Crew Member','Hours','Description','Date','Logged By'].map(q).join(sep));
+  (db.technicians||[]).forEach(t=>{
+    (t.hoursLog||[]).forEach(h=>{
+      lines.push([t.name,h.hours,h.note||'',new Date(h.date).toLocaleDateString('en-CA'),h.loggedBy||''].map(q).join(sep));
+    });
+  });
+
+  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='kcc-report-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('📄 Report exported!','success');
+}
+
+// ── PERFORMANCE NOTES ──────────────────────────────────────
+function openPerfNoteModal(techId){
+  const t=db.technicians.find(x=>x.id===techId);if(!t)return;
+  document.getElementById('pn-techId').value=techId;
+  document.getElementById('pn-techName').textContent=t.name;
+  document.getElementById('pn-text').value='';
+  document.getElementById('pn-type').value='positive';
+  document.getElementById('m-perfNote').style.display='flex';
+}
+function savePerfNote(){
+  if(!isAdmin()){toast('Admin only','error');return;}
+  const techId=document.getElementById('pn-techId').value;
+  const t=db.technicians.find(x=>x.id===techId);if(!t)return;
+  const text=(document.getElementById('pn-text').value||'').trim();
+  if(!text){toast('Enter a note','error');return;}
+  const type=document.getElementById('pn-type').value;
+  if(!t.perfNotes)t.perfNotes=[];
+  const note={id:'pn_'+Date.now(),text,type,by:getCurTech()?.name||'Admin',at:Date.now()};
+  t.perfNotes.unshift(note);
+  logAudit('Performance Note','Note for '+t.name+': '+text.slice(0,50));
+  save();
+  document.getElementById('m-perfNote').style.display='none';
+  openProfile(techId);
+  toast('Note saved for '+t.name,'success');
+}
+function deletePerfNote(techId, noteId){
+  const t=db.technicians.find(x=>x.id===techId);if(!t)return;
+  t.perfNotes=(t.perfNotes||[]).filter(n=>n.id!==noteId);
+  save();openProfile(techId);toast('Note deleted','info');
+}
+
+// ══════════════════════════════════════════════════════════
+// PHASE 4 — Rehearsals & Shift Swaps
+// ══════════════════════════════════════════════════════════
+
+// ── REHEARSALS ────────────────────────────────────────────
+function openAddRehearsalModal(id){
+  const r = id ? (db.rehearsals||[]).find(x=>x.id===id) : null;
+  document.getElementById('rh-id').value = r ? r.id : '';
+  document.getElementById('rh-title').value = r ? r.title||'' : '';
+  document.getElementById('rh-date').value = r && r.date ? new Date(r.date).toISOString().slice(0,10) : '';
+  document.getElementById('rh-time').value = r ? r.time||'' : '';
+  document.getElementById('rh-location').value = r ? r.location||'' : '';
+  document.getElementById('rh-notes').value = r ? r.notes||'' : '';
+  document.getElementById('rh-rundown').value = r ? r.rundown||'' : '';
+  const crewWrap = document.getElementById('rh-crew');
+  const assigned = r ? (r.crew||[]) : [];
+  crewWrap.innerHTML = (db.technicians||[]).map(t=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;cursor:pointer;font-size:13px">
+      <input type="checkbox" value="${t.id}" ${assigned.includes(t.id)?'checked':''} style="accent-color:#0F6E56">
+      <span>${t.avatar||'👤'} ${t.name}</span>
+      ${t.dept?deptBadge(t.dept):''}
+    </label>`).join('');
+  document.getElementById('rh-modal-title').textContent = r ? '✏️ Edit Rehearsal' : '🎸 Add Rehearsal';
+  document.getElementById('m-addRehearsal').style.display='flex';
+}
+function openEditRehearsalModal(id){ openAddRehearsalModal(id); }
+function saveRehearsal(){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const title = (document.getElementById('rh-title').value||'').trim();
+  const dateVal = document.getElementById('rh-date').value;
+  if(!title){toast('Title required','error');return;}
+  if(!dateVal){toast('Date required','error');return;}
+  const crew = [...document.querySelectorAll('#rh-crew input[type=checkbox]:checked')].map(c=>c.value);
+  const id = document.getElementById('rh-id').value;
+  const entry = {
+    id: id || 'rh_'+Date.now(),
+    title,date:new Date(dateVal+'T12:00:00').getTime(),
+    time:document.getElementById('rh-time').value.trim(),
+    location:document.getElementById('rh-location').value.trim(),
+    notes:document.getElementById('rh-notes').value.trim(),
+    rundown:document.getElementById('rh-rundown').value.trim(),
+    crew,createdAt:Date.now()
+  };
+  if(!db.rehearsals)db.rehearsals=[];
+  if(id){ const idx=db.rehearsals.findIndex(x=>x.id===id); if(idx>-1)db.rehearsals[idx]=entry; else db.rehearsals.push(entry); }
+  else db.rehearsals.push(entry);
+  save();document.getElementById('m-addRehearsal').style.display='none';renderSchedule();
+  toast((id?'Rehearsal updated':'Rehearsal added'),'success');
+}
+function deleteRehearsal(id){
+  if(!isAdmin())return;if(!confirm('Delete this rehearsal?'))return;
+  db.rehearsals=(db.rehearsals||[]).filter(x=>x.id!==id);
+  save();renderSchedule();toast('Rehearsal deleted','info');
+}
+
+// ── SHIFT SWAP REQUESTS ───────────────────────────────────
+function openSwapRequestModal(schedKey){
+  const curTech=getCurTech();
+  if(!curTech){toast('Log in to request a swap','info');return;}
+  const parts=(schedKey||'').split('_');
+  const dateKey=parts[0]||schedKey||'';
+  const serviceSlot='service';
+  const entry=db.schedules[schedKey]||{crew:[]};
+  const onSched=(entry.crew||[]).filter(id=>id!==curTech.id).map(id=>db.technicians.find(t=>t.id===id)).filter(Boolean);
+  document.getElementById('sw-schedKey').value=schedKey;
+  document.getElementById('sw-dateKey').value=dateKey;
+  document.getElementById('sw-serviceSlot').value=serviceSlot;
+  document.getElementById('sw-requester').textContent=curTech.name;
+  document.getElementById('sw-date').textContent=dateKey?new Date(dateKey+'T12:00:00').toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'}):'';
+  document.getElementById('sw-service').textContent='Sunday Service';
+  const targetSel=document.getElementById('sw-target');
+  const opts = onSched.length ? onSched : (db.technicians||[]).filter(t=>t.id!==curTech.id);
+  targetSel.innerHTML=opts.map(t=>`<option value="${t.id}">${t.avatar||'👤'} ${t.name}</option>`).join('');
+  document.getElementById('sw-reason').value='';
+  document.getElementById('m-swapRequest').style.display='flex';
+}
+function submitSwapRequest(){
+  const curTech=getCurTech();if(!curTech)return;
+  const schedKey=document.getElementById('sw-schedKey').value;
+  const dateKey=document.getElementById('sw-dateKey').value;
+  const serviceSlot=document.getElementById('sw-serviceSlot').value;
+  const targetId=document.getElementById('sw-target').value;
+  const reason=(document.getElementById('sw-reason').value||'').trim();
+  if(!targetId){toast('Select a crew member','error');return;}
+  const target=db.technicians.find(t=>t.id===targetId);
+  if(!db.swapRequests)db.swapRequests=[];
+  const swap={id:'sw_'+Date.now(),schedKey,dateKey,serviceSlot,requesterId:curTech.id,requesterName:curTech.name,targetId,targetName:target?target.name:'Unknown',reason,status:'pending',createdAt:Date.now()};
+  db.swapRequests.unshift(swap);
+  save();document.getElementById('m-swapRequest').style.display='none';
+  renderSchedule();toast('↔️ Swap request sent to '+(target?target.name:'crew member'),'success');
+  _notifySwapAdmins(swap);
+}
+async function _notifySwapAdmins(swap){
+  const admins=(db.technicians||[]).filter(t=>t.email&&(t.userRole==='master'||t.userRole==='admin'));
+  const dateStr=new Date(swap.dateKey+'T12:00:00').toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'});
+  for(const admin of admins){
+    try{await emailjs.send(EJSID,EJTPL,{to_email:admin.email,to_name:admin.name,subject:'↔️ Shift swap: '+swap.requesterName,message:`Shift Swap Request\n\nFrom: ${swap.requesterName}\nWith: ${swap.targetName}\nDate: ${dateStr} (${swap.serviceSlot==='9am'?'9:00 AM':'11:00 AM'})\nReason: ${swap.reason||'No reason given'}\n\nApprove or deny in the app.\n\n— KCC Technical`,fixture_name:'↔️ '+swap.requesterName+' ↔ '+swap.targetName,fixture_id:swap.schedKey,bulb_type:dateStr,reported_by:swap.requesterName});}
+    catch(e){console.warn('Swap notify failed',e);}
+  }
+}
+function renderSwapRequests(){
+  const el=document.getElementById('swap-list');if(!el)return;
+  const swaps=(db.swapRequests||[]).filter(s=>s.status==='pending').sort((a,b)=>b.createdAt-a.createdAt);
+  if(!swaps.length){el.innerHTML='<div class="dim" style="padding:12px 0">No pending swap requests</div>';return;}
+  el.innerHTML=swaps.map(s=>`
+    <div style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:8px">
+      <div class="row jbet mb6"><div class="fw7" style="font-size:13px">${s.requesterName} ↔️ ${s.targetName}</div><span style="font-size:10px;font-family:var(--mono);color:var(--amber)">PENDING</span></div>
+      <div class="dim" style="font-size:12px">${s.dateKey?new Date(s.dateKey+'T12:00:00').toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'}):''} · Sunday Service</div>
+      ${s.reason?`<div class="dim" style="font-size:12px;margin-top:4px">Reason: ${s.reason}</div>`:''}
+      <div class="row gap6" style="margin-top:10px">
+        <button class="btn ba bsm" onclick="resolveSwap('${s.id}','approved')">✓ Approve</button>
+        <button class="btn br bsm" onclick="resolveSwap('${s.id}','denied')">✗ Deny</button>
+      </div>
+    </div>`).join('');
+}
+function resolveSwap(id,status){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const s=(db.swapRequests||[]).find(x=>x.id===id);if(!s)return;
+  s.status=status;s.resolvedAt=Date.now();s.resolvedBy=getCurTech()?.name||'Admin';
+  logAudit(status==='approved'?'Swap Approved':'Swap Denied', s.requesterName+' ↔ '+s.targetName);
+  if(status==='approved'){
+    const entry=db.schedules[s.schedKey];
+    if(entry&&entry.crew){
+      const riIdx=entry.crew.indexOf(s.requesterId);
+      const taIdx=entry.crew.indexOf(s.targetId);
+      if(riIdx>-1)entry.crew[riIdx]=s.targetId;
+      if(taIdx>-1)entry.crew[taIdx]=s.requesterId;
+    }
+    toast('Swap approved — schedule updated!','success');
+  } else { toast('Swap denied','info'); }
+  save();renderSwapRequests();renderSchedule();
 }
 
 function saveScheduleTemplate(){
@@ -5188,13 +5743,58 @@ function deleteShow(id){
 // ══════════════════════════════════════════════════
 const CHANGELOG = [
   {
+    version: 'v2.9 — Phase 5 Update',
+    date: 'Apr 2026',
+    items: [
+      '📊 Enhanced Dashboard — attendance trend chart, top crew by hours, admin alerts panel, open incidents & swap counts',
+      '📄 Export Report — one-click CSV export covering crew, attendance, incidents, gear inventory, and volunteer hours',
+      '📋 Audit Log — admin-only page logging every key action (crew added, schedule saved, swap resolved, etc.)',
+      '📝 Performance Notes — admins can add private positive/constructive/neutral notes to any crew member\'s profile',
+      '🔔 Admin Alerts Panel — dashboard shows pending swaps, open incidents, unread feedback, and low stock all in one place',
+    ]
+  },
+  {
+    version: 'v2.8 — Phase 4 Update',
+    date: 'Apr 2026',
+    items: [
+      '📅 Single-Service Scheduling — Sunday schedule with Rehearsals as a separate tab',
+      '🎸 Rehearsal Scheduling — add rehearsals with date, time, location, crew, and rundown/setlist',
+      '📝 Order of Service / Rundown — attach a service rundown or setlist to any Sunday schedule',
+      '↔️ Shift Swap Requests — crew can request swaps, admins get emailed and approve/deny in-app',
+      '✓✗ Availability Indicators — available/unavailable crew counts shown on each schedule card',
+    ]
+  },
+  {
+    version: 'v2.7 — Phase 3 Update',
+    date: 'Apr 2026',
+    items: [
+      '⚠️ Damage / Incident Reports — any crew member can flag gear as damaged, admins get emailed automatically',
+      '⏱ Fixture & Gear Lifespan Tracker — log usage hours, see a lifespan bar on each gear card',
+      '📦 Quantity & Low Stock Tracking — set quantity and low stock thresholds per gear item with alerts',
+      '🎛️ Cables & Accessories Categories — new Accessory and Power Battery gear categories added',
+      '📧 Overdue Checkout Reminders — email reminder button on overdue gear with days overdue shown',
+      '📋 Incidents Tab — dedicated tab on checkout page showing all damage reports with resolve button',
+    ]
+  },
+  {
+    version: 'v2.6 — Phase 2 Update',
+    date: 'Apr 2026',
+    items: [
+      '👤 Crew Profiles — phone number, emergency contact, and join date now tracked per crew member',
+      '✅ Onboarding Checklist — 6-step onboarding tracker per new crew member on their profile',
+      '⏱ Volunteer Hours — log and track hours served per crew member with full history',
+      '💬 Feedback Form — crew can submit anonymous or named feedback; admins have a dedicated inbox',
+      '📧 Announcement Emails — option to email all crew when posting an announcement',
+    ]
+  },
+  {
     version: 'v2.5 — Phase 1 Update',
     date: 'Apr 2026',
     items: [
       '📋 Pre-show Briefing Notes — attach crew briefings to each Sunday schedule, visible on the schedule card',
       '📅 Schedule Templates — save and re-load crew templates (e.g. "Normal Sunday", "Big Production")',
       '🕐 What\'s New — this changelog! See what\'s been added to the app',
-      '📢 Announcements — now supports pinned posts and department targeting',
+      '📢 Announcements — now supports emoji reactions (👍 ❤️ 🙏 🔥 ✅)',
     ]
   },
   {
@@ -5246,7 +5846,7 @@ const CHANGELOG = [
   },
 ];
 
-const CHANGELOG_SEEN_KEY = 'kcc_changelog_seen';
+const CHANGELOG_SEEN_KEY = 'kcc_changelog_seen_v29';
 
 function openChangelog(){
   const listEl = document.getElementById('changelog-list');
@@ -5280,6 +5880,7 @@ function checkChangelogBadge(){
 
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(checkChangelogBadge, 1000);
+  setTimeout(_updateFeedbackBadge, 1200);
 });
 const DEFAULT_ROLES=[
   {name:'Camera Station',icon:'📷'},
@@ -6456,7 +7057,7 @@ function ciCheckIn(status){
 // ══════════════════════════════════════════════════════════
 
 // ── Helpers ──────────────────────────────────────────────
-const CAT_ICONS = {Camera:'📷',Lens:'🔭',Audio:'🎚️',Lighting:'💡',Cable:'🔌',Computer:'💻',Other:'📦'};
+const CAT_ICONS = {Camera:'📷',Lens:'🔭',Audio:'🎚️',Lighting:'💡',Cable:'🔌',Accessory:'🎛️',Computer:'💻',Power:'🔋',Other:'📦'};
 function gearIcon(item){ return CAT_ICONS[item.category]||'📦'; }
 function fmtDate(ts){ if(!ts)return'—'; const d=new Date(ts); return d.toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}); }
 function fmtDateShort(ts){ if(!ts)return'—'; const d=new Date(ts); return d.toLocaleDateString('en-CA',{month:'short',day:'numeric'}); }
@@ -6504,6 +7105,10 @@ function saveGearItem(){
     notes:(document.getElementById('gi-notes').value||'').trim(),
     serviceInterval:parseInt(document.getElementById('gi-interval').value)||90,
     lastServiceDate:document.getElementById('gi-lastservice').value?new Date(document.getElementById('gi-lastservice').value+'T12:00:00').getTime():null,
+    qty:parseInt(document.getElementById('gi-qty').value)||1,
+    lowStockAt:parseInt(document.getElementById('gi-lowstock').value)||0,
+    expectedLifeHours:parseInt(document.getElementById('gi-lifehours').value)||0,
+    hoursUsed:parseFloat(document.getElementById('gi-hoursused').value)||0,
     addedAt:Date.now()
   };
   if(!db.gearItems)db.gearItems=[];
@@ -6524,6 +7129,10 @@ function openEditGearItem(id){
   document.getElementById('egi-notes').value=g.notes||'';
   document.getElementById('egi-interval').value=g.serviceInterval||90;
   document.getElementById('egi-lastservice').value=g.lastServiceDate?new Date(g.lastServiceDate).toISOString().slice(0,10):'';
+  document.getElementById('egi-qty').value=g.qty||1;
+  document.getElementById('egi-lowstock').value=g.lowStockAt||0;
+  document.getElementById('egi-lifehours').value=g.expectedLifeHours||0;
+  document.getElementById('egi-hoursused').value=g.hoursUsed||0;
   openM('editGearItem');
 }
 function saveGearItemEdit(){
@@ -6537,6 +7146,10 @@ function saveGearItemEdit(){
   g.notes=(document.getElementById('egi-notes').value||'').trim();
   g.serviceInterval=parseInt(document.getElementById('egi-interval').value)||90;
   g.lastServiceDate=document.getElementById('egi-lastservice').value?new Date(document.getElementById('egi-lastservice').value+'T12:00:00').getTime():null;
+  g.qty=parseInt(document.getElementById('egi-qty').value)||g.qty||1;
+  g.lowStockAt=parseInt(document.getElementById('egi-lowstock').value)||0;
+  g.expectedLifeHours=parseInt(document.getElementById('egi-lifehours').value)||0;
+  g.hoursUsed=parseFloat(document.getElementById('egi-hoursused').value)||g.hoursUsed||0;
   save();closeM('editGearItem');renderCheckout();renderMaintenance();
   toast('Gear item updated','success');
 }
@@ -6645,8 +7258,18 @@ function renderCheckout(){
       return'<div class="co-card">'+
         '<div class="co-icon">'+gearIcon(g)+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+dept+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+'</div>'+
+          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+dept+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+
+            (g.qty>1?'<span class="badge" style="background:var(--bglow);color:var(--blue);font-size:9px">QTY: '+g.qty+'</span>':'')+
+            (g.damaged?'<span class="badge" style="background:#fef2f2;color:var(--red);font-size:9px">⚠️ DAMAGED</span>':'')+
+            (g.lowStockAt&&g.qty<=g.lowStockAt?'<span class="badge" style="background:#fff3cd;color:#854F0B;font-size:9px">📦 LOW STOCK</span>':'')+
+          '</div>'+
           '<div class="dim">'+g.category+(g.notes?' · '+g.notes:'')+'</div>'+
+          // Lifespan bar
+          (g.expectedLifeHours?
+            (()=>{const pct=Math.min(100,Math.round((g.hoursUsed||0)/g.expectedLifeHours*100));const barColor=pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
+            return'<div style="margin-top:6px"><div style="display:flex;justify-content:space-between;font-size:10px;font-family:var(--mono);color:var(--dim2);margin-bottom:3px"><span>Lifespan</span><span>'+(g.hoursUsed||0)+'h / '+g.expectedLifeHours+'h ('+pct+'%)</span></div>'+
+              '<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:2px;transition:width .3s"></div></div></div>';})()
+          :'')+
           '<div style="margin-top:6px;display:flex;align-items:center;gap:8px">'+
             '<span class="gear-status-dot" style="background:'+ms.color+'"></span>'+
             '<span style="font-size:11px;font-family:var(--mono);color:'+ms.color+'">'+ms.label+'</span>'+
@@ -6655,6 +7278,8 @@ function renderCheckout(){
         '</div>'+
         '<div class="row gap6">'+
           (co?`<button class="btn bb bsm" onclick="openReturnModal('${co.id}')">↩ Return</button>`:`<button class="btn bg bsm" onclick="(()=>{_populateGearSelect('co-item',true);document.getElementById('co-item').value='${g.id}';_populatePersonSelect('co-person');const t=new Date();t.setDate(t.getDate()+7);document.getElementById('co-due').value=t.toISOString().slice(0,10);openM('checkoutGear')})()">📤 Out</button>`)+
+          `<button class="btn br bsm" onclick="openIncidentReport('${g.id}')" title="Report damage/incident">⚠️</button>`+
+          `<button class="btn bg bsm" onclick="openLogGearHours('${g.id}')" title="Log usage hours">⏱</button>`+
           `<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem('${g.id}')">✏️</button>`+
         '</div>'+
       '</div>';
@@ -6670,15 +7295,22 @@ function renderCheckout(){
       const p=(db.technicians||[]).find(x=>x.id===co.personId)||{name:'Unknown'};
       const over=isOverdue(co);
       const badge=over?'<span class="co-badge-over">OVERDUE</span>':'<span class="co-badge-out">OUT</span>';
-      return'<div class="co-card">'+
+      const daysOver = over ? Math.round((Date.now()-co.dueDate)/(1000*60*60*24)) : 0;
+      return'<div class="co-card" style="'+(over?'border-left:3px solid var(--red);':'')+'">' +
         '<div class="co-icon">'+gearIcon(g)+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+badge+'</div>'+
+          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+badge+
+            (over?`<span style="font-size:10px;font-family:var(--mono);color:var(--red)">${daysOver}d overdue</span>`:'')+
+          '</div>'+
           '<div class="dim">With: <strong>'+p.name+'</strong>'+(p.dept?' · '+p.dept:'')+'</div>'+
           '<div class="dim">Out since: '+fmtDate(co.checkedOutAt)+(co.dueDate?' · Due: '+fmtDate(co.dueDate):'')+'</div>'+
           (co.purpose?'<div class="dim">Purpose: '+co.purpose+'</div>':'')+
         '</div>'+
-        `<button class="btn bb bsm" onclick="openReturnModal('${co.id}')">↩ Return</button>`+
+        '<div class="row gap6">'+
+          `<button class="btn bb bsm" onclick="openReturnModal('${co.id}')">↩ Return</button>`+
+          `<button class="btn br bsm" onclick="openIncidentReport('${g.id}')" title="Report damage">⚠️</button>`+
+          (over&&p.email?`<button class="btn bsm" style="background:#fef2f2;border:1px solid var(--red);color:var(--red)" onclick="sendOverdueAlert('${co.id}')">📧 Remind</button>`:'')+
+        '</div>'+
       '</div>';
     }).join('');
     return;
@@ -6702,7 +7334,167 @@ function renderCheckout(){
       '</div>';
     }).join('');
   }
+  if(tab==='incidents'){
+    const reports=[...(db.incidentReports||[])].sort((a,b)=>b.reportedAt-a.reportedAt);
+    if(!reports.length){
+      listEl.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">✅</div><div class="dim">No incidents reported — great!</div></div>';
+    } else {
+      const SEV_COLOR={Minor:'var(--amber)',Major:'#E07417',Critical:'var(--red)'};
+      listEl.innerHTML=reports.map(r=>{
+        const g=(db.gearItems||[]).find(x=>x.id===r.gearId)||{name:r.gearName||'Unknown'};
+        return'<div class="co-card" style="border-left:3px solid '+(SEV_COLOR[r.severity]||'var(--amber)')+'">'+
+          '<div class="co-icon">⚠️</div>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div class="row gap6 mb4"><div class="fw7" style="font-size:14px">'+gearIcon(g)+' '+g.name+'</div>'+
+              '<span style="font-size:10px;font-family:var(--mono);font-weight:700;color:'+(SEV_COLOR[r.severity]||'var(--amber)')+'">'+r.severity.toUpperCase()+'</span>'+
+              (r.resolved?'<span style="font-size:10px;font-family:var(--mono);color:var(--green)">✓ RESOLVED</span>':'')+
+            '</div>'+
+            '<div style="font-size:13px;color:var(--text);margin-bottom:4px">'+r.description+'</div>'+
+            '<div class="dim" style="font-size:11px;font-family:var(--mono)">Reported by '+r.reportedBy+' · '+fmtDate(r.date)+'</div>'+
+          '</div>'+
+          (!r.resolved?`<button class="btn bg bsm" data-perm="admin" onclick="resolveIncident('${r.id}')">✓ Resolve</button>`:'')+
+        '</div>';
+      }).join('');
+    }
+  }
   applyPermissions();
+}
+
+function resolveIncident(id){
+  const r=(db.incidentReports||[]).find(x=>x.id===id);if(!r)return;
+  r.resolved=true;r.resolvedAt=Date.now();r.resolvedBy=getCurTech()?.name||'Admin';
+  const g=(db.gearItems||[]).find(x=>x.id===r.gearId);
+  if(g){
+    const stillDamaged=(db.incidentReports||[]).some(x=>x.gearId===r.gearId&&!x.resolved&&(x.severity==='Critical'||x.severity==='Major'));
+    if(!stillDamaged) g.damaged=false;
+  }
+  save();renderCheckout();toast('Incident marked as resolved','success');
+}
+async function sendOverdueAlert(coId){
+  const co=(db.checkouts||[]).find(x=>x.id===coId);if(!co)return;
+  const g=(db.gearItems||[]).find(x=>x.id===co.gearId)||{name:'Gear item'};
+  const p=(db.technicians||[]).find(x=>x.id===co.personId);
+  if(!p||!p.email){toast('No email for this crew member','error');return;}
+  const daysOver=Math.round((Date.now()-co.dueDate)/(1000*60*60*24));
+  try{
+    await emailjs.send(EJSID,EJTPL,{
+      to_email:p.email,
+      to_name:p.name,
+      subject:'⚠️ Overdue gear: '+g.name,
+      message:`Hi ${p.name},\n\nThis is a reminder that "${g.name}" was due back ${daysOver} day${daysOver!==1?'s':''} ago. Please return it as soon as possible.\n\nChecked out: ${fmtDate(co.checkedOutAt)}\nDue: ${fmtDate(co.dueDate)}\n\n— KCC Technical`,
+      fixture_name:'⚠️ Overdue: '+g.name,
+      fixture_id:g.assetId||co.gearId,
+      bulb_type:'Overdue '+daysOver+' day'+(daysOver!==1?'s':''),
+      reported_by:'KCC Technical System'
+    });
+    toast('📧 Overdue reminder sent to '+p.name,'success');
+  }catch(e){toast('Email failed: '+e.text,'error');}
+}
+
+// ── DAMAGE / INCIDENT REPORT ──────────────────────────────
+function openIncidentReport(gearId){
+  const g=(db.gearItems||[]).find(x=>x.id===gearId);if(!g)return;
+  document.getElementById('ir-gearId').value=gearId;
+  document.getElementById('ir-gearName').textContent=gearIcon(g)+' '+g.name;
+  document.getElementById('ir-description').value='';
+  document.getElementById('ir-severity').value='Minor';
+  document.getElementById('ir-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('m-incidentReport').style.display='flex';
+}
+async function saveIncidentReport(){
+  const gearId=document.getElementById('ir-gearId').value;
+  const description=(document.getElementById('ir-description').value||'').trim();
+  if(!description){toast('Describe the incident','error');return;}
+  const g=(db.gearItems||[]).find(x=>x.id===gearId)||{name:'Unknown item'};
+  const tech=getCurTech();
+  const severity=document.getElementById('ir-severity').value;
+  const dateVal=document.getElementById('ir-date').value;
+  const report={
+    id:'ir_'+Date.now(),
+    gearId,
+    gearName:g.name,
+    description,
+    severity,
+    date:dateVal?new Date(dateVal+'T12:00:00').getTime():Date.now(),
+    reportedBy:tech?tech.name:'Unknown',
+    reportedAt:Date.now(),
+    resolved:false
+  };
+  if(!db.incidentReports)db.incidentReports=[];
+  db.incidentReports.unshift(report);
+  // Flag gear item as damaged
+  if(severity==='Critical'||severity==='Major') g.damaged=true;
+  save();
+  document.getElementById('m-incidentReport').style.display='none';
+  toast('⚠️ Incident reported for '+g.name,'success');
+  // Email admins
+  const admins=(db.technicians||[]).filter(t=>t.email&&(t.userRole==='master'||t.userRole==='admin'));
+  for(const admin of admins){
+    try{
+      await emailjs.send(EJSID,EJTPL,{
+        to_email:admin.email,
+        to_name:admin.name,
+        subject:'⚠️ Damage report: '+g.name,
+        message:`Incident Report\n\nGear: ${g.name}${g.assetId?' ('+g.assetId+')':''}\nSeverity: ${severity}\nReported by: ${tech?tech.name:'Unknown'}\nDate: ${fmtDate(report.date)}\n\nDescription:\n${description}\n\n— KCC Technical`,
+        fixture_name:'⚠️ '+severity+': '+g.name,
+        fixture_id:g.assetId||gearId,
+        bulb_type:'Damage Report · '+severity,
+        reported_by:tech?tech.name:'Unknown'
+      });
+    }catch(e){console.warn('Incident email failed',e);}
+  }
+  if(admins.length) toast('📧 Admins notified','info');
+}
+
+// ── LOW STOCK CHECK ────────────────────────────────────────
+async function checkLowStockAlerts(){
+  const items=(db.gearItems||[]).filter(g=>g.lowStockAt&&g.qty<=g.lowStockAt);
+  if(!items.length)return;
+  const admins=(db.technicians||[]).filter(t=>t.email&&(t.userRole==='master'||t.userRole==='admin'));
+  for(const admin of admins){
+    for(const g of items){
+      try{
+        await emailjs.send(EJSID,EJTPL,{
+          to_email:admin.email,
+          to_name:admin.name,
+          subject:'📦 Low stock: '+g.name,
+          message:`Low Stock Alert\n\n${g.name} is running low.\nCurrent qty: ${g.qty}\nAlert threshold: ${g.lowStockAt}\n\nPlease restock soon.\n\n— KCC Technical`,
+          fixture_name:'📦 Low Stock: '+g.name,
+          fixture_id:g.assetId||g.id,
+          bulb_type:'Qty: '+g.qty+' (threshold: '+g.lowStockAt+')',
+          reported_by:'KCC Technical System'
+        });
+      }catch(e){console.warn('Low stock email failed',e);}
+    }
+  }
+}
+
+// ── LOG GEAR HOURS ─────────────────────────────────────────
+function openLogGearHours(gearId){
+  const g=(db.gearItems||[]).find(x=>x.id===gearId);if(!g)return;
+  document.getElementById('gh-gearId').value=gearId;
+  document.getElementById('gh-gearName').textContent=gearIcon(g)+' '+g.name;
+  document.getElementById('gh-hours').value='';
+  document.getElementById('m-logGearHours').style.display='flex';
+}
+function saveGearHours(){
+  const gearId=document.getElementById('gh-gearId').value;
+  const g=(db.gearItems||[]).find(x=>x.id===gearId);if(!g)return;
+  const hrs=parseFloat(document.getElementById('gh-hours').value);
+  if(!hrs||hrs<=0){toast('Enter valid hours','error');return;}
+  g.hoursUsed=(g.hoursUsed||0)+hrs;
+  save();
+  document.getElementById('m-logGearHours').style.display='none';
+  renderCheckout();
+  // Check if nearing end of life
+  if(g.expectedLifeHours){
+    const pct=(g.hoursUsed/g.expectedLifeHours)*100;
+    if(pct>=90) toast('⚠️ '+g.name+' is at '+Math.round(pct)+'% of expected lifespan!','error');
+    else if(pct>=70) toast('⚠️ '+g.name+' is at '+Math.round(pct)+'% of lifespan','info');
+    else toast('+'+hrs+'h logged for '+g.name,'success');
+  } else {
+    toast('+'+hrs+'h logged for '+g.name,'success');
+  }
 }
 
 // ── MAINTENANCE ───────────────────────────────────────────
@@ -6974,11 +7766,17 @@ function saveAnnouncement(){
   };
   if(!db.announcements)db.announcements=[];
   db.announcements.unshift(ann);
+  logAudit('Announcement Posted', ann.title);
   save();closeM('addAnnouncement');renderAnnouncements();
   ['an-title','an-body'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('an-dept').value='';
   document.getElementById('an-pin').checked=false;
   toast('Announcement posted!','success');
+  // Email blast if opted in
+  if(document.getElementById('an-email')?.checked){
+    sendAnnouncementEmails(ann);
+  }
+  document.getElementById('an-email').checked=false;
 }
 function deleteAnnouncement(id){
   if(!isAdmin())return;
@@ -6997,6 +7795,110 @@ function annReact(annId, emoji){
   if(idx === -1) ann.reactions[emoji].push(tech.id);
   else ann.reactions[emoji].splice(idx, 1);
   save(); renderAnnouncements();
+}
+
+// ── Announcement Email Blast ──────────────────────────────
+async function sendAnnouncementEmails(ann){
+  const crew = (db.technicians||[]).filter(t=>t.email&&t.email.includes('@'));
+  if(!crew.length){toast('No crew emails on file','info');return;}
+  const deptLabel = ann.dept ? ann.dept+' dept only' : 'All departments';
+  const targets = ann.dept ? crew.filter(t=>t.dept===ann.dept||!t.dept) : crew;
+  let sent=0, skipped=0;
+  for(const t of targets){
+    try{
+      await emailjs.send(EJSID, EJTPL, {
+        to_email: t.email,
+        to_name: t.name,
+        subject: '📢 KCC Technical: '+ann.title,
+        message: ann.body+'\n\n— '+ann.author+'\n'+deptLabel,
+        fixture_id: '',
+        fixture_name: '📢 '+ann.title,
+        bulb_type: deptLabel,
+        reported_by: ann.author
+      });
+      sent++;
+    } catch(e){
+      console.warn('Ann email fail for '+t.name, e);
+      skipped++;
+    }
+  }
+  if(sent>0) toast('📧 Announcement emailed to '+sent+' crew member'+(sent>1?'s':''),'success');
+  if(skipped>0) toast(skipped+' email(s) failed to send','error');
+}
+
+// ── Feedback ──────────────────────────────────────────────
+function submitFeedback(){
+  const msg=(document.getElementById('fb-message').value||'').trim();
+  if(!msg){toast('Please write your feedback first','error');return;}
+  const anon=document.getElementById('fb-anon').value==='yes';
+  const tech=getCurTech();
+  if(!db.feedbackItems)db.feedbackItems=[];
+  db.feedbackItems.unshift({
+    id:'fb_'+Date.now(),
+    category:document.getElementById('fb-category').value,
+    message:msg,
+    author:anon?'Anonymous':(tech?tech.name:'Unknown'),
+    createdAt:Date.now(),
+    read:false
+  });
+  save();
+  document.getElementById('m-feedback').style.display='none';
+  document.getElementById('fb-message').value='';
+  // Update badge
+  _updateFeedbackBadge();
+  toast('✅ Feedback submitted — thanks!','success');
+}
+
+function renderFeedbackAdmin(){
+  if(!isAdmin()){
+    document.getElementById('feedback-list').innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">🔒</div><div class="dim">Admin access only</div></div>';
+    return;
+  }
+  if(!db.feedbackItems)db.feedbackItems=[];
+  const listEl=document.getElementById('feedback-list');if(!listEl)return;
+  // Mark all as read
+  db.feedbackItems.forEach(f=>{if(!f.read){f.read=true;}});
+  save();_updateFeedbackBadge();
+  if(!db.feedbackItems.length){
+    listEl.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:10px">💬</div><div class="dim">No feedback yet</div></div>';
+    return;
+  }
+  const CAT_COLORS={General:'var(--blue)',Equipment:'var(--amber)',Scheduling:'#534AB7',Training:'#3B6D11',Communication:'var(--blue)',Other:'var(--dim2)'};
+  listEl.innerHTML=[...db.feedbackItems].sort((a,b)=>b.createdAt-a.createdAt).map(f=>`
+    <div class="panel mb14">
+      <div class="ph row jbet">
+        <div class="row gap8">
+          <span style="font-size:12px;font-family:var(--mono);font-weight:700;color:${CAT_COLORS[f.category]||'var(--dim2)'}">${f.category}</span>
+        </div>
+        <div class="row gap8">
+          <span class="dim" style="font-size:11px;font-family:var(--mono)">${fmtDate(f.createdAt)}</span>
+          <button onclick="deleteFeedback('${f.id}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px" title="Delete">✕</button>
+        </div>
+      </div>
+      <div class="pb">
+        <div style="font-size:14px;line-height:1.6;color:var(--text);margin-bottom:8px">${f.message}</div>
+        <div class="dim" style="font-size:12px;font-family:var(--mono)">From: ${f.author}</div>
+      </div>
+    </div>`).join('');
+}
+
+function deleteFeedback(id){
+  db.feedbackItems=(db.feedbackItems||[]).filter(f=>f.id!==id);
+  save();renderFeedbackAdmin();toast('Deleted','info');
+}
+
+function clearFeedback(){
+  if(!isAdmin())return;
+  if(!confirm('Delete all feedback?'))return;
+  db.feedbackItems=[];
+  save();renderFeedbackAdmin();toast('Feedback cleared','info');
+}
+
+function _updateFeedbackBadge(){
+  const badge=document.getElementById('feedback-badge');if(!badge)return;
+  const unread=(db.feedbackItems||[]).filter(f=>!f.read).length;
+  badge.style.display=unread?'':'none';
+  badge.textContent=unread;
 }
 function renderAnnouncements(){
   if(!db.announcements)db.announcements=[];
@@ -7308,6 +8210,20 @@ function renderProfiles(){
   const totalMods=(db.trainingModules||[]).length;
   const gearOuts=(db.checkouts||[]).filter(c=>c.personId===t.id);
   const maintDone=(db.maintLogs||[]).filter(l=>l.by===t.name).length;
+  const volHours = t.volunteerHours||0;
+
+  // Default onboarding steps
+  const ONBOARD_STEPS = [
+    {id:'intro',label:'Intro meeting with team lead'},
+    {id:'app',label:'Logged into KCC Technical app'},
+    {id:'shadow',label:'Shadowed a full service'},
+    {id:'station',label:'Operated own station'},
+    {id:'checklist',label:'Completed pre-show checklist solo'},
+    {id:'training',label:'Completed at least 1 training module'},
+  ];
+  const onb = t.onboarding||{};
+  const onbDone = ONBOARD_STEPS.filter(s=>onb[s.id]).length;
+  const onbPct = Math.round(onbDone/ONBOARD_STEPS.length*100);
 
   detail.innerHTML='<div class="panel">'+
     '<div class="ph row jbet">'+
@@ -7316,6 +8232,8 @@ function renderProfiles(){
         '<div><div class="fw7" style="font-size:16px">'+t.name+'</div><div class="dim">'+( t.role||'Technician')+'</div><div style="margin-top:4px">'+deptBadge(t.dept)+'</div></div>'+
       '</div>'+
       '<div class="row gap6">'+
+        `<button class="btn bg bsm" onclick="openLogHoursModal('${t.id}')">⏱ Log Hours</button>`+
+        `<button class="btn bb bsm" data-perm="admin" onclick="openPerfNoteModal('${t.id}')">📝 Add Note</button>`+
         `<button class="btn ba bsm" onclick="document.getElementById('cert-techId').value='${t.id}';['cert-name','cert-issuer','cert-date','cert-expiry','cert-notes'].forEach(id=>document.getElementById(id).value='');openM('addCert')">+ Cert</button>`+
         `<button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️ Edit</button>`+
         '<button class="btn bgh bsm" onclick="window._openProfileId=null;renderProfiles()">✕</button>'+
@@ -7323,13 +8241,79 @@ function renderProfiles(){
     '</div>'+
     '<div class="pb">'+
 
-      // Stats row
-      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">'+
-        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#0F6E56">'+streak+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">STREAK</div></div>'+
-        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#185FA5">'+sessions.length+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">SESSIONS</div></div>'+
-        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#534AB7">'+completedMods.length+(totalMods?'/'+totalMods:'')+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">MODULES</div></div>'+
-        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#854F0B">'+gearOuts.length+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">GEAR OUTS</div></div>'+
+      // Stats row — now 5 stats including volunteer hours
+      '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px">'+
+        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#0F6E56">'+streak+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">STREAK</div></div>'+
+        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#185FA5">'+sessions.length+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">SESSIONS</div></div>'+
+        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#534AB7">'+completedMods.length+(totalMods?'/'+totalMods:'')+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">MODULES</div></div>'+
+        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#854F0B">'+gearOuts.length+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">GEAR OUTS</div></div>'+
+        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#0F6E56">'+volHours+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">VOL. HRS</div></div>'+
       '</div>'+
+
+      // Contact info
+      ((t.email||t.phone||t.emergency)?
+        '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px">'+
+          '<div style="font-size:10px;font-family:var(--mono);color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Contact</div>'+
+          (t.email?'<div style="font-size:13px;display:flex;align-items:center;gap:8px"><span>📧</span><a href="mailto:'+t.email+'" style="color:var(--blue);font-family:var(--mono);font-size:12px">'+t.email+'</a></div>':'')+
+          (t.phone?'<div style="font-size:13px;display:flex;align-items:center;gap:8px"><span>📱</span><span style="font-family:var(--mono);font-size:12px">'+t.phone+'</span></div>':'')+
+          (t.emergency?'<div style="font-size:13px;display:flex;align-items:center;gap:8px"><span>🆘</span><span style="font-family:var(--mono);font-size:12px;color:var(--amber)">'+t.emergency+'</span></div>':'')+
+          (t.joinedAt?'<div style="font-size:11px;color:var(--dim2);font-family:var(--mono);margin-top:2px">Joined: '+new Date(t.joinedAt).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'})+'</div>':'')+
+        '</div>':'')+
+
+      // Onboarding checklist
+      '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);margin-bottom:8px">Onboarding <span style="font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--mono);font-size:10px;color:'+( onbPct===100?'var(--green)':'var(--amber)')+'">'+onbPct+'% complete</span></div>'+
+      '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:10px;overflow:hidden"><div style="height:100%;width:'+onbPct+'%;background:'+( onbPct===100?'var(--green)':'var(--amber)')+';border-radius:2px;transition:width .4s"></div></div>'+
+      '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px">'+
+        ONBOARD_STEPS.map(step=>{
+          const done=!!onb[step.id];
+          return'<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:6px">'+
+            `<button onclick="toggleOnboarding('${t.id}','${step.id}')" style="width:20px;height:20px;border-radius:50%;border:2px solid ${done?'#0F6E56':'var(--border2)'};background:${done?'#0F6E56':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:white;flex-shrink:0;cursor:pointer">${done?'✓':''}</button>`+
+            '<div style="flex:1;font-size:13px;'+(done?'text-decoration:line-through;color:var(--dim2)':'')+'">'+step.label+'</div>'+
+          '</div>';
+        }).join('')+
+      '</div>'+
+
+      // Volunteer hours log
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+        '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2)">Volunteer Hours</div>'+
+        `<button class="btn bg bsm" onclick="openLogHoursModal('${t.id}')">+ Log Hours</button>`+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--s2);border-radius:8px;margin-bottom:14px">'+
+        '<div style="font-size:36px;font-weight:900;color:#0F6E56;font-family:var(--head)">'+volHours+'</div>'+
+        '<div><div style="font-size:13px;font-weight:700">Hours volunteered</div>'+
+          '<div class="dim" style="font-size:12px">'+(t.hoursLog&&t.hoursLog.length?'Last logged: '+new Date(t.hoursLog[t.hoursLog.length-1].date).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}):'No hours logged yet')+'</div>'+
+        '</div>'+
+      '</div>'+
+      (t.hoursLog&&t.hoursLog.length?
+        '<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;max-height:160px;overflow-y:auto">'+
+          [...t.hoursLog].reverse().map(h=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--s2);border-radius:6px;font-size:12px">'+
+            '<div><span style="font-weight:700;color:#0F6E56">+'+h.hours+'h</span>'+(h.note?' <span class="dim">'+h.note+'</span>':'')+'</div>'+
+            '<div class="dim" style="font-family:var(--mono);font-size:10px">'+new Date(h.date).toLocaleDateString('en-CA',{month:'short',day:'numeric'})+'</div></div>'
+          ).join('')+
+        '</div>':'<div class="dim" style="margin-bottom:14px">No hours logged yet</div>')+
+
+      // Performance notes (admin only)
+      (isAdmin()?
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+          '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2)">Performance Notes</div>'+
+          `<button class="btn bb bsm" onclick="openPerfNoteModal('${t.id}')">+ Add Note</button>`+
+        '</div>'+
+        ((t.perfNotes&&t.perfNotes.length)?
+          '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">'+
+            t.perfNotes.map(n=>{
+              const colors={positive:'#0F6E56',constructive:'#854F0B',neutral:'#185FA5'};
+              const bgs={positive:'#E1F5EE',constructive:'#fff3cd',neutral:'var(--bglow)'};
+              return'<div style="padding:10px 12px;background:'+bgs[n.type]+';border-radius:8px;border-left:3px solid '+(colors[n.type]||'var(--dim2)')+'">'+
+                '<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:4px">'+n.text+'</div>'+
+                '<div style="display:flex;align-items:center;justify-content:space-between">'+
+                  '<div class="dim" style="font-size:11px;font-family:var(--mono)">'+n.by+' · '+fmtDate(n.at)+'</div>'+
+                  `<button onclick="deletePerfNote('${t.id}','${n.id}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px">✕</button>`+
+                '</div>'+
+              '</div>';
+            }).join('')+
+          '</div>' :
+          `<div class="dim" style="margin-bottom:14px;font-size:12px">No notes yet — <button onclick="openPerfNoteModal('${t.id}')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-family:var(--mono);font-size:11px">add one</button></div>`
+        ):'') +
 
       // Skills
       '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);margin-bottom:8px">Skills</div>'+
@@ -7370,7 +8354,41 @@ function renderProfiles(){
     '</div>'+
   '</div>';
   applyPermissions();
-}function _deptAvatarColor(dept){
+}function toggleOnboarding(techId, stepId){
+  const t=db.technicians.find(x=>x.id===techId);if(!t)return;
+  if(!t.onboarding)t.onboarding={};
+  t.onboarding[stepId] = !t.onboarding[stepId];
+  save();openProfile(techId);
+}
+
+function openLogHoursModal(techId){
+  const t=db.technicians.find(x=>x.id===techId);if(!t)return;
+  document.getElementById('lh-techId').value=techId;
+  document.getElementById('lh-techName').textContent=t.name;
+  document.getElementById('lh-hours').value='';
+  document.getElementById('lh-note').value='';
+  document.getElementById('lh-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('m-logHours').style.display='flex';
+}
+
+function saveLogHours(){
+  const techId=document.getElementById('lh-techId').value;
+  const t=db.technicians.find(x=>x.id===techId);if(!t)return;
+  const hrs=parseFloat(document.getElementById('lh-hours').value);
+  if(!hrs||hrs<=0){toast('Enter valid hours','error');return;}
+  const note=(document.getElementById('lh-note').value||'').trim();
+  const dateVal=document.getElementById('lh-date').value;
+  const date=dateVal?new Date(dateVal+'T12:00:00').getTime():Date.now();
+  if(!t.hoursLog)t.hoursLog=[];
+  t.hoursLog.push({hours:hrs,note,date,loggedBy:getCurTech()?.name||'Admin',loggedAt:Date.now()});
+  t.volunteerHours=(t.volunteerHours||0)+hrs;
+  save();
+  document.getElementById('m-logHours').style.display='none';
+  openProfile(techId);
+  toast('+'+hrs+'h logged for '+t.name,'success');
+}
+
+function _deptAvatarColor(dept){
   return {Lighting:'#0F6E56',Audio:'#185FA5',Cameras:'#854F0B',IT:'#5F5E5A'}[dept]||'#888780';
 }
 
@@ -7578,16 +8596,22 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
         <div class="fg"><label>Category</label>
           <select id="gi-cat">
-            <option value="Camera">Camera</option>
-            <option value="Lens">Lens</option>
-            <option value="Audio">Audio Equipment</option>
-            <option value="Lighting">Lighting</option>
-            <option value="Cable">Cable / Adapter</option>
-            <option value="Computer">Computer / Tablet</option>
-            <option value="Other">Other</option>
+            <option value="Camera">📷 Camera</option>
+            <option value="Lens">🔭 Lens</option>
+            <option value="Audio">🎚️ Audio Equipment</option>
+            <option value="Lighting">💡 Lighting</option>
+            <option value="Cable">🔌 Cable / Adapter</option>
+            <option value="Accessory">🎛️ Accessory</option>
+            <option value="Computer">💻 Computer / Tablet</option>
+            <option value="Power">🔋 Power / Battery</option>
+            <option value="Other">📦 Other</option>
           </select>
         </div>
         <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="gi-notes" placeholder="Serial number, purchase date, condition..." style="min-height:50px"></textarea></div>
+        <div class="fg"><label>Quantity in stock</label><input id="gi-qty" type="number" min="1" value="1" placeholder="1"></div>
+        <div class="fg"><label>Low stock alert at</label><input id="gi-lowstock" type="number" min="0" value="0" placeholder="0 = off"></div>
+        <div class="fg"><label>Expected lifespan (hours)</label><input id="gi-lifehours" type="number" min="0" value="0" placeholder="0 = not tracked"></div>
+        <div class="fg"><label>Hours used so far</label><input id="gi-hoursused" type="number" min="0" step="0.5" value="0" placeholder="0"></div>
         <div class="fg"><label>Service interval (days)</label><input id="gi-interval" type="number" placeholder="90" value="90" min="1"></div>
         <div class="fg"><label>Last serviced</label><input id="gi-lastservice" type="date"></div>
       </div>
@@ -7619,16 +8643,22 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
         <div class="fg"><label>Category</label>
           <select id="egi-cat">
-            <option value="Camera">Camera</option>
-            <option value="Lens">Lens</option>
-            <option value="Audio">Audio Equipment</option>
-            <option value="Lighting">Lighting</option>
-            <option value="Cable">Cable / Adapter</option>
-            <option value="Computer">Computer / Tablet</option>
-            <option value="Other">Other</option>
+            <option value="Camera">📷 Camera</option>
+            <option value="Lens">🔭 Lens</option>
+            <option value="Audio">🎚️ Audio Equipment</option>
+            <option value="Lighting">💡 Lighting</option>
+            <option value="Cable">🔌 Cable / Adapter</option>
+            <option value="Accessory">🎛️ Accessory</option>
+            <option value="Computer">💻 Computer / Tablet</option>
+            <option value="Power">🔋 Power / Battery</option>
+            <option value="Other">📦 Other</option>
           </select>
         </div>
         <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="egi-notes" style="min-height:50px"></textarea></div>
+        <div class="fg"><label>Quantity in stock</label><input id="egi-qty" type="number" min="1" value="1"></div>
+        <div class="fg"><label>Low stock alert at</label><input id="egi-lowstock" type="number" min="0" value="0"></div>
+        <div class="fg"><label>Expected lifespan (hours)</label><input id="egi-lifehours" type="number" min="0" value="0"></div>
+        <div class="fg"><label>Hours used so far</label><input id="egi-hoursused" type="number" min="0" step="0.5" value="0"></div>
         <div class="fg"><label>Service interval (days)</label><input id="egi-interval" type="number" min="1"></div>
         <div class="fg"><label>Last serviced</label><input id="egi-lastservice" type="date"></div>
       </div>
@@ -7826,6 +8856,12 @@ document.addEventListener('DOMContentLoaded', function(){
             <span style="font-size:13px">Pin this announcement</span>
           </div>
         </div>
+        <div class="fg" style="grid-column:1/-1"><label>Email Notification</label>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:6px;margin-top:2px">
+            <input type="checkbox" id="an-email" style="width:16px;height:16px;accent-color:#0F6E56">
+            <div><div style="font-size:13px;font-weight:700;color:#085041">📧 Send email to crew</div><div style="font-size:11px;color:#085041;font-family:var(--mono)">Emails all crew members with an email address on file</div></div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="mf">
@@ -7981,6 +9017,192 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
   </div>
 </div>
+<!-- ══ Incident / Damage Report Modal ══ -->
+<div id="m-incidentReport" class="mover" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:460px">
+    <div class="mh"><span class="mt">⚠️ Damage / Incident Report</span><button class="xb" onclick="document.getElementById('m-incidentReport').style.display='none'">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="ir-gearId">
+      <div style="font-family:var(--head);font-weight:700;font-size:15px;margin-bottom:14px" id="ir-gearName"></div>
+      <div class="fgrid">
+        <div class="fg"><label>Severity</label>
+          <select id="ir-severity">
+            <option value="Minor">🟡 Minor — cosmetic / small issue</option>
+            <option value="Major">🟠 Major — affects functionality</option>
+            <option value="Critical">🔴 Critical — gear is unusable</option>
+          </select>
+        </div>
+        <div class="fg"><label>Date of incident</label><input id="ir-date" type="date"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Description *</label><textarea id="ir-description" placeholder="What happened? What damage was found? Where, when, who was involved?" style="min-height:90px"></textarea></div>
+      </div>
+      <div style="padding:10px 12px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;font-size:12px;color:#854F0B">
+        📧 Admins with emails on file will be automatically notified.
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="document.getElementById('m-incidentReport').style.display='none'">Cancel</button>
+      <button class="btn br" onclick="saveIncidentReport()">Submit Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Log Gear Hours Modal ══ -->
+<div id="m-logGearHours" class="mover" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:380px">
+    <div class="mh"><span class="mt">⏱ Log Usage Hours</span><button class="xb" onclick="document.getElementById('m-logGearHours').style.display='none'">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="gh-gearId">
+      <div style="font-family:var(--head);font-weight:700;font-size:15px;margin-bottom:14px" id="gh-gearName"></div>
+      <div class="fg"><label>Hours used *</label><input id="gh-hours" type="number" min="0.5" step="0.5" placeholder="e.g. 3.5"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="document.getElementById('m-logGearHours').style.display='none'">Cancel</button>
+      <button class="btn ba" onclick="saveGearHours()">Log Hours</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Log Volunteer Hours Modal ══ -->
+<div id="m-logHours" class="mover" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><span class="mt">⏱ Log Volunteer Hours</span><button class="xb" onclick="document.getElementById('m-logHours').style.display='none'">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="lh-techId">
+      <div style="font-family:var(--head);font-weight:700;font-size:15px;margin-bottom:14px" id="lh-techName"></div>
+      <div class="fgrid">
+        <div class="fg"><label>Hours *</label><input id="lh-hours" type="number" min="0.5" step="0.5" placeholder="e.g. 3.5"></div>
+        <div class="fg"><label>Date</label><input id="lh-date" type="date"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Description (optional)</label><input id="lh-note" placeholder="e.g. Sunday service setup, rehearsal..."></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="document.getElementById('m-logHours').style.display='none'">Cancel</button>
+      <button class="btn ba" onclick="saveLogHours()">Save Hours</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Crew Feedback Modal ══ -->
+<div id="m-feedback" class="mover" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:480px">
+    <div class="mh"><span class="mt">💬 Submit Feedback</span><button class="xb" onclick="document.getElementById('m-feedback').style.display='none'">✕</button></div>
+    <div class="mb">
+      <p class="dim" style="margin-bottom:14px">Share ideas, concerns, or suggestions with the team leads. Your feedback is anonymous unless you choose to include your name.</p>
+      <div class="fgrid">
+        <div class="fg"><label>Category</label>
+          <select id="fb-category">
+            <option value="General">💬 General</option>
+            <option value="Equipment">🔧 Equipment</option>
+            <option value="Scheduling">📅 Scheduling</option>
+            <option value="Training">📚 Training</option>
+            <option value="Communication">📢 Communication</option>
+            <option value="Other">✨ Other</option>
+          </select>
+        </div>
+        <div class="fg"><label>Anonymous?</label>
+          <select id="fb-anon">
+            <option value="yes">Yes — keep it anonymous</option>
+            <option value="no">No — include my name</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Your Feedback *</label><textarea id="fb-message" placeholder="Share your thoughts..." style="min-height:100px"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="document.getElementById('m-feedback').style.display='none'">Cancel</button>
+      <button class="btn ba" onclick="submitFeedback()">Submit Feedback</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Performance Note Modal ══ -->
+<div id="m-perfNote" class="mover" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><span class="mt">📝 Add Performance Note</span><button class="xb" onclick="document.getElementById('m-perfNote').style.display='none'">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="pn-techId">
+      <div style="font-family:var(--head);font-weight:700;font-size:15px;margin-bottom:14px" id="pn-techName"></div>
+      <div class="fgrid">
+        <div class="fg"><label>Note Type</label>
+          <select id="pn-type">
+            <option value="positive">✅ Positive — great job</option>
+            <option value="constructive">🟡 Constructive — needs improvement</option>
+            <option value="neutral">🔵 Neutral — general note</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>Note *</label>
+          <textarea id="pn-text" placeholder="e.g. Showed great initiative setting up camera 2 before being asked. Very reliable." style="min-height:90px"></textarea>
+        </div>
+      </div>
+      <div style="padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--dim2)">
+        🔒 Performance notes are admin-only and not visible to the crew member.
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="document.getElementById('m-perfNote').style.display='none'">Cancel</button>
+      <button class="btn ba" onclick="savePerfNote()">Save Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Add/Edit Rehearsal Modal ══ -->
+<div id="m-addRehearsal" class="mover" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:560px">
+    <div class="mh"><span class="mt" id="rh-modal-title">🎸 Add Rehearsal</span><button class="xb" onclick="document.getElementById('m-addRehearsal').style.display='none'">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="rh-id">
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1"><label>Rehearsal Title *</label><input id="rh-title" placeholder="e.g. Sunday Rehearsal, Band Practice, Tech Walkthrough"></div>
+        <div class="fg"><label>Date *</label><input id="rh-date" type="date"></div>
+        <div class="fg"><label>Time</label><input id="rh-time" placeholder="e.g. 9:00 AM"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Location</label><input id="rh-location" placeholder="e.g. Main Auditorium, Room 201"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="rh-notes" placeholder="What to prepare, what to bring..." style="min-height:60px"></textarea></div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>📝 Rundown / Set List</label>
+          <textarea id="rh-rundown" placeholder="e.g. Welcome · Worship (Way Maker - E, Goodness of God - G) · Prayer · Sermon run-through · Dismiss" style="min-height:80px"></textarea>
+        </div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Assign Crew</label>
+          <div id="rh-crew" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;padding:4px 0"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="document.getElementById('m-addRehearsal').style.display='none'">Cancel</button>
+      <button class="btn ba" onclick="saveRehearsal()">Save Rehearsal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Shift Swap Request Modal ══ -->
+<div id="m-swapRequest" class="mover" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:440px">
+    <div class="mh"><span class="mt">↔️ Request Shift Swap</span><button class="xb" onclick="document.getElementById('m-swapRequest').style.display='none'">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="sw-schedKey">
+      <input type="hidden" id="sw-dateKey">
+      <input type="hidden" id="sw-serviceSlot">
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px">
+        <div style="font-size:12px;font-family:var(--mono);color:var(--dim2);margin-bottom:6px">Swap details</div>
+        <div><strong id="sw-requester">—</strong> requesting swap for</div>
+        <div class="dim" id="sw-date"></div>
+        <div class="dim" id="sw-service"></div>
+      </div>
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1"><label>Swap with *</label><select id="sw-target"></select></div>
+        <div class="fg" style="grid-column:1/-1"><label>Reason (optional)</label><textarea id="sw-reason" placeholder="e.g. Out of town, family commitment, sick..." style="min-height:60px"></textarea></div>
+      </div>
+      <div style="padding:10px 12px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;font-size:12px;color:#854F0B;margin-top:4px">
+        📧 Admins will be notified and must approve the swap before the schedule is changed.
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bgh" onclick="document.getElementById('m-swapRequest').style.display='none'">Cancel</button>
+      <button class="btn ba" onclick="submitSwapRequest()">Send Swap Request</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ Changelog / What's New Modal ══ -->
 <div id="m-changelog" class="mover" style="display:none" onclick="if(event.target===this)closeM('changelog')">
   <div class="modal" style="max-width:560px">
