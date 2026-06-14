@@ -356,7 +356,7 @@ textarea { resize:vertical; min-height:70px; }
 /* ── Misc ── */
 .who-banner { background:#E1F5EE; border:1px solid #9FE1CB; border-radius:10px; padding:14px 18px; margin-bottom:16px; display:flex; align-items:center; gap:14px; }
 .tcards { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:16px; }
-.tcard { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:16px; display:flex; align-items:flex-start; gap:12px; min-width:0; }
+.tcard { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:12px; min-width:0; }
 .note-box { background:var(--s2); border:1px solid var(--border); border-radius:6px; padding:10px 12px; margin-top:8px; font-size:12px; font-family:var(--mono); color:var(--dim2); font-style:italic; }
 .maint-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:20px; font-family:var(--mono); font-size:9px; font-weight:600; background:#EEEDFE; color:#534AB7; border:1px solid #CECBF6; }
 .chart-wrap { position:relative; height:220px; margin-top:8px; }
@@ -3830,7 +3830,7 @@ function renderCrew(){
   document.getElementById('crewCards').innerHTML=!filtered.length
     ?'<p class="dim">No technicians yet.</p>'
     :filtered.map(t=>`<div class="tcard">
-        <div class="row gap12" style="align-items:flex-start">
+        <div class="row gap12" style="align-items:flex-start;flex:1">
           <div style="font-size:28px;flex-shrink:0">${t.avatar||'👤'}</div>
           <div style="flex:1;min-width:0">
             <div class="row gap6 mb8"><div class="fw7" style="font-size:14px">${t.name}</div>${deptBadge(t.dept)}</div>
@@ -3848,7 +3848,7 @@ function renderCrew(){
             <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" id="avail-${t.id}"></div>
           </div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px;margin-top:auto">
           <button class="btn bb bsm" onclick="go('profiles');setTimeout(()=>openProfile('${t.id}'),80)">👤 Profile</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="adminResetPassword('${t.id}')" title="Admin: reset password">🔑</button>
