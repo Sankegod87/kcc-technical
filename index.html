@@ -30,6 +30,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFunctions, httpsCallable }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 // ═══════════════════════════════════════════════════
 // 🔧 PASTE YOUR FIREBASE CONFIG HERE
 // ═══════════════════════════════════════════════════
@@ -66,6 +68,8 @@ function initFirebase() {
     }
     app = initializeApp(firebaseConfig);
     fsdb = getFirestore(app);
+    const fns = getFunctions(app);
+    window._sendScheduleSMS = httpsCallable(fns, 'manualSendScheduleSMS');
     window._syncMode = "firebase";
     window._fbDoc = () => doc(fsdb, DB_DOC);
     syncUI("syncing", "Connecting…");
@@ -1588,6 +1592,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <select id="schedYear" onchange="renderSchedule()" style="width:auto;padding:6px 10px;font-size:11px"></select>
       <button data-perm="admin" class="btn bg bsm" onclick="openAddRehearsalModal()">+ Rehearsal</button>
       <button data-perm="admin" class="btn bb bsm" onclick="manualSendScheduleEmail()" title="Send schedule email to assigned crew for the upcoming Sunday">📧 Send This Week</button>
+      <button data-perm="admin" class="btn bb bsm" onclick="manualSendScheduleSMS()" title="Text the schedule to assigned crew for the upcoming Sunday">📱 Text This Week</button>
     </div>
   </div>
 
@@ -4831,6 +4836,32 @@ function manualSendScheduleEmail(){
   }
   if(!confirm('Send schedule emails to '+entry.crew.length+' crew member'+(entry.crew.length>1?'s':'')+' for '+dateStr+'?')) return;
   sendScheduleEmails(key, entry);
+}
+
+function manualSendScheduleSMS(){
+  if(!isAdmin()){ toast('Admin permission required','error'); return; }
+  if(!window._sendScheduleSMS){ toast('SMS not available — Firebase not connected','error'); return; }
+  const now = new Date();
+  const daysUntilSun = (7 - now.getDay()) % 7 || 7;
+  const sun = new Date(now); sun.setDate(now.getDate() + daysUntilSun);
+  const key = schedKey(sun);
+  const entry = db.schedules[key];
+  const dateStr = sun.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  if(!entry || !entry.crew || !entry.crew.length){
+    toast('No crew scheduled for '+dateStr,'error');
+    return;
+  }
+  if(!confirm('Text the schedule to '+entry.crew.length+' crew member'+(entry.crew.length>1?'s':'')+' for '+dateStr+'?')) return;
+  toast('📱 Sending texts…','info');
+  window._sendScheduleSMS()
+    .then(result=>{
+      const data = result.data || {};
+      toast(data.message || 'Texts sent','success');
+    })
+    .catch(err=>{
+      console.error('SMS send failed', err);
+      toast('Failed to send texts: '+(err.message||'unknown error'),'error');
+    });
 }
 
 function checkScheduleEmails(){
