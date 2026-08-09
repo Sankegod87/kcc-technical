@@ -5211,10 +5211,12 @@ function openGlobalScanner(fieldTarget){
         const upper=code.toUpperCase();
         document.getElementById('gsManual').value=upper;
         document.getElementById('gs-result').style.display='';
-        document.getElementById('gs-result').textContent='✅ Scanned: '+upper;
+        document.getElementById('gs-result').textContent='✅ Scanned: '+upper+' — choose an action below';
         stopGsScanner();
         if(_gsFieldTarget) gsSubmitToField();
-        else gsSubmit();
+        // otherwise leave the modal open so the tech picks Report Outage /
+        // Mark Replaced / Bulb Scan IN — auto-closing here was skipping
+        // straight to Auto-Detect and never actually registering bulbs.
       },()=>{}
     ).catch(err=>{toast('Camera error: '+err,'error');stopGsScanner();});
   },200);
@@ -10018,5 +10020,3 @@ document.addEventListener('DOMContentLoaded', function(){
 
 </body>
 </html>
-
-      
