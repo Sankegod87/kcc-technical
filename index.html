@@ -1484,7 +1484,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       </div>
     </div>
     <div class="panel"><div class="pb" style="padding:0"><table class="tbl">
-      <thead><tr><th>Bulb ID</th><th>Type</th><th>Status</th><th>Location</th><th>Installs</th><th>Created</th><th>Last Event</th></tr></thead>
+      <thead><tr><th>Bulb ID</th><th>Type</th><th>Status</th><th>Location</th><th>Installs</th><th>Created</th><th>Last Event</th><th></th></tr></thead>
       <tbody id="regTbl"></tbody>
     </table></div></div>
   </div>
@@ -5244,8 +5244,7 @@ function gsAction(action){
     if(action==='outage')openOutModal(f.id);else openRepModal(f.id);
   } else if(action==='scanIn'){
     closeGlobalScanner();
-    openM('receiveBulbs');
-    toast('📦 Enter bulb type and quantity to receive','info');
+    scanBulbIn(code);
   }
 }
 function gsSubmitToField(){
@@ -5448,7 +5447,7 @@ function renderBulbRegistry(){
   const filter=document.getElementById('regFilter')?.value||'all';
   let list=[...db.bulbRegistry].sort((a,b)=>b.createdAt-a.createdAt);
   if(filter!=='all')list=list.filter(b=>b.status===filter);
-  if(!list.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:28px">No bulbs registered yet — generate labels to register them</td></tr>';return;}
+  if(!list.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--dim);padding:28px">No bulbs registered yet — generate labels to register them</td></tr>';return;}
   const statusStyle={
     unassigned:{icon:'🏷️',color:'var(--dim)',label:'Printed — not scanned in'},
     in_stock:{icon:'📦',color:'var(--blue)',label:'In Stock'},
@@ -5468,8 +5467,23 @@ function renderBulbRegistry(){
       <td style="text-align:center"><strong>${b.history.filter(h=>h.event==='installed').length}</strong></td>
       <td class="dim">${fmtD(b.createdAt)}</td>
       <td class="dim">${lastEvent?lastEvent.event+' · '+ago(lastEvent.timestamp):'—'}</td>
+      <td><button class="btn bgh bsm" data-perm="admin" style="border-color:var(--red);color:var(--red)" onclick="deleteBulbRegistryEntry('${b.bulbId}')">🗑️</button></td>
     </tr>`;
   }).join('');
+}
+
+function deleteBulbRegistryEntry(bulbId){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  const b=db.bulbRegistry.find(x=>x.bulbId===bulbId);if(!b)return;
+  if(!confirm('Remove bulb label "'+bulbId+'" ('+b.bulbType+') from the registry?\n\nThis only removes the label record — it does NOT change stock counts. If it was counted as In Stock, run "Recalc from Registry" afterward to correct the total.'))return;
+  db.bulbRegistry=db.bulbRegistry.filter(x=>x.bulbId!==bulbId);
+  // If it was installed in a fixture, clear that fixture's current-bulb pointer
+  if(b.installedIn){
+    const f=db.fixtures.find(x=>x.id===b.installedIn);
+    if(f&&f.currentBulbId===bulbId){f.currentBulbId=null;f.currentBulbType=null;}
+  }
+  save();renderBulbRegistry();renderFix&&renderFix();
+  toast('Bulb label '+bulbId+' removed from registry','info');
 }
 
 // ── Helpers ──
@@ -6177,6 +6191,17 @@ function deleteShow(id){
 // ══════════════════════════════════════════════════
 const CHANGELOG = [
   {
+    version: 'v3.0 — Bulb Tracking Fix',
+    date: 'Aug 2026',
+    items: [
+      '🏷️ Bulb Labels Print as Unassigned — printing a sticker sheet no longer instantly counts those bulbs as "in stock"; they only count once the physical sticker is actually scanned in',
+      '📥 Bulb Scan IN Fixed — scanning a bulb sticker (from the Scan page or the floating 📷 button) now actually adds it to stock; previously it just opened the manual batch-entry form and ignored the scanned code',
+      '🔄 Recalc from Registry — new button on the Inventory page recalculates each bulb type\'s stock count from what\'s actually been scanned in, to fix any drift from before this update',
+      '🗑️ Delete Bulb Registry Entry — each row in the Bulb Registry now has a delete button (admin) to remove a mistaken or duplicate label',
+      '🏷️ "Printed — Not Scanned In" Status — Bulb Registry shows labels that have been printed but not yet stuck on a bulb and scanned',
+    ]
+  },
+  {
     version: 'v2.9 — Phase 5 Update',
     date: 'Apr 2026',
     items: [
@@ -6280,7 +6305,7 @@ const CHANGELOG = [
   },
 ];
 
-const CHANGELOG_SEEN_KEY = 'kcc_changelog_seen_v29';
+const CHANGELOG_SEEN_KEY = 'kcc_changelog_seen_v30';
 
 function openChangelog(){
   const listEl = document.getElementById('changelog-list');
@@ -9993,3 +10018,5 @@ document.addEventListener('DOMContentLoaded', function(){
 
 </body>
 </html>
+
+      
