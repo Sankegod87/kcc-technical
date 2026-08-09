@@ -1022,7 +1022,43 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
   </div>
 </div>
 
-<!-- Floating Scan Button (visible on all pages) -->
+<!-- External Tech-Support Request Screen — no login required, reached via #request link -->
+<div id="extRequestScreen" style="display:none;position:fixed;inset:0;z-index:1500;background:var(--bg);overflow-y:auto">
+  <div style="max-width:520px;margin:0 auto;padding:32px 20px 60px">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-family:var(--head);font-weight:900;font-size:22px;color:var(--amber)">KCC Technical</div>
+      <div class="dim" style="margin-top:4px">Request Tech Support</div>
+    </div>
+    <div id="extReq-form">
+      <p class="dim mb14" style="text-align:center">Need AV, lighting, or camera help for an upcoming service or event? Fill this out and our tech team will follow up.</p>
+      <div class="fgrid">
+        <div class="fg"><label>Your name *</label><input id="er-name" placeholder="e.g. Sarah Thompson"></div>
+        <div class="fg"><label>Ministry / Department *</label><input id="er-dept" placeholder="e.g. Kids Ministry, Worship, Events"></div>
+        <div class="fg"><label>Contact (email or phone)</label><input id="er-contact" placeholder="So we can follow up"></div>
+        <div class="fg"><label>Event / service date</label><input id="er-eventdate" type="date"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Category</label>
+          <select id="er-cat">
+            <option value="AV">AV Equipment</option>
+            <option value="Lighting">Lighting</option>
+            <option value="Camera">Camera / Video</option>
+            <option value="IT">IT / Network</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1"><label>What do you need? *</label><textarea id="er-details" placeholder="Describe the event and what tech support you need..." style="min-height:90px"></textarea></div>
+      </div>
+      <div id="extReq-status" class="dim" style="margin:10px 0;font-size:12px;text-align:center"></div>
+      <button class="btn ba" style="width:100%;margin-top:6px" onclick="submitExternalRequest()">Submit Request</button>
+    </div>
+    <div id="extReq-success" style="display:none;text-align:center;padding:30px 0">
+      <div style="font-size:40px;margin-bottom:12px">✅</div>
+      <div class="fw7" style="font-size:16px;margin-bottom:6px">Request submitted!</div>
+      <p class="dim">The tech team has been notified and will follow up with you.</p>
+      <button class="btn bgh" style="margin-top:18px" onclick="resetExternalRequestForm()">Submit another request</button>
+    </div>
+  </div>
+</div>
+
 <button id="fabScan" onclick="openGlobalScanner()" style="
   position:fixed;bottom:24px;right:24px;z-index:150;
   width:60px;height:60px;border-radius:50%;border:none;
@@ -1662,7 +1698,10 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <h2 class="fw9 tu ls2" style="font-size:14px">Tech Requests</h2>
       <div class="dim" style="margin-top:4px">AV and technical needs submitted by the team</div>
     </div>
-    <button class="btn ba" onclick="openM('addRequest')">+ New Request</button>
+    <div class="row gap6">
+      <button class="btn bgh" data-perm="admin" onclick="copyExternalRequestLink()">🌐 Copy Public Link</button>
+      <button class="btn ba" onclick="openM('addRequest')">+ New Request</button>
+    </div>
   </div>
   <div class="stats mb16" id="req-stats"></div>
   <div class="tabs" id="req-tabs">
@@ -1915,6 +1954,16 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
           <input id="s-newDeptColor" type="color" value="#0F6E56" style="width:42px;height:38px;padding:2px 4px;border-radius:6px;border:1px solid var(--border2);cursor:pointer">
           <button class="btn ba bsm" onclick="addDept()">+ Add</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ── Vendors & Parts Suppliers ── -->
+    <div class="panel" data-perm="admin">
+      <div class="ph"><span class="pt">🚚 Vendors & Parts Suppliers</span></div>
+      <div class="pb">
+        <p class="dim mb12">Where to order bulbs, cables, and gear from. Link a vendor to a fixture or gear item to see who to call when it needs replacing.</p>
+        <div id="s-vendorsEl" style="margin-bottom:12px"></div>
+        <button class="btn ba bsm" onclick="openAddVendor()">+ Add Vendor</button>
       </div>
     </div>
 
@@ -2315,6 +2364,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
           </select>
         </div>
         <div class="fg"><label>Maintenance interval (days)</label><input id="fmaint" type="number" placeholder="90" min="1"></div>
+        <div class="fg"><label>Vendor / Supplier</label><select id="fvendor"><option value="">— None —</option></select></div>
         <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="fnotes" placeholder="Any notes about this fixture…"></textarea></div>
       </div>
     </div>
@@ -2342,12 +2392,37 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
           </select>
         </div>
         <div class="fg"><label>Maintenance interval (days)</label><input id="efmaint" type="number" placeholder="90" min="1"></div>
+        <div class="fg"><label>Vendor / Supplier</label><select id="efvendor"><option value="">— None —</option></select></div>
         <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="efnotes" placeholder="Any notes about this fixture…"></textarea></div>
       </div>
     </div>
     <div class="mf">
       <button class="btn bgh" onclick="closeM('editFixture')">Cancel</button>
       <button class="btn ba" onclick="saveFixtureEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Vendor / Parts Supplier Modal (add + edit) ══ -->
+<div id="m-vendorForm" class="mover" style="display:none" onclick="if(event.target===this)closeM('vendorForm')">
+  <div class="modal">
+    <div class="mh"><span class="mt" id="vf-modal-title">🚚 Add Vendor</span><button class="xb" onclick="closeM('vendorForm')">✕</button></div>
+    <div class="mb">
+      <input type="hidden" id="vf-id">
+      <div class="fgrid">
+        <div class="fg" style="grid-column:1/-1"><label>Vendor / Company name *</label><input id="vf-name" placeholder="e.g. Stage Lighting Supply Co."></div>
+        <div class="fg"><label>Contact person</label><input id="vf-contact" placeholder="e.g. John Smith"></div>
+        <div class="fg"><label>Phone</label><input id="vf-phone" placeholder="(555) 123-4567"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Email</label><input id="vf-email" type="email" placeholder="orders@vendor.com"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Parts / equipment supplied</label><input id="vf-parts" placeholder="e.g. Bulbs, cables, LED fixtures"></div>
+        <div class="fg"><label>Last order date</label><input id="vf-lastorder" type="date"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="vf-notes" placeholder="Account #, ordering process, pricing notes…" style="min-height:60px"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn br bsm" id="vf-delete-btn" style="display:none" onclick="deleteVendor()">Delete</button>
+      <button class="btn bgh" onclick="closeM('vendorForm')">Cancel</button>
+      <button class="btn ba" onclick="saveVendor()">Save Vendor</button>
     </div>
   </div>
 </div>
@@ -2366,6 +2441,11 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <div id="outInfo" style="background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:6px;padding:12px;margin-bottom:14px"></div>
       <div class="fg mb12"><label>Reporting Technician *</label><div class="tpg" id="outTechG"></div></div>
       <div class="fg mb12"><label>Notes</label><input id="onotes" placeholder="Optional notes"></div>
+      <div class="fg mb12">
+        <label>Photo (optional)</label>
+        <input id="outPhotoInput" type="file" accept="image/*" capture="environment" onchange="_photoPreview('outPhotoInput','outPhotoPreview')">
+        <div id="outPhotoPreview" style="margin-top:8px"></div>
+      </div>
       <div class="fg">
         <label>What happened to the bulb?</label>
         <select id="oBulbStatus">
@@ -2591,7 +2671,7 @@ let _charts={};
 // ── Storage ──
 function lsave(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
 function lload(){
-  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};if(!db.trainingModules)db.trainingModules=[];if(!db.feedbackItems)db.feedbackItems=[];if(!db.incidentReports)db.incidentReports=[];if(!db.rehearsals)db.rehearsals=[];if(!db.swapRequests)db.swapRequests=[];if(!db.auditLog)db.auditLog=[];}}catch(e){}
+  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};if(!db.trainingModules)db.trainingModules=[];if(!db.feedbackItems)db.feedbackItems=[];if(!db.incidentReports)db.incidentReports=[];if(!db.rehearsals)db.rehearsals=[];if(!db.swapRequests)db.swapRequests=[];if(!db.auditLog)db.auditLog=[];if(!db.vendors)db.vendors=[];}}catch(e){}
 }
 window._onRemoteData=function(r){
   // Only overwrite technicians if Firebase has data; never wipe with empty (protects login)
@@ -2625,13 +2705,15 @@ window._onRemoteData=function(r){
   db.rehearsals=r.rehearsals||db.rehearsals||[];
   db.swapRequests=r.swapRequests||db.swapRequests||[];
   db.auditLog=r.auditLog||db.auditLog||[];
+  db.vendors=r.vendors||db.vendors||[];
   // Schedule templates
   if(r.settings&&r.settings.scheduleTemplates) db.settings.scheduleTemplates=r.settings.scheduleTemplates;
   lsave();
   applyCustomisation();
   // Try to resume a saved session now that Firebase has loaded real crew data
   const loginVisible = document.getElementById('loginScreen')?.style.display === 'flex';
-  if(!_techId){
+  const onExternalRequest = location.hash==='#request'||location.hash==='#external-request';
+  if(!_techId && !onExternalRequest){
     // Check if there's a saved session we can now validate against real crew data
     const savedId = (()=>{ try{ return localStorage.getItem(TECH_KEY); }catch(e){ return null; } })();
     if(savedId && db.technicians.some(t=>t.id===savedId)){
@@ -2686,6 +2768,7 @@ window.addEventListener('syncStatus',e=>{const{state,msg}=e.detail;setSyncState(
 let _lsSelectedId = null;
 
 function showLoginScreen(){
+  if(location.hash==='#request'||location.hash==='#external-request'){showExternalRequestScreen();return;}
   const screen = document.getElementById('loginScreen');
   screen.style.display = 'flex';
   // Reset to step 1
@@ -3252,13 +3335,24 @@ function viewFixture(id){
         +'</div></div>';
     })()}
     ${f.notes?`<div class="note-box mb14">📝 ${f.notes}</div>`:''}
+    ${(()=>{
+      if(!f.vendorId)return'';
+      const v=getVendors().find(x=>x.id===f.vendorId);
+      if(!v)return'';
+      return '<div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px">'
+        +'<div class="dim" style="letter-spacing:1px;margin-bottom:6px">🚚 ORDER REPLACEMENT FROM</div>'
+        +'<div class="fw7">'+v.name+'</div>'
+        +'<div class="dim" style="font-size:12px;margin-top:2px">'+[v.contact,v.phone,v.email].filter(Boolean).join(' · ')+'</div>'
+        +'</div>';
+    })()}
     <div class="ph" style="border-radius:6px 6px 0 0;margin-bottom:0"><span class="pt">Outage History</span></div>
     <div style="border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">
       <table class="tbl">
-        <thead><tr><th>Date</th><th>Reported By</th><th>Notes</th><th>Status</th><th>Down Time</th></tr></thead>
-        <tbody>${!outs.length?'<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:20px">No outages</td></tr>':outs.map(o=>`<tr>
+        <thead><tr><th>Date</th><th>Reported By</th><th>Notes</th><th>Photo</th><th>Status</th><th>Down Time</th></tr></thead>
+        <tbody>${!outs.length?'<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:20px">No outages</td></tr>':outs.map(o=>`<tr>
           <td class="dim mono" style="font-size:10px">${fmtD(o.timestamp)}</td>
           <td>${o.reportedBy}</td><td class="dim">${o.notes||'—'}</td>
+          <td>${o.photo?`<img src="${o.photo}" onclick="viewPhotoLightbox('${o.photo}')" style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)">`:'—'}</td>
           <td>${o.resolved?'<span class="badge bok">Resolved</span>':'<span class="badge bout">Pending</span>'}</td>
           <td class="dim">${o.resolved?fmtDur(o.resolvedAt-o.timestamp):'<span class="cr">Ongoing</span>'}</td>
         </tr>`).join('')}</tbody>
@@ -3696,6 +3790,8 @@ function renderSettings(){
   renderGearCats();
   // Departments
   renderDeptsSettings();
+  // Vendors
+  renderVendors();
   // Overdue settings
   const og=document.getElementById('s-overdueGrace');const ra=document.getElementById('s-reminderAfter');const er=document.getElementById('s-emailReminders');
   if(og)og.value=s.overdueGrace??0;if(ra)ra.value=s.reminderAfter??3;if(er)er.checked=!!s.emailReminders;
@@ -3794,6 +3890,79 @@ function addDept(){
 function removeDept(i){
   if(!db.settings?.departments)return;
   db.settings.departments.splice(i,1);save();renderDeptsSettings();
+}
+
+// ── Vendors & Parts Suppliers ──
+function getVendors(){return db.vendors||[];}
+function renderVendors(){
+  const el=document.getElementById('s-vendorsEl');if(!el)return;
+  const vendors=getVendors();
+  el.innerHTML=vendors.map(v=>`<div class="row jbet" style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="min-width:0">
+        <div class="fw7" style="font-size:13px">${v.name}</div>
+        <div class="dim" style="font-size:11px">${[v.contact,v.phone,v.email].filter(Boolean).join(' · ')||'No contact info'}</div>
+        ${v.parts?'<div class="dim" style="font-size:11px;margin-top:2px">Supplies: '+v.parts+'</div>':''}
+      </div>
+      <button class="btn bgh bsm" onclick="openEditVendor('${v.id}')">✏️</button>
+    </div>`).join('')||'<p class="dim">No vendors added yet.</p>';
+}
+function _populateVendorSelect(selectId,currentVal){
+  const sel=document.getElementById(selectId);if(!sel)return;
+  const vendors=getVendors();
+  sel.innerHTML='<option value="">— None —</option>'+vendors.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+  sel.value=currentVal||'';
+}
+function openAddVendor(){
+  document.getElementById('vf-modal-title').textContent='🚚 Add Vendor';
+  document.getElementById('vf-id').value='';
+  ['vf-name','vf-contact','vf-phone','vf-email','vf-parts','vf-lastorder','vf-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('vf-delete-btn').style.display='none';
+  openM('vendorForm');
+}
+function openEditVendor(id){
+  const v=getVendors().find(x=>x.id===id);if(!v)return;
+  document.getElementById('vf-modal-title').textContent='✏️ Edit Vendor';
+  document.getElementById('vf-id').value=v.id;
+  document.getElementById('vf-name').value=v.name||'';
+  document.getElementById('vf-contact').value=v.contact||'';
+  document.getElementById('vf-phone').value=v.phone||'';
+  document.getElementById('vf-email').value=v.email||'';
+  document.getElementById('vf-parts').value=v.parts||'';
+  document.getElementById('vf-lastorder').value=v.lastOrder?new Date(v.lastOrder).toISOString().slice(0,10):'';
+  document.getElementById('vf-notes').value=v.notes||'';
+  document.getElementById('vf-delete-btn').style.display='';
+  openM('vendorForm');
+}
+function saveVendor(){
+  if(!isAdmin()){toast('Admin required','error');return;}
+  const name=(document.getElementById('vf-name').value||'').trim();
+  if(!name){toast('Vendor name required','error');return;}
+  if(!db.vendors)db.vendors=[];
+  const id=document.getElementById('vf-id').value;
+  const lastOrderVal=document.getElementById('vf-lastorder').value;
+  const data={
+    name,
+    contact:(document.getElementById('vf-contact').value||'').trim(),
+    phone:(document.getElementById('vf-phone').value||'').trim(),
+    email:(document.getElementById('vf-email').value||'').trim(),
+    parts:(document.getElementById('vf-parts').value||'').trim(),
+    lastOrder:lastOrderVal?new Date(lastOrderVal+'T12:00:00').getTime():null,
+    notes:(document.getElementById('vf-notes').value||'').trim()
+  };
+  if(id){
+    const v=db.vendors.find(x=>x.id===id);
+    if(v)Object.assign(v,data);
+  } else {
+    db.vendors.push(Object.assign({id:'vnd_'+Date.now()},data));
+  }
+  save();closeM('vendorForm');renderVendors();toast('Vendor saved','success');
+}
+function deleteVendor(){
+  if(!isAdmin())return;
+  const id=document.getElementById('vf-id').value;if(!id)return;
+  if(!confirm('Delete this vendor? Fixtures/gear linked to it will keep their link but show no vendor details.'))return;
+  db.vendors=(db.vendors||[]).filter(x=>x.id!==id);
+  save();closeM('vendorForm');renderVendors();toast('Vendor deleted','info');
 }
 
 // ── Overdue settings ──
@@ -3935,7 +4104,7 @@ function openM(id){
 }
 function closeM(id){const _cmEl=document.getElementById('m-'+id);if(_cmEl)_cmEl.style.display='none';if(id==='markReplaced')stopRepCamera&&stopRepCamera();}
 function mOut(e,id){if(e.target===document.getElementById('m-'+id))closeM(id);}
-function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw','globalScan','addUsedBulb','editSchedule','editInv','addShow','editChecklist','addGearItem','editGearItem','checkoutGear','returnGear','addMaintEntry','addRequest','editRequest','addAnnouncement','addTrainingModule','addCert'].forEach(id=>{const el=document.getElementById('m-'+id);if(el)el.style.display='none';});}
+function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','viewFixture','reportOutage','markReplaced','receiveBulbs','changeMyPw','globalScan','addUsedBulb','editSchedule','editInv','addShow','editChecklist','addGearItem','editGearItem','checkoutGear','returnGear','addMaintEntry','addRequest','editRequest','addAnnouncement','addTrainingModule','addCert','vendorForm'].forEach(id=>{const el=document.getElementById('m-'+id);if(el)el.style.display='none';});}
 function buildWhoGrid(){
   const el=document.getElementById('whoGrid');
   if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians yet.</p>';return;}
@@ -4125,6 +4294,7 @@ function editFixture(id){
   document.getElementById('efcat').value=f.category||'other';
   document.getElementById('efmaint').value=f.maintInterval||'';
   document.getElementById('efnotes').value=f.notes||'';
+  _populateVendorSelect('efvendor',f.vendorId||'');
   openM('editFixture');
 }
 function saveFixtureEdit(){
@@ -4137,6 +4307,7 @@ function saveFixtureEdit(){
   f.category=document.getElementById('efcat').value;
   f.maintInterval=parseInt(document.getElementById('efmaint').value)||null;
   f.notes=document.getElementById('efnotes').value.trim();
+  f.vendorId=document.getElementById('efvendor').value||'';
   save();closeM('editFixture');renderFix();toast('Fixture '+f.id+' updated','success');
 }
 
@@ -4149,9 +4320,10 @@ function addFixture(){
   const cat=document.getElementById('fcat').value;
   const maint=parseInt(document.getElementById('fmaint').value)||null;
   const notes=document.getElementById('fnotes').value.trim();
+  const vendorId=document.getElementById('fvendor').value||'';
   if(!id||!bul){toast('Fixture ID and Bulb Type required','error');return;}
   if(db.fixtures.find(f=>f.id===id)){toast('Fixture ID already exists','error');return;}
-  db.fixtures.push({id,name:nam||id,location:loc,bulbType:bul,category:cat,maintInterval:maint,notes,status:'ok',outageCount:0,addedAt:Date.now()});
+  db.fixtures.push({id,name:nam||id,location:loc,bulbType:bul,category:cat,maintInterval:maint,notes,vendorId,status:'ok',outageCount:0,addedAt:Date.now()});
   save();closeM('addFixture');renderFix();toast('Fixture '+id+' added','success');
 }
 function openOutModal(fid){
@@ -4160,6 +4332,8 @@ function openOutModal(fid){
   document.getElementById('outTitle').textContent='🔴 Report Outage — '+f.id;
   document.getElementById('outInfo').innerHTML=`<div class="fw7" style="font-size:14px;margin-bottom:3px">${f.name}</div><div class="dim">${f.location} · ${f.bulbType}</div>`;
   document.getElementById('onotes').value='';
+  const _opi=document.getElementById('outPhotoInput');if(_opi)_opi.value='';
+  const _opp=document.getElementById('outPhotoPreview');if(_opp){_opp.innerHTML='';_opp.dataset.photo='';}
   openM('reportOutage');
 }
 function openRepModal(fid){
@@ -4183,10 +4357,47 @@ function closeRepModal(){
   stopRepCamera();
   closeM('markReplaced');
 }
+// ── Photo attachment helper (resize+compress client-side to keep Firestore doc small) ──
+function _compressImageToDataURL(fileInputId,maxDim,quality,cb){
+  const inp=document.getElementById(fileInputId);
+  const file=inp&&inp.files&&inp.files[0];
+  if(!file){cb(null);return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      let w=img.width,h=img.height;
+      if(w>h&&w>maxDim){h=Math.round(h*(maxDim/w));w=maxDim;}
+      else if(h>maxDim){w=Math.round(w*(maxDim/h));h=maxDim;}
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      cb(canvas.toDataURL('image/jpeg',quality||0.6));
+    };
+    img.onerror=function(){cb(null);};
+    img.src=e.target.result;
+  };
+  reader.onerror=function(){cb(null);};
+  reader.readAsDataURL(file);
+}
+function _photoPreview(fileInputId,previewId,maxDim,quality){
+  _compressImageToDataURL(fileInputId,maxDim||900,quality||0.6,function(dataUrl){
+    const p=document.getElementById(previewId);
+    if(!p)return;
+    if(dataUrl){p.innerHTML='<img src="'+dataUrl+'" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid var(--border)">';p.dataset.photo=dataUrl;}
+    else{p.innerHTML='';p.dataset.photo='';}
+  });
+}
+function viewPhotoLightbox(src){
+  if(!src)return;
+  const w=window.open('','_blank');
+  if(w){w.document.write('<title>Photo</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="'+src+'" style="max-width:100%;max-height:100vh"></body>');}
+}
 function submitOutage(){
   const f=db.fixtures.find(x=>x.id===_curFix);if(!f)return;
   const t=getTech('outage');if(!t){toast('Select a technician first','error');return;}
-  db.outages.push({id:'OUT-'+Date.now(),fixtureId:f.id,fixtureName:f.name,bulbType:f.bulbType,reportedBy:t.name,techId:t.id,notes:document.getElementById('onotes').value.trim(),timestamp:Date.now(),resolved:false});
+  const _outPhoto=(document.getElementById('outPhotoPreview')||{}).dataset?.photo||'';
+  db.outages.push({id:'OUT-'+Date.now(),fixtureId:f.id,fixtureName:f.name,bulbType:f.bulbType,reportedBy:t.name,techId:t.id,notes:document.getElementById('onotes').value.trim(),timestamp:Date.now(),resolved:false,photo:_outPhoto||null});
   f.status='out';f.outageCount=(f.outageCount||0)+1;
   f.currentBulbId=null;f.currentBulbType=null;
   // Send outage alert email + push notification
@@ -7192,6 +7403,7 @@ function saveGearItem(){
     lowStockAt:parseInt(document.getElementById('gi-lowstock').value)||0,
     expectedLifeHours:parseInt(document.getElementById('gi-lifehours').value)||0,
     hoursUsed:parseFloat(document.getElementById('gi-hoursused').value)||0,
+    vendorId:document.getElementById('gi-vendor').value||'',
     addedAt:Date.now()
   };
   if(!db.gearItems)db.gearItems=[];
@@ -7216,6 +7428,7 @@ function openEditGearItem(id){
   document.getElementById('egi-lowstock').value=g.lowStockAt||0;
   document.getElementById('egi-lifehours').value=g.expectedLifeHours||0;
   document.getElementById('egi-hoursused').value=g.hoursUsed||0;
+  _populateVendorSelect('egi-vendor',g.vendorId||'');
   openM('editGearItem');
 }
 function saveGearItemEdit(){
@@ -7233,6 +7446,7 @@ function saveGearItemEdit(){
   g.lowStockAt=parseInt(document.getElementById('egi-lowstock').value)||0;
   g.expectedLifeHours=parseInt(document.getElementById('egi-lifehours').value)||0;
   g.hoursUsed=parseFloat(document.getElementById('egi-hoursused').value)||g.hoursUsed||0;
+  g.vendorId=document.getElementById('egi-vendor').value||'';
   save();closeM('editGearItem');renderCheckout();renderMaintenance();
   toast('Gear item updated','success');
 }
@@ -7589,6 +7803,8 @@ function openM_addMaintEntry(){
   document.getElementById('me-notes').value='';
   document.getElementById('me-cost').value='';
   document.getElementById('me-nextdue').value='';
+  const _mpi=document.getElementById('mePhotoInput');if(_mpi)_mpi.value='';
+  const _mpp=document.getElementById('mePhotoPreview');if(_mpp){_mpp.innerHTML='';_mpp.dataset.photo='';}
   openM('addMaintEntry');
 }
 function saveMaintEntry(){
@@ -7597,6 +7813,7 @@ function saveMaintEntry(){
   const dateVal=document.getElementById('me-date').value;
   if(!gearId){toast('Select a gear item','error');return;}
   if(!dateVal){toast('Service date required','error');return;}
+  const _mePhoto=(document.getElementById('mePhotoPreview')||{}).dataset?.photo||'';
   const entry={
     id:'ml_'+Date.now(),
     gearId,
@@ -7605,7 +7822,8 @@ function saveMaintEntry(){
     type:document.getElementById('me-type').value||'Routine check',
     notes:(document.getElementById('me-notes').value||'').trim(),
     cost:parseFloat(document.getElementById('me-cost').value)||0,
-    nextDue:document.getElementById('me-nextdue').value?new Date(document.getElementById('me-nextdue').value+'T12:00:00').getTime():null
+    nextDue:document.getElementById('me-nextdue').value?new Date(document.getElementById('me-nextdue').value+'T12:00:00').getTime():null,
+    photo:_mePhoto||null
   };
   if(!db.maintLogs)db.maintLogs=[];
   db.maintLogs.unshift(entry);
@@ -7653,6 +7871,7 @@ function renderMaintenance(){
           '</div>'+
           (entry.by?'<div class="dim">By: '+entry.by+'</div>':'')+
           (entry.notes?'<div class="dim" style="margin-top:2px">'+entry.notes+'</div>':'')+
+          (entry.photo?'<img src="'+entry.photo+'" onclick="viewPhotoLightbox(\''+entry.photo+'\')" style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border);margin-top:6px">':'')+
           (entry.nextDue?'<div style="font-size:11px;font-family:var(--mono);color:var(--blue);margin-top:4px">Next due: '+fmtDate(entry.nextDue)+'</div>':'')+
         '</div>';
       }).join('')+
@@ -7692,6 +7911,7 @@ function renderMaintenance(){
         '</div>'+
       '</div>'+
       '<div class="dim">Last service: '+(lastLog?fmtDate(lastLog.date)+' · '+lastLog.type:'Never')+'</div>'+
+      (g.vendorId?(()=>{const v=getVendors().find(x=>x.id===g.vendorId);return v?'<div class="dim" style="margin-top:2px">🚚 Order from: <strong>'+v.name+'</strong>'+(v.phone?' · '+v.phone:'')+'</div>':'';})():'')+
       (co?'<div class="dim" style="margin-top:2px">Currently with: '+(p?p.name:'unknown')+'</div>':'')+
       (logs.length>1?'<div style="margin-top:8px;font-size:11px;font-family:var(--mono);color:var(--dim2)">'+logs.length+' service records</div>':'')+
     '</div>';
@@ -7704,6 +7924,8 @@ const _origOpenM = window.openM || function(){};
 window.openM = function(id){
   if(id==='checkoutGear') openM_checkoutGear();
   else if(id==='addMaintEntry') openM_addMaintEntry();
+  else if(id==='addFixture'){_populateVendorSelect('fvendor','');_origOpenM(id);}
+  else if(id==='addGearItem'){_populateVendorSelect('gi-vendor','');_origOpenM(id);}
   else _origOpenM(id);
 };
 
@@ -7717,6 +7939,57 @@ const REQ_STATUS_LABELS = {open:'Open',progress:'In Progress',done:'Completed',c
 window._reqTab = 'open';
 
 // ── TECH REQUESTS ─────────────────────────────────────────
+// ── External Tech-Support Intake (no login) ──
+function showExternalRequestScreen(){
+  const ls=document.getElementById('loginScreen');if(ls)ls.style.display='none';
+  const hs=document.getElementById('homeScreen');if(hs)hs.style.display='none';
+  const er=document.getElementById('extRequestScreen');if(er)er.style.display='block';
+}
+function resetExternalRequestForm(){
+  ['er-name','er-dept','er-contact','er-eventdate','er-details'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const cat=document.getElementById('er-cat');if(cat)cat.value='AV';
+  document.getElementById('extReq-status').textContent='';
+  document.getElementById('extReq-form').style.display='';
+  document.getElementById('extReq-success').style.display='none';
+}
+function submitExternalRequest(){
+  const name=(document.getElementById('er-name').value||'').trim();
+  const dept=(document.getElementById('er-dept').value||'').trim();
+  const details=(document.getElementById('er-details').value||'').trim();
+  const statusEl=document.getElementById('extReq-status');
+  if(!name||!dept){statusEl.textContent='Name and ministry/department are required.';statusEl.style.color='var(--red)';return;}
+  if(!details){statusEl.textContent='Please describe what you need.';statusEl.style.color='var(--red)';return;}
+  const req={
+    id:'req_'+Date.now(),
+    title:dept+' — '+(document.getElementById('er-cat').value||'Other'),
+    category:document.getElementById('er-cat').value||'Other',
+    priority:'normal',
+    neededBy:document.getElementById('er-eventdate').value?new Date(document.getElementById('er-eventdate').value+'T12:00:00').getTime():null,
+    requestedBy:'',
+    details,
+    status:'open',
+    assignedTo:'',
+    adminNotes:'',
+    createdAt:Date.now(),
+    source:'external',
+    requesterName:name,
+    requesterDept:dept,
+    requesterContact:(document.getElementById('er-contact').value||'').trim()
+  };
+  if(!db.techRequests)db.techRequests=[];
+  db.techRequests.unshift(req);
+  statusEl.textContent='Submitting…';statusEl.style.color='';
+  save().then(()=>{
+    document.getElementById('extReq-form').style.display='none';
+    document.getElementById('extReq-success').style.display='block';
+  }).catch(()=>{statusEl.textContent='Something went wrong — please try again.';statusEl.style.color='var(--red)';});
+}
+function copyExternalRequestLink(){
+  const url=location.origin+location.pathname+'#request';
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>toast('Link copied!','success')).catch(()=>prompt('Copy this link:',url));
+  } else prompt('Copy this link:',url);
+}
 function saveRequest(){
   const title=(document.getElementById('rq-title').value||'').trim();
   if(!title){toast('Title required','error');return;}
@@ -7743,10 +8016,11 @@ function saveRequest(){
 function openEditRequest(id){
   const r=(db.techRequests||[]).find(x=>x.id===id);if(!r)return;
   const by=(db.technicians||[]).find(x=>x.id===r.requestedBy);
+  const requesterLine=r.source==='external'?('🌐 '+r.requesterName+(r.requesterDept?' — '+r.requesterDept:'')+(r.requesterContact?' · '+r.requesterContact:'')):(by?by.name:'Unknown');
   document.getElementById('er-id').value=r.id;
   document.getElementById('er-summary').innerHTML=
     '<div class="fw7 mb8">'+r.title+'</div>'+
-    '<div class="dim">'+r.category+' · '+(by?by.name:'Unknown')+'</div>'+
+    '<div class="dim">'+r.category+' · '+requesterLine+'</div>'+
     (r.details?'<div class="dim" style="margin-top:4px">'+r.details+'</div>':'');
   document.getElementById('er-status').value=r.status||'open';
   document.getElementById('er-notes').value=r.adminNotes||'';
@@ -7810,6 +8084,7 @@ function _updateReqBadge(){
   if(!items.length){listEl.innerHTML='<p class="dim" style="padding:16px">No requests in this category.</p>';return;}
   listEl.innerHTML=items.map(r=>{
     const by=(db.technicians||[]).find(x=>x.id===r.requestedBy);
+    const requesterLabel=r.source==='external'?('🌐 '+r.requesterName+(r.requesterDept?' ('+r.requesterDept+')':'')):(by?by.name:'');
     const assigned=(db.technicians||[]).find(x=>x.id===r.assignedTo);
     const statusBadge={open:'<span class="req-badge-open">Open</span>',progress:'<span class="req-badge-progress">In Progress</span>',done:'<span class="req-badge-done">Done</span>',cancelled:'<span class="badge" style="background:var(--s3);color:var(--dim2)">Cancelled</span>'}[r.status]||'';
     const priColor=REQ_PRIORITY_COLORS[r.priority]||'#888';
@@ -7821,7 +8096,8 @@ function _updateReqBadge(){
         '</div>'+
         statusBadge+
       '</div>'+
-      '<div class="dim">'+r.category+(by?' · '+by.name:'')+(r.neededBy?' · Needed by '+fmtDate(r.neededBy):'')+'</div>'+
+      '<div class="dim">'+r.category+(requesterLabel?' · '+requesterLabel:'')+(r.neededBy?' · Needed by '+fmtDate(r.neededBy):'')+'</div>'+
+      (r.requesterContact?'<div class="dim" style="font-size:11px">Contact: '+r.requesterContact+'</div>':'')+
       (r.details?'<div style="font-size:12px;color:var(--dim2);margin-top:4px;font-family:var(--mono)">'+r.details+'</div>':'')+
       (assigned?'<div class="dim" style="margin-top:4px">Assigned: <strong>'+assigned.name+'</strong></div>':'')+
       (r.adminNotes?'<div class="dim" style="margin-top:4px;font-style:italic">Note: '+r.adminNotes+'</div>':'')+
@@ -8633,6 +8909,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="fg"><label>Hours used so far</label><input id="gi-hoursused" type="number" min="0" step="0.5" value="0" placeholder="0"></div>
         <div class="fg"><label>Service interval (days)</label><input id="gi-interval" type="number" placeholder="90" value="90" min="1"></div>
         <div class="fg"><label>Last serviced</label><input id="gi-lastservice" type="date"></div>
+        <div class="fg"><label>Vendor / Supplier</label><select id="gi-vendor"><option value="">— None —</option></select></div>
       </div>
     </div>
     <div class="mf">
@@ -8680,6 +8957,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="fg"><label>Hours used so far</label><input id="egi-hoursused" type="number" min="0" step="0.5" value="0"></div>
         <div class="fg"><label>Service interval (days)</label><input id="egi-interval" type="number" min="1"></div>
         <div class="fg"><label>Last serviced</label><input id="egi-lastservice" type="date"></div>
+        <div class="fg"><label>Vendor / Supplier</label><select id="egi-vendor"><option value="">— None —</option></select></div>
       </div>
     </div>
     <div class="mf">
@@ -8769,6 +9047,11 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="fg" style="grid-column:1/-1"><label>Notes</label><textarea id="me-notes" placeholder="What was done, parts replaced, issues found..." style="min-height:60px"></textarea></div>
         <div class="fg"><label>Cost (optional)</label><input id="me-cost" type="number" placeholder="0.00" min="0" step="0.01"></div>
         <div class="fg"><label>Next service due</label><input id="me-nextdue" type="date"></div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Photo (optional)</label>
+          <input id="mePhotoInput" type="file" accept="image/*" capture="environment" onchange="_photoPreview('mePhotoInput','mePhotoPreview')">
+          <div id="mePhotoPreview" style="margin-top:8px"></div>
+        </div>
       </div>
     </div>
     <div class="mf">
