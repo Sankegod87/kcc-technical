@@ -926,11 +926,6 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
         <div class="hs-card-label">Gear</div>
         <div class="hs-card-sub">Checkout · Maintenance<br>Asset tracking</div>
       </div>
-      <div class="hs-card" onclick="hsGo('checkin')">
-        <div class="hs-card-icon">✅</div>
-        <div class="hs-card-label">Check In</div>
-        <div class="hs-card-sub">Session attendance<br>QR check-in</div>
-      </div>
     </div>
     <div class="hs-sunday">
       <div class="hs-sunday-label">📅 This Sunday</div>
@@ -1186,10 +1181,6 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M5 8a3 3 0 016 0"/><path d="M3 8a5 5 0 0110 0"/></svg>
       NFC
     </button>
-    <button class="snav-btn" id="snav-attendance" onclick="go('attendance')">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l4-4 3 3 5-6"/></svg>
-      Attendance
-    </button>
     <button class="snav-btn" id="snav-settings" onclick="go('settings')">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5L13 13M3 13l1.5-1.5M11.5 4.5L13 3"/></svg>
       Settings
@@ -1317,22 +1308,13 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
     <div class="pb" style="padding:0" id="recentAct"></div>
   </div>
 
-  <!-- Phase 5: Attendance trend + Top crew row -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px" class="dash-2col">
-    <div class="panel" style="margin-bottom:0">
-      <div class="ph row jbet">
-        <span class="pt">📊 Attendance Trend</span>
-        <button class="btn bb bsm" onclick="go('attendance')">View All →</button>
-      </div>
-      <div class="pb" id="dash-attendance-chart"></div>
+  <!-- Top Crew row -->
+  <div class="panel" style="margin-bottom:14px">
+    <div class="ph row jbet">
+      <span class="pt">🏆 Top Crew by Hours</span>
+      <button class="btn bb bsm" onclick="go('leaderboard')">Leaderboard →</button>
     </div>
-    <div class="panel" style="margin-bottom:0">
-      <div class="ph row jbet">
-        <span class="pt">🏆 Top Crew by Hours</span>
-        <button class="btn bb bsm" onclick="go('leaderboard')">Leaderboard →</button>
-      </div>
-      <div class="pb" id="dash-top-crew"></div>
-    </div>
+    <div class="pb" id="dash-top-crew"></div>
   </div>
 
   <!-- Phase 5: Admin alerts panel -->
@@ -1661,11 +1643,9 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
   <div class="row jbet mb14">
     <div>
       <h2 class="fw9 tu ls2" style="font-size:14px">Crew Leaderboard</h2>
-      <div class="dim" style="margin-top:4px">Attendance streaks, activity and engagement</div>
+      <div class="dim" style="margin-top:4px">Activity and engagement</div>
     </div>
     <select id="lb-metric" onchange="renderLeaderboard()" style="width:auto;padding:6px 10px;font-size:11px">
-      <option value="streak">Attendance streak</option>
-      <option value="attendance">Total sessions</option>
       <option value="activity">Overall activity</option>
     </select>
   </div>
@@ -1673,11 +1653,6 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
   <div class="panel">
     <div class="ph"><span class="pt">Rankings</span></div>
     <div id="lb-list"></div>
-  </div>
-  <!-- Attendance trend chart -->
-  <div class="panel" style="margin-top:12px">
-    <div class="ph"><span class="pt">Attendance trend — last 8 Sundays</span></div>
-    <div class="pb"><div style="position:relative;height:220px"><canvas id="lb-att-chart" role="img" aria-label="Attendance trend chart over 8 Sundays">Attendance data across recent Sundays.</canvas></div></div>
   </div>
 </div>
 
@@ -2043,190 +2018,6 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
 
   </div>
 </div>
-<!-- ── ATTENDANCE (admin only) ── -->
-<div id="pg-attendance" style="display:none">
-  <div id="att-adminGate" style="display:none;background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:var(--radius);padding:28px;text-align:center;margin-bottom:16px;">
-    <div style="font-size:36px;margin-bottom:10px;">🔒</div>
-    <div style="font-family:var(--head);font-weight:900;font-size:20px;color:var(--red);">Admin Access Required</div>
-    <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:8px;">Only admins can view the full attendance tracker.</div>
-    <button class="btn bgh bsm" style="margin-top:14px;" onclick="go('checkin')">📱 Go to Self Check-In →</button>
-  </div>
-  <div id="att-adminContent">
-    <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-      <div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Session</div><div style="font-family:var(--head);font-weight:700;font-size:15px;" id="att-sessionName">—</div></div>
-      <div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;">Calltime</div><div style="font-family:var(--head);font-weight:700;font-size:15px;" id="att-sessionCalltime">—</div></div>
-
-      <div style="background:var(--aglow);border:1px solid rgba(240,165,0,.35);border-radius:20px;padding:3px 12px;font-family:var(--mono);font-size:10px;color:var(--amber);font-weight:600;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.4s infinite;display:inline-block;"></span>LIVE</div>
-      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn bgh bsm" onclick="attShowQR()">📱 QR Code</button>
-        <button class="btn bgh bsm" onclick="attPickSession()">📋 Sessions</button>
-        <button class="btn bgh bsm" onclick="attNewSessionModal()">＋ New Session</button>
-        <button class="btn bp bsm" onclick="attSetActiveSession()">📡 Set Active</button>
-        <button class="btn ba bsm" onclick="attMarkAllPresent()">✔ Mark All Present</button>
-      </div>
-    </div>
-    <div class="stats" style="margin-bottom:16px;">
-      <div class="sc ca"><div class="sc-label">Scheduled</div><div class="sc-val" id="att-statTotal">—</div></div>
-      <div class="sc cg"><div class="sc-label">Present</div><div class="sc-val" id="att-statPresent">0</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim2);margin-top:4px;" id="att-statPct">—</div></div>
-      <div class="sc cr"><div class="sc-label">Absent</div><div class="sc-val" id="att-statAbsent">0</div></div>
-      <div class="sc" style="position:relative;overflow:hidden;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;"><div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--orange);"></div><div class="sc-label">Late</div><div class="sc-val" style="color:var(--orange);" id="att-statLate">0</div></div>
-      <div class="sc cb"><div class="sc-label">Excused</div><div class="sc-val" id="att-statExcused">0</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:start;">
-      <div class="panel">
-        <div class="ph"><span class="pt">🎭 Crew Roster</span><div style="margin-left:auto;"><button class="btn bgh bsm" onclick="attExportCSV()">⬇ CSV</button></div></div>
-        <div style="padding:10px 14px;border-bottom:1px solid var(--border);"><input id="att-search" placeholder="Search…" oninput="attRenderTable()" style="width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;"></div>
-        <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
-          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-bottom:5px;"><span style="color:var(--dim2);">Progress</span><span id="att-progText" style="color:var(--amber);">0 / 0</span></div>
-          <div style="height:4px;background:var(--s3);border-radius:3px;overflow:hidden;"><div id="att-progFill" style="height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--amber));width:0%;transition:width .5s;"></div></div>
-        </div>
-        <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
-          <thead><tr>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);">Crew Member</th>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);">Status</th>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);" class="mhide">Time</th>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);" class="mhide">Note</th>
-            <th style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--s2);">Att%</th>
-          </tr></thead>
-          <tbody id="att-rosterBody"></tbody>
-        </table></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);">
-          <button class="btn bgh bsm" onclick="attExportCSV()">⬇ Export CSV</button>
-          <button class="btn bgh bsm" onclick="window.print()">🖨 Print</button>
-          <button class="btn br bsm" onclick="attClearSession()">✕ Clear</button>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <div class="panel">
-          <div class="ph"><span class="pt">📡 Live Activity</span></div>
-          <ul id="att-activityFeed" style="padding:0;list-style:none;"><li style="padding:12px 16px;font-family:var(--mono);font-size:11px;color:var(--dim2);text-align:center;">No activity yet</li></ul>
-        </div>
-        <div class="panel">
-          <div class="ph"><span class="pt">📊 Season Attendance</span></div>
-          <div style="display:flex;gap:2px;padding:8px 12px;border-bottom:1px solid var(--border);">
-            <button id="att-tab-hist" onclick="attSwitchTab('hist')" style="background:var(--aglow);border:1px solid rgba(240,165,0,.3);color:var(--amber);font-family:var(--head);font-weight:700;font-size:11px;text-transform:uppercase;padding:5px 12px;border-radius:6px;cursor:pointer;">History</button>
-            <button id="att-tab-streak" onclick="attSwitchTab('streak')" style="background:none;border:none;color:var(--dim2);font-family:var(--head);font-weight:700;font-size:11px;text-transform:uppercase;padding:5px 12px;border-radius:6px;cursor:pointer;">Streaks</button>
-          </div>
-          <div id="att-tab-hist-content"><ul id="att-historyList" style="padding:0;list-style:none;"></ul></div>
-          <div id="att-tab-streak-content" style="display:none;"><ul id="att-streakList" style="padding:0;list-style:none;"></ul></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- ── New Custom Session Modal ── -->
-  <div id="att-newSessModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center;">
-    <div style="background:var(--s1);border:1px solid var(--border2);border-radius:14px;padding:26px 28px;max-width:440px;width:92%;box-shadow:0 8px 40px rgba(0,0,0,.6);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-        <div style="font-family:var(--head);font-weight:900;font-size:20px;">＋ New Session</div>
-        <button onclick="document.getElementById('att-newSessModal').style.display='none'" style="background:none;border:none;color:var(--dim2);font-size:20px;cursor:pointer;line-height:1;">✕</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <div>
-          <label style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim2);display:block;margin-bottom:5px;">Session Name *</label>
-          <input id="ns-name" placeholder="e.g. Friday Night Meeting, Easter Rehearsal…" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div>
-            <label style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim2);display:block;margin-bottom:5px;">Date *</label>
-            <input id="ns-date" type="date" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;">
-          </div>
-          <div>
-            <label style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim2);display:block;margin-bottom:5px;">Call Time</label>
-            <input id="ns-calltime" placeholder="e.g. 6:00 PM" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;">
-          </div>
-        </div>
-        <div>
-          <label style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim2);display:block;margin-bottom:5px;">Crew (optional — leave blank for all)</label>
-          <div id="ns-crewList" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-sm);max-height:140px;overflow-y:auto;"></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:4px;">
-          <button class="btn ba" style="flex:1;justify-content:center;" onclick="attSaveNewSession()">✔ Create Session</button>
-          <button class="btn bgh" style="flex:1;justify-content:center;" onclick="document.getElementById('att-newSessModal').style.display='none'">Cancel</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="att-qrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
-    <div style="background:var(--s1);border:1px solid var(--border2);border-radius:14px;padding:28px;text-align:center;max-width:340px;width:90%;">
-      <div style="font-family:var(--head);font-weight:900;font-size:18px;margin-bottom:4px;">📱 Self Check-In QR</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-bottom:16px;">Crew scan this to check themselves in</div>
-      <div id="att-qrcode" style="margin:0 auto 14px;width:200px;height:200px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;"></div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--dim2);word-break:break-all;margin-bottom:16px;" id="att-qrUrl"></div>
-      <button class="btn bgh" style="width:100%;justify-content:center;" onclick="document.getElementById('att-qrModal').style.display='none'">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── SELF CHECK-IN (all crew) ── -->
-<div id="pg-checkin" style="display:none">
-  <div style="max-width:480px;margin:0 auto;">
-
-    <!-- Admin: Active Session Control -->
-    <div id="ci-adminBar" style="display:none;">
-      <span class="ci-ab-label">👑 Admin</span>
-      <span class="ci-ab-label" style="color:var(--dim2);">Active session for crew:</span>
-      <select id="ci-activeSessionSel" onchange="ciAdminSetActive()"></select>
-      <span id="ci-ab-badge" class="ci-ab-badge">LIVE</span>
-    </div>
-
-    <!-- Session header -->
-    <div class="ci-session-card" style="background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px;text-align:center;">
-      <div class="ci-emoji" style="font-size:36px;margin-bottom:8px;">✅</div>
-      <div style="font-family:var(--head);font-weight:900;font-size:20px;line-height:1.2;" id="ci-sessionName">—</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:4px;" id="ci-sessionSub">—</div>
-      <div style="margin-top:10px;" id="ci-sessionStatus"></div>
-    </div>
-
-    <!-- Session slot tabs removed — single session per event -->
-    </div>
-
-    <!-- Login prompt -->
-    <div id="ci-loginPrompt" style="display:none;background:var(--aglow);border:1px solid rgba(240,165,0,.3);border-radius:var(--radius);padding:18px;margin-bottom:12px;text-align:center;">
-      <div style="font-size:28px;margin-bottom:6px;">👤</div>
-      <div style="font-family:var(--head);font-weight:700;font-size:16px;color:var(--amber);">Log In First</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:4px;">Select your name from the login screen to check in.</div>
-      <button class="btn ba bsm" style="margin-top:12px;width:100%;justify-content:center;" onclick="openM('whoAmI')">👤 Log In</button>
-    </div>
-
-    <!-- Self check-in panel -->
-    <div id="ci-selfPanel" style="display:none;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;">
-      <!-- Briefing notes for this Sunday (if any) -->
-      <div id="ci-briefingBanner" style="display:none;background:#E1F5EE;border:1px solid #9FE1CB;border-radius:8px;padding:12px 14px;margin-bottom:14px">
-        <div style="font-family:var(--mono);font-size:9px;color:#085041;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">📋 Pre-Show Briefing</div>
-        <div id="ci-briefingText" style="font-size:13px;color:#085041;line-height:1.6"></div>
-      </div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Your Check-In</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-        <div style="font-size:34px;flex-shrink:0;" id="ci-myAvatar">👤</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:900;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="ci-myName">—</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--dim2);" id="ci-myRole">—</div>
-        </div>
-        <div id="ci-myStatus" style="font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:20px;flex-shrink:0;max-width:120px;text-align:center;"></div>
-      </div>
-      <div class="ci-btn-row" style="display:flex;gap:8px;">
-        <button class="btn bg" style="flex:1;justify-content:center;" onclick="ciCheckIn('present')">✓ Present</button>
-        <button class="btn" style="flex:1;justify-content:center;background:rgba(249,115,22,.85);color:#fff;" onclick="ciCheckIn('late')">⧖ Late</button>
-        <button class="btn bgh" style="flex:1;justify-content:center;" onclick="ciCheckIn('excused')">~ Excused</button>
-      </div>
-    </div>
-
-    <!-- Not on roster -->
-    <div id="ci-notOnRoster" style="display:none;background:var(--rglow);border:1px solid rgba(224,60,60,.3);border-radius:var(--radius);padding:16px;margin-bottom:12px;text-align:center;">
-      <div style="font-size:28px;margin-bottom:6px;">🚫</div>
-      <div style="font-family:var(--head);font-weight:700;font-size:15px;color:var(--red);">Not On This Week's Roster</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:4px;">Contact your crew lead if this is wrong.</div>
-    </div>
-
-    <!-- Roster list -->
-    <div class="panel">
-      <div class="ph"><span class="pt">📋 This Week's Crew</span></div>
-      <ul id="ci-rosterList" style="padding:0;list-style:none;"></ul>
-    </div>
-  </div>
-</div>
-
 </main>
   </div><!-- /appContent -->
 </div><!-- /appShell -->
@@ -2244,12 +2035,6 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1"/><path d="M5 1v4M11 1v4M2 7h12"/></svg>
     </span>
     <span>Schedule</span>
-  </button>
-  <button class="bnn" id="bnn-checkin" onclick="go('checkin')">
-    <span class="bni">
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l4-4 3 3 5-6"/></svg>
-    </span>
-    <span>Check In</span>
   </button>
   <button class="bnn" id="bnn-requests" onclick="go('requests')">
     <span class="bni">
@@ -2293,10 +2078,6 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
     <button class="bnn" style="padding:10px 4px" onclick="go('maintenance');hideMobileMenu()">
       <span class="bni">🔧</span>
       <span>Maint.</span>
-    </button>
-    <button class="bnn" style="padding:10px 4px" onclick="go('attendance');hideMobileMenu()">
-      <span class="bni"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l4-4 3 3 5-6"/></svg></span>
-      <span>Attend.</span>
     </button>
     <button class="bnn" style="padding:10px 4px" onclick="go('leaderboard');hideMobileMenu()">
       <span class="bni">🏆</span>
@@ -2810,7 +2591,7 @@ let _charts={};
 // ── Storage ──
 function lsave(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
 function lload(){
-  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};if(!db.trainingModules)db.trainingModules=[];if(!db.feedbackItems)db.feedbackItems=[];if(!db.incidentReports)db.incidentReports=[];if(!db.rehearsals)db.rehearsals=[];if(!db.swapRequests)db.swapRequests=[];if(!db.auditLog)db.auditLog=[];}}catch(e){}
+  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};if(!db.trainingModules)db.trainingModules=[];if(!db.feedbackItems)db.feedbackItems=[];if(!db.incidentReports)db.incidentReports=[];if(!db.rehearsals)db.rehearsals=[];if(!db.swapRequests)db.swapRequests=[];if(!db.auditLog)db.auditLog=[];}}catch(e){}
 }
 window._onRemoteData=function(r){
   // Only overwrite technicians if Firebase has data; never wipe with empty (protects login)
@@ -2818,8 +2599,6 @@ window._onRemoteData=function(r){
   db.fixtures=r.fixtures||[];db.outages=r.outages||[];
   db.inventory=r.inventory||[];db.orders=r.orders||[];db.usageLog=r.usageLog||[];
   db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};db.availability=r.availability||{};db.checklistState=r.checklistState||{};db.shows=r.shows||[];
-  if(r.attendanceData){db.attendanceData=r.attendanceData;if(!db.attendanceData.sessions)db.attendanceData.sessions=[];if(!db.attendanceData.records)db.attendanceData.records={};}
-  if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};
   // Stage 3-5 collections — restore from Firebase if present, else keep existing or default
   db.gearItems=r.gearItems||db.gearItems||[];
   db.checkouts=r.checkouts||db.checkouts||[];
@@ -3167,17 +2946,17 @@ function go(page){
   }
   stopCamera();stopGsScanner&&stopGsScanner();
   closeMoreNav&&closeMoreNav();
-  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule','checklist','showlog','nfc','attendance','checkin','checkout','maintenance','requests','announcements','training','profiles','leaderboard','feedbackadmin','auditlog'].forEach(p=>{
+  ['dashboard','fixtures','inventory','history','stats','scan','crew','settings','schedule','checklist','showlog','nfc','checkout','maintenance','requests','announcements','training','profiles','leaderboard','feedbackadmin','auditlog'].forEach(p=>{
     const el=document.getElementById('pg-'+p);if(el)el.style.display=p===page?'':'none';
     document.getElementById('nav-'+p)?.classList.toggle('active',p===page);
   });
   _curPage=page;
-  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:()=>{renderSchedule();renderSwapRequests();},checklist:renderChecklist,showlog:renderShowLog,nfc:renderNFC,attendance:renderAttendance,checkin:renderCheckin,checkout:renderCheckout,maintenance:renderMaintenance,requests:renderRequests,announcements:renderAnnouncements,training:renderTraining,profiles:renderProfiles,leaderboard:renderLeaderboard,feedbackadmin:renderFeedbackAdmin,auditlog:renderAuditLog})[page]?.();
+  ({dashboard:renderDash,fixtures:renderFix,inventory:renderInv,history:renderHist,stats:renderStats,crew:renderCrew,settings:renderSettings,schedule:()=>{renderSchedule();renderSwapRequests();},checklist:renderChecklist,showlog:renderShowLog,nfc:renderNFC,checkout:renderCheckout,maintenance:renderMaintenance,requests:renderRequests,announcements:renderAnnouncements,training:renderTraining,profiles:renderProfiles,leaderboard:renderLeaderboard,feedbackadmin:renderFeedbackAdmin,auditlog:renderAuditLog})[page]?.();
   applyPermissions();
   if(page==='scan'){const w=document.getElementById('noTechWarn');if(w)w.style.display=getCurTech()?'none':'';}
-  ['dashboard','schedule','checkin','requests'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
-  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan','checklist','showlog','nfc','attendance','checkin','checkout','maintenance','requests','announcements','training','profiles','leaderboard'].includes(page)?' active':'');
-  const navMore=document.getElementById('nav-more');if(navMore)navMore.className='nb'+(['inventory','stats','showlog','history','nfc','settings','scan','attendance','checkin'].includes(page)?' active':'');
+  ['dashboard','schedule','requests'].forEach(p=>{const b=document.getElementById('bnn-'+p);if(b)b.className='bnn'+(p===page?' active':'');});
+  const bnnMore=document.getElementById('bnn-more');if(bnnMore)bnnMore.className='bnn'+(['history','stats','crew','settings','scan','checklist','showlog','nfc','checkout','maintenance','requests','announcements','training','profiles','leaderboard'].includes(page)?' active':'');
+  const navMore=document.getElementById('nav-more');if(navMore)navMore.className='nb'+(['inventory','stats','showlog','history','nfc','settings','scan'].includes(page)?' active':'');
 }
 function refreshPage(){
   // Only refresh if someone is logged in — never accidentally expose the app shell
@@ -3224,31 +3003,6 @@ function renderDash(){
     <div class="sc cb"><div class="sc-label">Crew</div><div class="sc-val">${db.technicians.length}</div></div>
     <div class="sc" style="border-color:rgba(168,85,247,.3)"><div class="sc-label">Vol. Hours</div><div class="sc-val" style="color:#a855f7">${totalVolHours}</div></div>
     <div class="sc ${openIncidents?'cr':'cg'}"><div class="sc-label">Open Incidents</div><div class="sc-val">${openIncidents}</div></div>`;
-
-  // ── Attendance trend mini-chart ──────────────────────────
-  const attendEl = document.getElementById('dash-attendance-chart');
-  if(attendEl){
-    const sessions=(db.attendanceData?.sessions||[]).sort((a,b)=>a.date-b.date).slice(-8);
-    if(sessions.length>=2){
-      const maxCount = Math.max(...sessions.map(s=>(s.present||[]).length),1);
-      attendEl.innerHTML = `
-        <div style="display:flex;align-items:flex-end;gap:6px;height:64px;padding:0 4px">
-          ${sessions.map(s=>{
-            const cnt=(s.present||[]).length;
-            const pct=Math.round(cnt/maxCount*100);
-            const d=new Date(s.date);
-            return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
-              <div style="font-size:9px;font-family:var(--mono);color:var(--dim2)">${cnt}</div>
-              <div style="width:100%;background:#0F6E56;border-radius:3px 3px 0 0;height:${Math.max(pct*0.52,4)}px;transition:height .3s"></div>
-              <div style="font-size:8px;font-family:var(--mono);color:var(--dim2)">${d.toLocaleDateString('en',{month:'numeric',day:'numeric'})}</div>
-            </div>`;
-          }).join('')}
-        </div>
-        <div style="font-size:10px;font-family:var(--mono);color:var(--dim2);text-align:right;margin-top:4px">Last ${sessions.length} services</div>`;
-    } else {
-      attendEl.innerHTML='<div class="dim" style="font-size:12px;padding:12px 0">No attendance data yet</div>';
-    }
-  }
 
   // ── Top crew by volunteer hours ─────────────────────────
   const topCrewEl = document.getElementById('dash-top-crew');
@@ -5817,15 +5571,6 @@ function exportReport(){
   });
   lines.push('');
 
-  // Attendance summary
-  lines.push('== ATTENDANCE SUMMARY ==');
-  lines.push(['Date','Present Count','Crew Names'].map(q).join(sep));
-  (db.attendanceData?.sessions||[]).sort((a,b)=>b.date-a.date).slice(0,20).forEach(s=>{
-    const names=(s.present||[]).map(id=>(db.technicians||[]).find(t=>t.id===id)?.name||id).join('; ');
-    lines.push([new Date(s.date).toLocaleDateString('en-CA'),(s.present||[]).length,names].map(q).join(sep));
-  });
-  lines.push('');
-
   // Incidents
   lines.push('== INCIDENTS ==');
   lines.push(['Gear','Severity','Description','Reported By','Date','Resolved'].map(q).join(sep));
@@ -6193,6 +5938,15 @@ function deleteShow(id){
 // ══════════════════════════════════════════════════
 const CHANGELOG = [
   {
+    version: 'v3.1 — Attendance Removed',
+    date: 'Aug 2026',
+    items: [
+      '🗑️ Attendance & Self Check-In Removed — the session attendance tracker and crew QR self check-in page have been fully removed, including their nav links and dashboard widgets',
+      '🏆 Leaderboard Simplified — now ranks crew by overall activity (gear checkouts + tech requests) only, since attendance streaks/sessions are no longer tracked',
+      '👤 Crew Profiles Simplified — streak and session stat tiles removed from profile cards; module completion count remains',
+    ]
+  },
+  {
     version: 'v3.0 — Bulb Tracking Fix',
     date: 'Aug 2026',
     items: [
@@ -6307,7 +6061,7 @@ const CHANGELOG = [
   },
 ];
 
-const CHANGELOG_SEEN_KEY = 'kcc_changelog_seen_v30';
+const CHANGELOG_SEEN_KEY = 'kcc_changelog_seen_v31';
 
 function openChangelog(){
   const listEl = document.getElementById('changelog-list');
@@ -7372,455 +7126,6 @@ if('serviceWorker' in navigator){
 }
 </script>
 <script>
-// ════════════════════════════════════════════════════════════════
-// ATTENDANCE MODULE — data lives in db.attendanceData
-// saved via main save() → localStorage + Firebase automatically
-// ════════════════════════════════════════════════════════════════
-const ATT_AVCOLS   = ['#f0a500','#28c97a','#3d9be9','#a855f7','#e03c3c','#f97316','#06b6d4','#ec4899'];
-const ATT_STATUSES = ['present','absent','late','excused'];
-const ATT_LABELS   = {present:'Present',absent:'Absent',late:'Late',excused:'Excused'};
-const ATT_ICONS    = {present:'✓',absent:'✗',late:'⧖',excused:'~'};
-const ATT_COLORS   = {present:'var(--green)',absent:'var(--red)',late:'var(--orange)',excused:'var(--blue)'};
-let _attCurKey=null, _attLog=[];
-
-let _attAdminSlot='s1'; // kept for data-key compatibility (always s1)
-function attAdminSlot(slot){} // slot switching removed
-function _ciRecKey(sessId,slot){ return sessId; } // slot removed — key is just the session id
-
-function _attD(){
-  if(!db.attendanceData)db.attendanceData={sessions:[],records:{}};
-  if(!db.attendanceData.sessions)db.attendanceData.sessions=[];
-  if(!db.attendanceData.records)db.attendanceData.records={};
-  return db.attendanceData;
-}
-
-function _attNearestSundayKey(){
-  const d=new Date();d.setDate(d.getDate()-d.getDay());return schedKey(d);
-}
-
-function _attSyncSess(key){
-  const d=_attD();const sched=db.schedules[key];
-  let sess=d.sessions.find(s=>s.id===key);
-  const crewIds=sched?(sched.crew||[]):[];
-  if(!sess){
-    const date=new Date(key+'T12:00:00');
-    sess={id:key,name:'Sunday Service — '+date.toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}),date:date.getTime(),calltime:'8:00 AM',crewIds};
-    d.sessions.unshift(sess);d.sessions.sort((a,b)=>b.date-a.date);
-  } else {sess.crewIds=crewIds;}
-  if(!d.records[key])d.records[key]={};
-  return sess;
-}
-
-function _attEnsureToday(){
-  const key=_attNearestSundayKey();
-  _attSyncSess(key);
-  Object.keys(db.schedules||{}).forEach(k=>_attSyncSess(k));
-}
-
-function _attCurSess(){
-  const d=_attD();
-  if(_attCurKey&&d.sessions.find(s=>s.id===_attCurKey))return d.sessions.find(s=>s.id===_attCurKey);
-  const today=_attNearestSundayKey();
-  const todaySess=d.sessions.find(s=>s.id===today);
-  if(todaySess){_attCurKey=today;return todaySess;}
-  if(d.sessions.length){_attCurKey=d.sessions[0].id;return d.sessions[0];}
-  return null;
-}
-
-function _attCrew(sess){
-  if(!sess)return[];
-  const ids=sess.crewIds||[];
-  if(!ids.length)return db.technicians||[];
-  return ids.map(id=>(db.technicians||[]).find(t=>t.id===id)).filter(Boolean);
-}
-
-function _attPct(techId){
-  const d=_attD();let t=0,a=0;
-  d.sessions.forEach(s=>{const r=d.records[s.id]?.[techId];t++;if(r&&(r.status==='present'||r.status==='late'))a++;});
-  return t?Math.round(a/t*100):100;
-}
-
-function _attStreak(techId){
-  const d=_attD();const sorted=[...d.sessions].sort((a,b)=>b.date-a.date);let n=0;
-  for(const s of sorted){const r=d.records[s.id]?.[techId];if(r&&(r.status==='present'||r.status==='late'))n++;else break;}
-  if(n>=5)return{icon:'🔥',label:`${n}-session streak!`};
-  if(n>=3)return{icon:'⚡',label:`${n} in a row`};
-  if(n===1)return{icon:'✓',label:'Attended last session'};
-  return{icon:'—',label:'No current streak'};
-}
-
-function _attPctSty(p){
-  return p>=85?'background:var(--gglow);color:var(--green);border:1px solid rgba(40,201,122,.3)':
-         p>=65?'background:var(--aglow);color:var(--amber);border:1px solid rgba(240,165,0,.3)':
-               'background:var(--rglow);color:var(--red);border:1px solid rgba(224,60,60,.3)';
-}
-
-// ── Admin Attendance ──────────────────────────────────────────
-function renderAttendance(){
-  const gate=document.getElementById('att-adminGate');
-  const content=document.getElementById('att-adminContent');
-  if(!isAdmin()){gate.style.display='';content.style.display='none';return;}
-  gate.style.display='none';content.style.display='';
-  _attEnsureToday();
-  document.getElementById('att-sessionName').textContent=_attCurSess()?.name||'No session';
-  document.getElementById('att-sessionCalltime').textContent=_attCurSess()?.calltime||'—';
-  attRenderStats();attRenderTable();attRenderSidebar();attRenderActivity();
-}
-
-function attRenderStats(){
-  const s=_attCurSess();const d=_attD();
-  const recKey=s?_ciRecKey(s.id,'s1'):null;
-  const rec=recKey?(d.records[recKey]||{}):{};
-  const crew=_attCrew(s);const tot=crew.length;let p=0,a=0,l=0,e=0;
-  crew.forEach(c=>{const r=rec[c.id];if(!r||!r.status){a++;return;}
-    if(r.status==='present')p++;else if(r.status==='absent')a++;else if(r.status==='late')l++;else if(r.status==='excused')e++;else a++;});
-  document.getElementById('att-statTotal').textContent=tot;
-  document.getElementById('att-statPresent').textContent=p;
-  document.getElementById('att-statAbsent').textContent=a;
-  document.getElementById('att-statLate').textContent=l;
-  document.getElementById('att-statExcused').textContent=e;
-  document.getElementById('att-statPct').textContent=tot?Math.round((p+l)/tot*100)+'%':'—';
-  const prog=tot?Math.round((p+l+e)/tot*100):0;
-  document.getElementById('att-progFill').style.width=prog+'%';
-  document.getElementById('att-progText').textContent=(p+l+e)+' / '+tot;
-}
-
-function attRenderTable(){
-  const s=_attCurSess();const d=_attD();
-  const recKey=s?_ciRecKey(s.id,'s1'):null;
-  const rec=recKey?(d.records[recKey]||{}):{};
-  const q=(document.getElementById('att-search')?.value||'').trim().toLowerCase();
-  const tbody=document.getElementById('att-rosterBody');const crew=_attCrew(s);
-  if(!crew.length){tbody.innerHTML='<tr><td colspan="5" style="padding:24px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim2);">No crew assigned — go to Schedule to assign crew for this Sunday.</td></tr>';return;}
-  tbody.innerHTML='';
-  crew.filter(c=>!q||c.name.toLowerCase().includes(q)||(c.role||'').toLowerCase().includes(q)).forEach((c,i)=>{
-    const rv=rec[c.id]||{status:'',time:'',note:''};
-    const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const col=ATT_AVCOLS[i%ATT_AVCOLS.length];const pct=_attPct(c.id);
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;border:2px solid ${col}33;color:${col};font-family:var(--head);">${c.avatar||initials}</div>
-          <div><div sstyle="font-weight:700;font-size:14px;">${c.name}</div>${deptBadge((db.technicians.find(x=>x.id===c.id)||{}).dept||"")}<div style="font-family:var(--mono);font-size:10px;color:var(--dim2);">${c.role||'Technician'}</div></div>
-        </div></td>
-      <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;">
-        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-          ${ATT_STATUSES.map(st=>{const active=rv.status===st;const cv=ATT_COLORS[st];const gv={present:'var(--gglow)',absent:'var(--rglow)',late:'rgba(249,115,22,.1)',excused:'var(--bglow)'}[st];
-            return`<button onclick="attSetStatus('${c.id}','${st}')" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;border:1.5px solid ${active?cv:cv+'44'};cursor:pointer;background:${active?gv:'transparent'};color:${active?cv:'var(--dim2)'};white-space:nowrap;transition:all .12s;"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;"></span>${ATT_LABELS[st]}</button>`;}).join('')}
-        </div></td>
-      <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;font-family:var(--mono);font-size:10px;color:var(--dim2);" class="mhide">${rv.time||'—'}</td>
-      <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;font-family:var(--mono);font-size:10px;color:var(--dim2);cursor:pointer;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="mhide" onclick="attOpenNote('${c.id}')">${rv.note||'＋ note'}</td>
-      <td style="padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;"><span style="font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;${_attPctSty(pct)}">${pct}%</span></td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-function attRenderSidebar(){
-  const hEl=document.getElementById('att-historyList');const sEl=document.getElementById('att-streakList');
-  if(!hEl||!sEl)return;hEl.innerHTML='';sEl.innerHTML='';
-  const d=_attD();
-  (db.technicians||[]).forEach((c,i)=>{
-    const pct=_attPct(c.id);
-    const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const color=ATT_AVCOLS[i%ATT_AVCOLS.length];
-    const recent=[...d.sessions].sort((a,b)=>a.date-b.date).slice(-6);
-    const spark=recent.map(s=>{const r=d.records[s.id]?.[c.id];const st=r?.status||'absent';const h={present:20,late:14,excused:8,absent:4}[st]||4;const bc={present:'var(--green)',late:'var(--orange)',excused:'var(--blue)',absent:'var(--s3)'}[st];return`<div style="width:5px;height:${h}px;border-radius:2px 2px 0 0;background:${bc};"></div>`;}).join('');
-    hEl.innerHTML+=`<li style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
-      <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0;border:2px solid ${color}33;color:${color};font-family:var(--head);">${c.avatar||initials}</div>
-      <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;">${c.name}</div><div style="display:flex;gap:2px;align-items:flex-end;height:20px;margin-top:4px;">${spark}</div></div>
-      <span style="font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;${_attPctSty(pct)}">${pct}%</span></li>`;
-    const streak=_attStreak(c.id);
-    sEl.innerHTML+=`<li style="padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
-      <div style="font-size:16px;width:24px;text-align:center;flex-shrink:0;">${streak.icon}</div>
-      <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;">${c.name}</div><div style="font-family:var(--mono);font-size:10px;color:var(--dim2);">${streak.label}</div></div>
-      <span style="font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;${_attPctSty(pct)}">${pct}%</span></li>`;
-  });
-}
-
-function attRenderActivity(){
-  const el=document.getElementById('att-activityFeed');if(!el)return;
-  if(!_attLog.length){el.innerHTML='<li style="padding:12px 16px;font-family:var(--mono);font-size:11px;color:var(--dim2);text-align:center;">No activity yet</li>';return;}
-  el.innerHTML=_attLog.slice(0,8).map(e=>`<li style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
-    <div style="font-size:14px;width:22px;text-align:center;color:${ATT_COLORS[e.status]||'var(--dim2)'};font-weight:900;">${ATT_ICONS[e.status]||'·'}</div>
-    <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;">${e.name}</div><div style="font-family:var(--mono);font-size:10px;color:${ATT_COLORS[e.status]||'var(--dim2)'};">${ATT_LABELS[e.status]}</div></div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--dim);flex-shrink:0;">${e.time}</div></li>`).join('');
-}
-
-function attSetStatus(techId,status){
-  if(!isAdmin()){toast('Admin permission required','error');return;}
-  const s=_attCurSess();if(!s)return;
-  const d=_attD();
-  const recKey=_ciRecKey(s.id,'s1');
-  if(!d.records[recKey])d.records[recKey]={};
-  const prev=d.records[recKey][techId]||{};
-  const now=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
-  d.records[recKey][techId]={status,time:(status==='present'||status==='late')?now:(prev.time||''),note:prev.note||''};
-  const name=(db.technicians||[]).find(x=>x.id===techId)?.name||techId;
-  _attLog.unshift({name,status,time:now,ts:Date.now()});if(_attLog.length>20)_attLog=_attLog.slice(0,20);
-  save();attRenderStats();attRenderTable();attRenderSidebar();attRenderActivity();
-  toast(ATT_ICONS[status]+' '+name+' — '+ATT_LABELS[status],status==='present'?'success':status==='absent'?'error':'info');
-}
-
-function attMarkAllPresent(){
-  if(!isAdmin()){toast('Admin permission required','error');return;}
-  const s=_attCurSess();if(!s)return;const d=_attD();
-  const recKey=_ciRecKey(s.id,'s1');
-  if(!d.records[recKey])d.records[recKey]={};
-  const now=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
-  _attCrew(s).forEach(c=>{if(!d.records[recKey][c.id]||!d.records[recKey][c.id].status)d.records[recKey][c.id]={status:'present',time:now,note:''};});
-  save();attRenderStats();attRenderTable();attRenderSidebar();toast('✔ All unmarked crew marked Present','success');
-}
-
-function attClearSession(){
-  if(!isAdmin()){toast('Admin permission required','error');return;}
-  if(!confirm('Clear all check-in data for this session?'))return;
-  const s=_attCurSess();if(!s)return;
-  const recKey=_ciRecKey(s.id,'s1');
-  _attD().records[recKey]={};save();attRenderStats();attRenderTable();attRenderSidebar();toast('Session cleared','info');
-}
-
-function attOpenNote(techId){
-  if(!isAdmin())return;
-  const c=(db.technicians||[]).find(x=>x.id===techId);
-  const s=_attCurSess();const d=_attD();
-  const recKey=_ciRecKey(s?.id,'s1');
-  const cur=(d.records[recKey]||{})[techId]?.note||'';
-  const val=prompt('Note for '+c?.name+':'+(cur?'\nCurrent: '+cur:''),cur);
-  if(val===null)return;
-  if(!d.records[recKey])d.records[recKey]={};
-  if(!d.records[recKey][techId])d.records[recKey][techId]={status:'',time:'',note:''};
-  d.records[recKey][techId].note=val.trim();save();attRenderTable();toast('📝 Note saved','info');
-}
-
-function attPickSession(){
-  const d=_attD();if(!d.sessions.length){toast('No sessions yet','info');return;}
-  const opts=d.sessions.slice(0,15).map((s,i)=>`${i+1}. ${s.name}${s.id===_attCurKey?' ← ACTIVE':''}`).join('\n');
-  const ch=prompt('Select session:\n\n'+opts);if(!ch)return;
-  const idx=parseInt(ch)-1;
-  if(idx>=0&&idx<d.sessions.length){_attCurKey=d.sessions[idx].id;renderAttendance();toast('📋 '+d.sessions[idx].name,'info');}
-}
-
-function attSwitchTab(tab){
-  document.getElementById('att-tab-hist-content').style.display=tab==='hist'?'':'none';
-  document.getElementById('att-tab-streak-content').style.display=tab==='streak'?'':'none';
-  ['hist','streak'].forEach(t=>{const b=document.getElementById('att-tab-'+t);b.style.background=tab===t?'var(--aglow)':'none';b.style.border=tab===t?'1px solid rgba(240,165,0,.3)':'none';b.style.color=tab===t?'var(--amber)':'var(--dim2)';});
-}
-
-function attExportCSV(){
-  if(!isAdmin())return;const s=_attCurSess();const d=_attD();
-  const recKey=s?_ciRecKey(s.id,'s1'):null;
-  const rec=recKey?(d.records[recKey]||{}):{};
-  let csv=`"Session","${s?.name||''}"\n"Calltime","${s?.calltime||''}"\n\nName,Role,Status,Check-In Time,Note,Attendance%\n`;
-  _attCrew(s).forEach(c=>{const r=rec[c.id]||{status:'absent',time:'',note:''};csv+=`"${c.name}","${c.role||''}","${r.status}","${r.time}","${r.note}","${_attPct(c.id)}%"\n`;});
-  const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=`attendance_${(s?.name||'session').replace(/[^a-z0-9]/gi,'_')}.csv`;a.click();URL.revokeObjectURL(url);toast('⬇ CSV downloaded','success');
-}
-
-function attShowQR(){
-  const modal=document.getElementById('att-qrModal');modal.style.display='flex';
-  const qrDiv=document.getElementById('att-qrcode');qrDiv.innerHTML='';
-  const url=window.location.origin+window.location.pathname+'?checkin=1';
-  document.getElementById('att-qrUrl').textContent=url;
-  if(typeof QRCode!=='undefined'){new QRCode(qrDiv,{text:url,width:180,height:180,colorDark:'#000',colorLight:'#fff'});}
-  else{qrDiv.innerHTML='<div style="font-family:var(--mono);font-size:11px;color:#333;padding:10px;">QR loading…</div>';}
-}
-document.getElementById('att-qrModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
-document.getElementById('att-newSessModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
-
-// ── Self Check-In ─────────────────────────────────────────────
-let _ciSlot='s1'; // kept for compatibility
-
-function _ciActiveSlot(){ return 's1'; }
-
-function ciSwitchSlot(slot){ /* removed */ }
-
-function ciAdminSetActive(){
-  if(!isAdmin())return;
-  const val=document.getElementById('ci-activeSessionSel').value;
-  const sessId=val;
-  const d=_attD();
-  d.activeCheckinSession=sessId;
-  d.activeCheckinSlot='s1';
-  _attCurKey=sessId;
-  _ciSlot='s1';
-  save();renderCheckin();
-  toast('📡 Active session set for crew','success');
-}
-
-function attSetActiveSession(){
-  if(!isAdmin()){toast('Admin permission required','error');return;}
-  go('checkin');
-  setTimeout(()=>renderCheckin(),100);
-}
-
-function attNewSessionModal(){
-  if(!isAdmin()){toast('Admin permission required','error');return;}
-  // Pre-fill date to today
-  const today=new Date();
-  const yyyy=today.getFullYear();
-  const mm=String(today.getMonth()+1).padStart(2,'0');
-  const dd=String(today.getDate()).padStart(2,'0');
-  document.getElementById('ns-date').value=`${yyyy}-${mm}-${dd}`;
-  document.getElementById('ns-name').value='';
-  document.getElementById('ns-calltime').value='';
-  // Render crew checkboxes
-  const list=document.getElementById('ns-crewList');
-  const techs=db.technicians||[];
-  list.innerHTML=techs.length
-    ?techs.map(t=>`<label style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;background:var(--s3);border-radius:4px;padding:4px 8px;cursor:pointer;white-space:nowrap;"><input type="checkbox" data-id="${t.id}" style="accent-color:var(--amber);" checked> ${t.name}</label>`).join('')
-    :'<span style="font-family:var(--mono);font-size:11px;color:var(--dim2);">No crew members yet</span>';
-  const modal=document.getElementById('att-newSessModal');
-  modal.style.display='flex';
-  setTimeout(()=>document.getElementById('ns-name').focus(),100);
-}
-
-function attSaveNewSession(){
-  const name=(document.getElementById('ns-name').value||'').trim();
-  const dateStr=document.getElementById('ns-date').value;
-  const calltime=(document.getElementById('ns-calltime').value||'').trim();
-  if(!name){toast('Session name is required','error');document.getElementById('ns-name').focus();return;}
-  if(!dateStr){toast('Date is required','error');return;}
-  const dateObj=new Date(dateStr+'T12:00:00');
-  // Collect selected crew
-  const checks=document.querySelectorAll('#ns-crewList input[type="checkbox"]');
-  const crewIds=[...checks].filter(c=>c.checked).map(c=>c.dataset.id);
-  // Generate a unique ID: custom_ + timestamp
-  const id='custom_'+Date.now();
-  const sess={
-    id,
-    name,
-    date:dateObj.getTime(),
-    calltime:calltime||'—',
-    crewIds,
-    custom:true
-  };
-  const d=_attD();
-  d.sessions.unshift(sess);
-  d.sessions.sort((a,b)=>b.date-a.date);
-  if(!d.records[id])d.records[id]={};
-  _attCurKey=id;
-  save();
-  document.getElementById('att-newSessModal').style.display='none';
-  renderAttendance();
-  toast('📅 Session "'+name+'" created','success');
-}
-
-function _ciPopulateAdminBar(){
-  const bar=document.getElementById('ci-adminBar');
-  const sel=document.getElementById('ci-activeSessionSel');
-  if(!bar||!sel)return;
-  if(!isAdmin()){bar.style.display='none';return;}
-  bar.style.display='flex';
-  const d=_attD();
-  const activeSess=d.activeCheckinSession||_attNearestSundayKey();
-  sel.innerHTML=d.sessions.slice(0,20).map(s=>
-    '<option value="'+s.id+'" '+(s.id===activeSess?'selected':'')+'>'+s.name+'</option>'
-  ).join('');
-  const badge=document.getElementById('ci-ab-badge');
-  if(badge)badge.textContent='LIVE';
-}
-
-function renderCheckin(){
-  _attEnsureToday();
-  const d=_attD();
-
-  if(d.activeCheckinSession){
-    const pinned=d.sessions.find(x=>x.id===d.activeCheckinSession);
-    if(pinned&&_attCurKey!==d.activeCheckinSession) _attCurKey=d.activeCheckinSession;
-  }
-
-  const slot=_ciActiveSlot();
-  const s=_attCurSess();
-  const tech=getCurTech();
-
-  _ciPopulateAdminBar();
-
-  if(s){
-    document.getElementById('ci-sessionName').textContent=s.name;
-    const crew=_attCrew(s);
-    const recKey=_ciRecKey(s.id,slot);
-    if(!d.records[recKey])d.records[recKey]={};
-    const rec=d.records[recKey]||{};
-    const checked=crew.filter(c=>{const r=rec[c.id];return r&&(r.status==='present'||r.status==='late');}).length;
-    document.getElementById('ci-sessionSub').textContent='Calltime: '+(s.calltime||'8:00 AM')+' · '+crew.length+' assigned';
-    document.getElementById('ci-sessionStatus').innerHTML='<div style="display:inline-flex;align-items:center;gap:8px;background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:20px;padding:4px 14px;font-family:var(--mono);font-size:11px;color:var(--green);"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);display:inline-block;"></span>'+checked+' of '+crew.length+' checked in</div>';
-  } else {
-    document.getElementById('ci-sessionName').textContent='No Active Session';
-    document.getElementById('ci-sessionSub').textContent='No Sunday session found.';
-    document.getElementById('ci-sessionStatus').innerHTML='';
-  }
-
-  const selfPanel=document.getElementById('ci-selfPanel');
-  const notOnRoster=document.getElementById('ci-notOnRoster');
-  const loginPrompt=document.getElementById('ci-loginPrompt');
-  selfPanel.style.display='none';notOnRoster.style.display='none';loginPrompt.style.display='none';
-
-  if(!tech){
-    loginPrompt.style.display='';
-  } else if(s){
-    const crew=_attCrew(s);const onRoster=crew.some(c=>c.id===tech.id);
-    if(onRoster){
-      selfPanel.style.display='';
-      // Show briefing notes for this Sunday
-      const briefingBanner = document.getElementById('ci-briefingBanner');
-      const briefingText = document.getElementById('ci-briefingText');
-      if(briefingBanner && briefingText){
-        const sessKey = s.id; // session id matches schedule key for Sunday sessions
-        const schedEntry = db.schedules[sessKey];
-        if(schedEntry && schedEntry.briefing){
-          briefingText.textContent = schedEntry.briefing;
-          briefingBanner.style.display = '';
-        } else {
-          briefingBanner.style.display = 'none';
-        }
-      }
-      document.getElementById('ci-myAvatar').textContent=tech.avatar||'👤';
-      document.getElementById('ci-myName').textContent=tech.name;
-      document.getElementById('ci-myRole').textContent=tech.role||'Technician';
-      const recKey=_ciRecKey(s.id,slot);
-      const rec=(d.records[recKey]||{})[tech.id];
-      const statusEl=document.getElementById('ci-myStatus');
-      if(rec&&rec.status){const cv=ATT_COLORS[rec.status];statusEl.textContent=ATT_ICONS[rec.status]+' '+ATT_LABELS[rec.status]+(rec.time?' · '+rec.time:'');statusEl.style.cssText='border:1px solid '+cv+';color:'+cv+';background:transparent;';}
-      else{statusEl.textContent='Not checked in';statusEl.style.cssText='background:var(--s3);color:var(--dim2);border:none;';}
-    } else {notOnRoster.style.display='';}
-  }
-
-  const rosterEl=document.getElementById('ci-rosterList');
-  if(!s){rosterEl.innerHTML='<li style="padding:16px;font-family:var(--mono);font-size:12px;color:var(--dim2);text-align:center;">No session</li>';return;}
-  const crew=_attCrew(s);
-  const recKey=_ciRecKey(s.id,slot);
-  if(!d.records[recKey])d.records[recKey]={};
-  const rec=d.records[recKey]||{};
-  if(!crew.length){rosterEl.innerHTML='<li style="padding:16px;font-family:var(--mono);font-size:12px;color:var(--dim2);text-align:center;">No crew assigned yet</li>';return;}
-  rosterEl.innerHTML=crew.map((c,i)=>{
-    const r=rec[c.id];const st=r&&r.status?r.status:'';const cv=ATT_COLORS[st]||'var(--dim2)';
-    const color=ATT_AVCOLS[i%ATT_AVCOLS.length];
-    const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    return'<li style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">'
-      +'<div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;border:2px solid '+color+'33;color:'+color+';font-family:var(--head);">'+(c.avatar||initials)+'</div>'
-      +'<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;">'+c.name+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--dim2);">'+(c.role||'Technician')+'</div></div>'
-      +'<div style="text-align:right;flex-shrink:0;">'
-        +'<div style="font-size:13px;color:'+cv+';font-weight:900;">'+(st?ATT_ICONS[st]:'○')+'</div>'
-        +'<div style="font-family:var(--mono);font-size:9px;color:'+cv+';">'+(st?ATT_LABELS[st]:'Pending')+'</div>'
-        +(r&&r.time?'<div style="font-family:var(--mono);font-size:9px;color:var(--dim2);">'+r.time+'</div>':'')
-      +'</div></li>';
-  }).join('');
-}
-
-function ciCheckIn(status){
-  const tech=getCurTech();if(!tech){toast('Please log in first','error');return;}
-  const s=_attCurSess();if(!s){toast('No active session','error');return;}
-  if(!_attCrew(s).some(c=>c.id===tech.id)){toast("You're not on this week's roster",'error');return;}
-  const slot=_ciActiveSlot();
-  const recKey=_ciRecKey(s.id,slot);
-  const d=_attD();if(!d.records[recKey])d.records[recKey]={};
-  const now=new Date().toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
-  d.records[recKey][tech.id]={status,time:now,note:''};
-  _attLog.unshift({name:tech.name,status,time:now,ts:Date.now(),slot});if(_attLog.length>20)_attLog=_attLog.slice(0,20);
-  save();renderCheckin();
-  toast(ATT_ICONS[status]+' Checked in as '+ATT_LABELS[status]+' · '+now,'success');
-}
-
 // ══════════════════════════════════════════════════════════
 // STAGE 3 — Asset Checkout & Maintenance Log
 // ══════════════════════════════════════════════════════════
@@ -8796,7 +8101,6 @@ const LEVEL_BG = {Beginner:'#E1F5EE',Intermediate:'#E6F1FB',Advanced:'#EEEDFE'};
 window._trainingDeptFilter = 'all';
 window._profilesDeptFilter = 'all';
 window._openProfileId = null;
-let _lbChart = null;
 
 // ── TRAINING HUB ──────────────────────────────────────────
 function saveTrainingModule(){
@@ -8941,11 +8245,6 @@ function renderProfiles(){
   const grid=document.getElementById('profiles-grid');
   if(grid){
     grid.innerHTML=filtered.map(t=>{
-      const totalSessions=(db.attendanceData?.sessions||[]).length;
-      const attended=(db.attendanceData?.sessions||[]).filter(s=>{
-        return Object.values(db.attendanceData?.records||{}).some(rec=>rec[t.id]&&(rec[t.id].status==='present'||rec[t.id].status==='late'));
-      }).length;
-      const streak=calcStreak(t.id);
       const completedCount=(t.completedModules||[]).length;
       const totalMods=(db.trainingModules||[]).length;
       const isActive=window._openProfileId===t.id;
@@ -8961,9 +8260,7 @@ function renderProfiles(){
           '</div>'+
         '</div>'+
         '<div class="profile-body">'+
-          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;text-align:center">'+
-            '<div><div style="font-size:20px;font-weight:700;color:#0F6E56">'+streak+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">STREAK</div></div>'+
-            '<div><div style="font-size:20px;font-weight:700;color:#185FA5">'+attended+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">SESSIONS</div></div>'+
+          '<div style="display:flex;justify-content:center;margin-bottom:10px;text-align:center">'+
             '<div><div style="font-size:20px;font-weight:700;color:#534AB7">'+completedCount+(totalMods?'/'+totalMods:'')+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">MODULES</div></div>'+
           '</div>'+
           (t.training&&t.training.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+t.training.map(s=>'<span class="skill-tag">'+s+'</span>').join('')+'</div>':'')+
@@ -8982,8 +8279,6 @@ function renderProfiles(){
   if(!t){detail.style.display='none';return;}
   detail.style.display='';
 
-  const sessions=(db.attendanceData?.sessions||[]);
-  const streak=calcStreak(t.id);
   const completedMods=(t.completedModules||[]);
   const totalMods=(db.trainingModules||[]).length;
   const gearOuts=(db.checkouts||[]).filter(c=>c.personId===t.id);
@@ -9020,9 +8315,7 @@ function renderProfiles(){
     '<div class="pb">'+
 
       // Stats row — now 5 stats including volunteer hours
-      '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px">'+
-        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#0F6E56">'+streak+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">STREAK</div></div>'+
-        '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#185FA5">'+sessions.length+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">SESSIONS</div></div>'+
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">'+
         '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#534AB7">'+completedMods.length+(totalMods?'/'+totalMods:'')+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">MODULES</div></div>'+
         '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#854F0B">'+gearOuts.length+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">GEAR OUTS</div></div>'+
         '<div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:#0F6E56">'+volHours+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">VOL. HRS</div></div>'+
@@ -9171,47 +8464,23 @@ function _deptAvatarColor(dept){
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────
-function calcStreak(techId){
-  const sessions=[...(db.attendanceData?.sessions||[])].sort((a,b)=>b.date-a.date);
-  let streak=0;
-  for(const s of sessions){
-    const rec=Object.entries(db.attendanceData?.records||{}).find(([k])=>k.startsWith(s.id));
-    const attended=rec&&rec[1][techId]&&(rec[1][techId].status==='present'||rec[1][techId].status==='late');
-    if(attended) streak++;
-    else break;
-  }
-  return streak;
-}
 function renderLeaderboard(){
   if(!db.technicians||!db.technicians.length){
     document.getElementById('lb-list').innerHTML='<p class="dim" style="padding:16px">No crew yet.</p>';
     return;
   }
-  const metric=document.getElementById('lb-metric')?.value||'streak';
-  const sessions=(db.attendanceData?.sessions||[]);
-  const records=(db.attendanceData?.records||{});
+  const metric='activity';
 
   // Score each tech
   const scored=db.technicians.map(t=>{
-    const streak=calcStreak(t.id);
-    const attended=sessions.filter(s=>{
-      const rec=Object.entries(records).find(([k])=>k.startsWith(s.id));
-      return rec&&rec[1][t.id]&&(rec[1][t.id].status==='present'||rec[1][t.id].status==='late');
-    }).length;
     const gearOuts=(db.checkouts||[]).filter(c=>c.personId===t.id).length;
     const reqs=(db.techRequests||[]).filter(r=>r.requestedBy===t.id).length;
-    const activity=attended+gearOuts+reqs;
-    return{t,streak,attended,activity};
+    const activity=gearOuts+reqs;
+    return{t,activity};
   }).sort((a,b)=>b[metric]-a[metric]);
 
   // Stats
-  const topStreak=scored[0]?.streak||0;
-  const totalSess=sessions.length;
-  const avgAtt=scored.length?Math.round(scored.reduce((s,x)=>s+x.attended,0)/scored.length):0;
   document.getElementById('lb-stats').innerHTML=
-    '<div class="sc cg"><div class="sc-label">Top streak</div><div class="sc-val">'+topStreak+'</div></div>'+
-    '<div class="sc cb"><div class="sc-label">Total sessions</div><div class="sc-val">'+totalSess+'</div></div>'+
-    '<div class="sc ca"><div class="sc-label">Avg attendance</div><div class="sc-val">'+avgAtt+'</div></div>'+
     '<div class="sc cp"><div class="sc-label">Crew size</div><div class="sc-val">'+db.technicians.length+'</div></div>';
 
   const maxVal=scored[0]?scored[0][metric]||1:1;
@@ -9229,30 +8498,10 @@ function renderLeaderboard(){
       '</div>'+
       '<div style="text-align:right;flex-shrink:0">'+
         '<div style="font-size:22px;font-weight:700;color:#0F6E56">'+s[metric]+'</div>'+
-        '<div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">'+(metric==='streak'?'week streak':metric==='attended'?'sessions':'pts')+'</div>'+
+        '<div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">pts</div>'+
       '</div>'+
     '</div>';
   }).join('');
-
-  // Attendance trend chart
-  if(_lbChart){try{_lbChart.destroy();}catch(e){}_lbChart=null;}
-  const last8=sessions.slice(0,8).reverse();
-  const labels=last8.map(s=>s.name||fmtDateShort(s.date));
-  const counts=last8.map(s=>{
-    const rec=Object.entries(records).find(([k])=>k.startsWith(s.id));
-    if(!rec)return 0;
-    return Object.values(rec[1]).filter(r=>r.status==='present'||r.status==='late').length;
-  });
-  const ctx=document.getElementById('lb-att-chart');
-  if(ctx){
-    _lbChart=new Chart(ctx,{
-      type:'line',
-      data:{labels,datasets:[{label:'Crew present',data:counts,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,.1)',borderWidth:2,pointRadius:4,fill:true,tension:.35}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{x:{ticks:{color:'#7a8fa8',font:{size:10}},grid:{display:false}},y:{beginAtZero:true,ticks:{stepSize:1,color:'#7a8fa8',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}}}}
-    });
-  }
 }
 
 
@@ -9310,13 +8559,6 @@ function saveFirstRun(){
   toast('Welcome '+name+'! You are now the Master Admin.','success');
   buildLsGrid();
 }
-
-// Auto-go to check-in page if URL has ?checkin=1
-(function(){
-  if(new URLSearchParams(window.location.search).get('checkin')==='1'){
-    window.addEventListener('load',()=>setTimeout(()=>go('checkin'),500));
-  }
-})();
 </script>
 
 <script>
@@ -9325,7 +8567,6 @@ const _PAGE_TITLES = {
   dashboard:'Dashboard',fixtures:'Fixtures',inventory:'Stock',history:'History',
   stats:'Analytics',scan:'Scan',crew:'Crew',schedule:'Schedule',nfc:'NFC',
   showlog:'Shows',checklist:'Checklist',settings:'Settings',
-  attendance:'Attendance',checkin:'Check-In',
   checkout:'Asset Checkout',maintenance:'Maintenance Log',requests:'Tech Requests',announcements:'Announcements',training:'Training Hub',profiles:'Crew Profiles',leaderboard:'Leaderboard'
 };
 const _origGo = typeof go !== 'undefined' ? go : null;
