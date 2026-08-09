@@ -1437,6 +1437,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <button class="btn bgh" onclick="exportCSV('inventory')">⬇️ Export</button>
       <button class="btn bgh" data-perm="admin" onclick="downloadImportTemplate('inventory')">📄 Template</button>
       <button class="btn bgh" data-perm="admin" onclick="openImportModal('inventory')">⬆️ Import</button>
+      <button class="btn bgh" data-perm="admin" onclick="recalcStockFromRegistry()">🔄 Recalc from Registry</button>
       <button class="btn br bsm" data-perm="master" onclick="requirePin(clearAllInventory)" style="font-size:10px">🗑️</button>
       <button class="btn ba" data-perm="admin" onclick="openM('receiveBulbs')">+ Receive Batch</button>
     </div>
@@ -1473,6 +1474,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <div class="row gap8">
         <select id="regFilter" onchange="renderBulbRegistry()" style="font-size:11px;padding:5px 8px;width:auto;border-radius:6px;border:1px solid var(--border2);background:var(--s1);color:var(--text);font-family:var(--mono)">
           <option value="all">All Bulbs</option>
+          <option value="unassigned">Printed / Not Scanned In</option>
           <option value="in_stock">In Stock</option>
           <option value="installed">Installed</option>
           <option value="pulled">Pulled</option>
@@ -1545,7 +1547,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
         <div id="qr-reader" style="display:none;margin-bottom:12px"></div>
         <div id="scanResult" style="display:none;background:var(--gglow);border:1px solid rgba(40,201,122,.3);border-radius:6px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--green)"></div>
         <p class="dim" style="text-align:center;margin:12px 0">— or enter ID manually —</p>
-        <div class="fg mb12"><label>Fixture ID</label><input type="text" id="manualId" placeholder="e.g. FX-001" oninput="this.value=this.value.toUpperCase()" autocomplete="off"></div>
+        <div class="fg mb12"><label>Fixture ID or Bulb Sticker Code</label><input type="text" id="manualId" placeholder="e.g. FX-001 or BLB-A-003" oninput="this.value=this.value.toUpperCase()" autocomplete="off"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <button class="btn br" onclick="scanAction('outage')">🔴 Report Outage</button>
           <button class="btn bg" onclick="scanAction('replace')">✅ Mark Replaced</button>
@@ -5290,8 +5292,8 @@ function smartHandleCode(code){
   // Check if it's a known bulb label in the registry
   const regMatch=db.bulbRegistry.find(b=>b.bulbId===code);
   if(regMatch){
-    const statusLabel={in_stock:'📦 In Stock',installed:'💡 Installed in '+regMatch.installedIn,pulled:'♻️ Available',disposed:'💀 Blown / Disposed'}[regMatch.status]||regMatch.status;
-    toast('🏷️ Bulb '+code+' — '+regMatch.bulbType+' · '+statusLabel,'info');
+    const statusLabel={unassigned:'🏷️ Printed — not scanned in yet',in_stock:'📦 In Stock',installed:'💡 Installed in '+regMatch.installedIn,pulled:'♻️ Available',disposed:'💀 Blown / Disposed'}[regMatch.status]||regMatch.status;
+    toast('🏷️ Bulb '+code+' — '+regMatch.bulbType+' · '+statusLabel+(regMatch.status==='unassigned'?' — tap "Bulb Scan IN" to add to stock':''),'info');
     document.getElementById('manualId').value=code;
     return;
   }
@@ -5306,7 +5308,66 @@ function scanAction(action){
     const f=db.fixtures.find(x=>x.id===id);
     if(!f){toast('Fixture "'+id+'" not found','error');return;}
     if(action==='outage')openOutModal(f.id);else openRepModal(f.id);
-  } else if(action==='scanIn'){openM('receiveBulbs');}
+  } else if(action==='scanIn'){scanBulbIn(id);}
+}
+
+// Scan a physical bulb sticker onto the shelf — this is what actually
+// increments stock, so "in stock" always matches bulbs that were really scanned.
+function scanBulbIn(code){
+  const t=getTech('recv');
+  let reg=db.bulbRegistry.find(b=>b.bulbId===code);
+
+  if(!reg){
+    // Code isn't a printed label we know about — offer to register it fresh.
+    const bulbType=prompt('Unknown label "'+code+'". What bulb type is this? (leave blank to cancel)','')?.trim();
+    if(!bulbType){toast('Scan cancelled — bulb type required','error');return;}
+    reg={bulbId:code,bulbType,status:'unassigned',createdAt:Date.now(),installedIn:null,installedAt:null,installedBy:null,history:[]};
+    db.bulbRegistry.push(reg);
+  }
+
+  if(reg.status==='in_stock'){
+    toast('⚠️ '+code+' is already marked in stock — skipping to avoid double count','info');
+    return;
+  }
+  if(reg.status==='installed'){
+    toast('💡 '+code+' is currently installed in '+(reg.installedIn||'a fixture')+' — not added to stock','info');
+    return;
+  }
+  if(reg.status==='disposed'){
+    toast('💀 '+code+' was marked blown/disposed — not added to stock','info');
+    return;
+  }
+
+  // unassigned or pulled → bring it onto the shelf
+  reg.status='in_stock';
+  reg.installedIn=null;
+  reg.history.push({event:'received',tech:t?t.name:'Unknown',timestamp:Date.now()});
+
+  let inv=db.inventory.find(i=>i.bulbType===reg.bulbType);
+  if(inv){inv.inStock++;inv.totalReceived++;}
+  else db.inventory.push({bulbType:reg.bulbType,inStock:1,threshold:3,totalReceived:1,totalUsed:0});
+
+  save();renderInv&&renderInv();renderBulbRegistry&&renderBulbRegistry();
+  toast('📥 '+code+' ('+reg.bulbType+') scanned into stock','success');
+  document.getElementById('manualId').value='';
+  const res=document.getElementById('scanResult');if(res){res.style.display='';res.textContent='✅ '+code+' added to stock';}
+}
+
+// Recompute each bulb type's stock count from the registry's actual in_stock
+// scans — fixes drift between the manual "Receive Batch" number and reality.
+function recalcStockFromRegistry(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
+  if(!confirm('Recalculate stock counts from the Bulb Registry?\n\nEach bulb type\'s "In Stock" number will be set to match the number of individually scanned-in labels for that type. Types with no registered labels are left untouched.'))return;
+  const counts={};
+  db.bulbRegistry.forEach(b=>{if(b.status==='in_stock')counts[b.bulbType]=(counts[b.bulbType]||0)+1;});
+  let changed=0;
+  Object.keys(counts).forEach(type=>{
+    let inv=db.inventory.find(i=>i.bulbType===type);
+    if(!inv){inv={bulbType:type,inStock:0,threshold:3,totalReceived:0,totalUsed:0};db.inventory.push(inv);}
+    if(inv.inStock!==counts[type]){inv.inStock=counts[type];changed++;}
+  });
+  save();renderInv&&renderInv();
+  toast(changed?changed+' bulb type(s) corrected from registry':'Stock already matched the registry','success');
 }
 
 // ── Print ──
@@ -5330,14 +5391,15 @@ function printLabels(){
   for(let i=1;i<=qty;i++){
     const code=prefix+'-'+String(i).padStart(3,'0');
 
-    // Register bulb labels in the registry (skip if already registered)
+    // Register bulb labels in the registry as UNASSIGNED — they don't count as
+    // stock until someone actually sticks the label on a bulb and scans it in.
     if(type==='2'){
       const exists=db.bulbRegistry.find(b=>b.bulbId===code);
       if(!exists){
         db.bulbRegistry.push({
           bulbId:code,
           bulbType,
-          status:'in_stock',       // in_stock | installed | pulled | disposed
+          status:'unassigned',     // unassigned | in_stock | installed | pulled | disposed
           createdAt:Date.now(),
           installedIn:null,
           installedAt:null,
@@ -5359,7 +5421,7 @@ function printLabels(){
 
   if(newLabels.length>0){
     save();
-    toast(newLabels.length+' bulb labels registered in registry','success');
+    toast(newLabels.length+' bulb stickers printed — scan each one in (Scan → Bulb Scan IN) once it\'s on a bulb','success');
   }
   setTimeout(()=>window.print(),600);
 }
@@ -5388,6 +5450,7 @@ function renderBulbRegistry(){
   if(filter!=='all')list=list.filter(b=>b.status===filter);
   if(!list.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:28px">No bulbs registered yet — generate labels to register them</td></tr>';return;}
   const statusStyle={
+    unassigned:{icon:'🏷️',color:'var(--dim)',label:'Printed — not scanned in'},
     in_stock:{icon:'📦',color:'var(--blue)',label:'In Stock'},
     installed:{icon:'💡',color:'var(--green)',label:'Installed'},
     pulled:{icon:'♻️',color:'var(--amber)',label:'Available (Pulled)'},
