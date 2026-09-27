@@ -6,7 +6,7 @@
 (function(){
   var t = localStorage.getItem('slt_theme') || 'dark';
   if (t === 'light') {
-    document.documentElement.className = 'light-mode';
+    document.documentElement.className = 'dark-mode';
   }
 })();
 </script>
@@ -892,6 +892,11 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
 .stock-bar-wrap   { height:6px;background:var(--s3);border-radius:4px;overflow:hidden;margin:10px 0 4px; }
 .stock-bar-fill   { height:100%;border-radius:4px;transition:width .4s; }
 .stock-card-foot  { border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:6px;justify-content:flex-end;background:var(--s2); }
+.er-cat-chip{display:flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--border2);border-radius:20px;font-size:12px;cursor:pointer;user-select:none;background:var(--s1)}
+.er-cat-chip input{margin:0;accent-color:var(--amber)}
+.er-media-thumb{position:relative;width:64px;height:64px;border-radius:6px;overflow:hidden;border:1px solid var(--border)}
+.er-media-thumb img{width:100%;height:100%;object-fit:cover}
+.er-media-thumb .rm{position:absolute;top:1px;right:1px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:1;cursor:pointer}
 </style>
 </head>
 <body>
@@ -1036,16 +1041,24 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
         <div class="fg"><label>Ministry / Department *</label><input id="er-dept" placeholder="e.g. Kids Ministry, Worship, Events"></div>
         <div class="fg"><label>Contact (email or phone)</label><input id="er-contact" placeholder="So we can follow up"></div>
         <div class="fg"><label>Event / service date</label><input id="er-eventdate" type="date"></div>
-        <div class="fg" style="grid-column:1/-1"><label>Category</label>
-          <select id="er-cat">
-            <option value="AV">AV Equipment</option>
-            <option value="Lighting">Lighting</option>
-            <option value="Camera">Camera / Video</option>
-            <option value="IT">IT / Network</option>
-            <option value="Other">Other</option>
-          </select>
+        <div class="fg" style="grid-column:1/-1"><label>Category (select all that apply)</label>
+          <div id="er-cat-group" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+            <label class="er-cat-chip"><input type="checkbox" value="AV Equipment"> AV Equipment</label>
+            <label class="er-cat-chip"><input type="checkbox" value="Lighting"> Lighting</label>
+            <label class="er-cat-chip"><input type="checkbox" value="Camera / Video"> Camera / Video</label>
+            <label class="er-cat-chip"><input type="checkbox" value="IT / Network"> IT / Network</label>
+            <label class="er-cat-chip"><input type="checkbox" value="Other"> Other</label>
+          </div>
         </div>
         <div class="fg" style="grid-column:1/-1"><label>What do you need? *</label><textarea id="er-details" placeholder="Describe the event and what tech support you need..." style="min-height:90px"></textarea></div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Photos / reference media (optional)</label>
+          <div id="er-media-drop" style="border:2px dashed var(--border2);border-radius:8px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById('er-media-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--amber)'" ondragleave="this.style.borderColor='var(--border2)'" ondrop="_erMediaDrop(event)">
+            <div class="dim" style="font-size:12px">📎 Tap to choose photos, or drag & drop here</div>
+            <input id="er-media-input" type="file" accept="image/*" multiple style="display:none" onchange="_erMediaAdd(this.files)">
+          </div>
+          <div id="er-media-preview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+        </div>
       </div>
       <div id="extReq-status" class="dim" style="margin:10px 0;font-size:12px;text-align:center"></div>
       <button class="btn ba" style="width:100%;margin-top:6px" onclick="submitExternalRequest()">Submit Request</button>
@@ -1502,7 +1515,7 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       </div>
     </div>
     <div class="panel"><div class="pb" style="padding:0"><table class="tbl">
-      <thead><tr><th>Bulb ID</th><th>Type</th><th>Status</th><th>Location</th><th>Installs</th><th>Created</th><th>Last Event</th><th></th></tr></thead>
+      <thead><tr><th>Bulb ID</th><th>Type</th><th>Status</th><th>Location</th><th>Installs</th><th>Created</th><th>Last Event</th><th>Life</th><th></th></tr></thead>
       <tbody id="regTbl"></tbody>
     </table></div></div>
   </div>
@@ -1609,17 +1622,29 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
       <div class="dim" style="margin-top:4px">Sunday services, rehearsals & crew assignments</div>
     </div>
     <div class="row gap8">
-      <select id="schedYear" onchange="renderSchedule()" style="width:auto;padding:6px 10px;font-size:11px"></select>
       <button data-perm="admin" class="btn bg bsm" onclick="openAddRehearsalModal()">+ Rehearsal</button>
       <button data-perm="admin" class="btn bb bsm" onclick="manualSendScheduleEmail()" title="Send schedule email to assigned crew for the upcoming Sunday">📧 Send This Week</button>
       <button data-perm="admin" class="btn bb bsm" onclick="manualSendScheduleSMS()" title="Text the schedule to assigned crew for the upcoming Sunday">📱 Text This Week</button>
     </div>
   </div>
 
-  <!-- Service tabs -->
-  <div class="tabs" id="sched-service-tabs" style="margin-bottom:14px">
-    <button class="tab active" onclick="schedSetServiceTab('service',this)">📅 Sunday Schedule</button>
-    <button class="tab" onclick="schedSetServiceTab('rehearsals',this)">🎸 Rehearsals</button>
+  <!-- Quick stats -->
+  <div class="stats mb14" id="sched-quickstats"></div>
+
+  <div class="row jbet mb14" style="flex-wrap:wrap;gap:10px">
+    <!-- Service tabs -->
+    <div class="tabs" id="sched-service-tabs" style="margin-bottom:0">
+      <button class="tab active" onclick="schedSetServiceTab('service',this)">📅 Sunday Schedule</button>
+      <button class="tab" onclick="schedSetServiceTab('rehearsals',this)">🎸 Rehearsals</button>
+    </div>
+    <!-- View toggle (service tab only) -->
+    <div class="row gap8" id="sched-view-toggle-wrap">
+      <select id="schedYear" onchange="renderSchedule()" style="width:auto;padding:6px 10px;font-size:11px;display:none"></select>
+      <div class="tabs" id="sched-view-toggle" style="margin-bottom:0">
+        <button class="tab active" onclick="schedSetViewMode('calendar',this)">🗓 Calendar</button>
+        <button class="tab" onclick="schedSetViewMode('list',this)">☰ List</button>
+      </div>
+    </div>
   </div>
 
   <!-- No scheduler warning -->
@@ -1629,6 +1654,17 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
 
   <!-- Dept filter -->
   <div id="sched-dept-filter-wrap"></div>
+
+  <!-- Calendar month nav (calendar mode only) -->
+  <div id="schedCalNav" class="row jbet mb10" style="display:none">
+    <div class="row gap6">
+      <button class="btn bgh bsm" onclick="schedCalShift(-1)">‹ Prev</button>
+      <button class="btn bgh bsm" onclick="schedCalToday()">Today</button>
+    </div>
+    <div class="fw9" id="schedCalMonthLabel" style="font-family:var(--head);font-size:16px;letter-spacing:1px;text-transform:uppercase"></div>
+    <button class="btn bgh bsm" onclick="schedCalShift(1)">Next ›</button>
+  </div>
+
   <!-- Schedule grid -->
   <div id="schedGrid"></div>
 
@@ -2625,6 +2661,10 @@ body.dark-mode select option { background:#161b22; color:#e6edf3; }
           <label>Total Used</label>
           <input id="ei-used" type="number" min="0" placeholder="0">
         </div>
+        <div class="fg">
+          <label>Expected Life (hours)</label>
+          <input id="ei-lifehours" type="number" min="0" placeholder="e.g. 2000 — 0 = not tracked">
+        </div>
       </div>
     </div>
     <div class="mf">
@@ -2716,7 +2756,8 @@ window._onRemoteData=function(r){
   if(!_techId && !onExternalRequest){
     // Check if there's a saved session we can now validate against real crew data
     const savedId = (()=>{ try{ return localStorage.getItem(TECH_KEY); }catch(e){ return null; } })();
-    if(savedId && db.technicians.some(t=>t.id===savedId)){
+    const savedTech = savedId ? db.technicians.find(t=>t.id===savedId) : null;
+    if(savedTech && isTechActive(savedTech)){
       // Valid session found — auto log in, skip login screen
       _techId = savedId;
       updTechUI();
@@ -2729,13 +2770,17 @@ window._onRemoteData=function(r){
       checkScheduleEmails();
       return;
     }
+    if(savedTech && !isTechActive(savedTech)){
+      try{localStorage.removeItem(TECH_KEY);}catch(e){}
+    }
     // No valid session — rebuild grid with fresh crew and stay on login
     if(loginVisible) buildLsGrid();
     else { buildLsGrid(); showLoginScreen(); }
     return;
   }
-  // Someone is already logged in — verify they still exist
-  const stillExists = db.technicians.some(t=>t.id===_techId);
+  // Someone is already logged in — verify they still exist and are active
+  const curTechRec = db.technicians.find(t=>t.id===_techId);
+  const stillExists = !!curTechRec && isTechActive(curTechRec);
   if(!stillExists){
     _techId=null;
     try{localStorage.removeItem(TECH_KEY);}catch(e){}
@@ -2802,7 +2847,12 @@ function buildLsGrid(){
   }
   if(noUsers) noUsers.style.display = 'none';
   if(firstRun) firstRun.style.display = 'none';
-  grid.innerHTML = db.technicians.map(t=>{
+  const activeTechs = db.technicians.filter(isTechActive);
+  if(!activeTechs.length){
+    if(grid) grid.innerHTML = '<p class="dim" style="padding:20px 0;text-align:center">All crew accounts are inactive. Contact an admin.</p>';
+    return;
+  }
+  grid.innerHTML = activeTechs.map(t=>{
     const roleLabel = t.userRole==='master'?'👑 Master':t.userRole==='admin'?'🔑 Admin':'';
     const deptColor = {Lighting:'#5DCAA5',Audio:'#85B7EB',Cameras:'#EF9F27',IT:'#B4B2A9'}[t.dept]||'rgba(255,255,255,.3)';
     return `<div class="ls-user-btn" data-id="${t.id}" onclick="lsSelectUser('${t.id}')">
@@ -2815,6 +2865,8 @@ function buildLsGrid(){
 }
 
 function lsSelectUser(id){
+  const t0=db.technicians.find(x=>x.id===id);
+  if(t0 && !isTechActive(t0)){ toast('This account is inactive','error'); return; }
   _lsSelectedId=id;
   const t=db.technicians.find(x=>x.id===id);if(!t)return;
   // Highlight selected tile
@@ -2863,6 +2915,7 @@ function lsSubmit(){
     toast('Please select your name again','info');
     return;
   }
+  if(!isTechActive(t)){ toast('This account is inactive','error'); lsBack(); return; }
   const pw = document.getElementById('ls-pw').value;
   if(simpleHash(pw) !== t.passwordHash){
     document.getElementById('ls-err').style.display = '';
@@ -3116,6 +3169,8 @@ function renderDash(){
     if(unreadFeedback) alerts.push(`<div class="row gap8" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>💬</span><span style="flex:1;font-size:13px">${unreadFeedback} unread feedback submission${unreadFeedback>1?'s':''}</span><button class="btn bg bsm" onclick="go('feedbackadmin')">View</button></div>`);
     const lowStockGear=(db.gearItems||[]).filter(g=>g.lowStockAt&&g.qty<=g.lowStockAt);
     if(lowStockGear.length) alerts.push(`<div class="row gap8" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>📦</span><span style="flex:1;font-size:13px">${lowStockGear.length} gear item${lowStockGear.length>1?'s':''} low on stock</span><button class="btn bg bsm" onclick="go('checkout')">View</button></div>`);
+    const bulbsEndOfLife=db.bulbRegistry.filter(b=>b.status==='installed'&&['due-soon','overdue'].includes(bulbLifeStatus(b).status));
+    if(bulbsEndOfLife.length) alerts.push(`<div class="row gap8" style="padding:8px 0;border-bottom:1px solid var(--border)"><span>💡</span><span style="flex:1;font-size:13px">${bulbsEndOfLife.length} bulb${bulbsEndOfLife.length>1?'s':''} approaching end of life</span><button class="btn bg bsm" onclick="go('inventory');invTab('registry')">View</button></div>`);
     alertsEl.innerHTML = alerts.length
       ? alerts.join('')
       : '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;color:var(--green)"><span>✅</span><span style="font-size:13px">All clear — no pending actions</span></div>';
@@ -3586,6 +3641,7 @@ function openEditInv(bulbType){
   document.getElementById('ei-threshold').value=i.threshold;
   document.getElementById('ei-received').value=i.totalReceived;
   document.getElementById('ei-used').value=i.totalUsed;
+  document.getElementById('ei-lifehours').value=i.expectedLifeHours||'';
   openM('editInv');
 }
 function saveInvEdit(){
@@ -3597,11 +3653,13 @@ function saveInvEdit(){
   const newThreshold=parseInt(document.getElementById('ei-threshold').value);
   const newReceived=parseInt(document.getElementById('ei-received').value);
   const newUsed=parseInt(document.getElementById('ei-used').value);
+  const newLifeHours=parseInt(document.getElementById('ei-lifehours').value)||0;
   if(isNaN(newStock)||isNaN(newThreshold)){toast('Stock and threshold are required','error');return;}
   i.inStock=newStock;
   i.threshold=newThreshold;
   if(!isNaN(newReceived)) i.totalReceived=newReceived;
   if(!isNaN(newUsed)) i.totalUsed=newUsed;
+  i.expectedLifeHours=newLifeHours;
   save();closeM('editInv');renderInv();
   toast(bulbType+' updated','success');
 }
@@ -3684,11 +3742,11 @@ function renderCrew(){
   const filtered=window._crewDeptFilter==='all'?db.technicians:db.technicians.filter(t=>t.dept===window._crewDeptFilter);
   document.getElementById('crewCards').innerHTML=!filtered.length
     ?'<p class="dim">No technicians yet.</p>'
-    :filtered.map(t=>`<div class="tcard">
+    :filtered.map(t=>{const inactive=!isTechActive(t);return`<div class="tcard" style="${inactive?'opacity:.6':''}">
         <div class="row gap12" style="align-items:flex-start;flex:1">
           <div style="font-size:28px;flex-shrink:0">${t.avatar||'👤'}</div>
           <div style="flex:1;min-width:0">
-            <div class="row gap6 mb8"><div class="fw7" style="font-size:14px">${t.name}</div>${deptBadge(t.dept)}</div>
+            <div class="row gap6 mb8"><div class="fw7" style="font-size:14px">${t.name}</div>${deptBadge(t.dept)}${inactive?'<span class="badge" style="background:#F1EFE8;color:#6b7280;border:1px solid #D3D1C7">🚫 Inactive</span>':''}</div>
             <div class="dim">${t.role||'Technician'}</div>
             ${t.notes?`<div class="dim" style="font-size:11px;font-style:italic;margin-top:2px">📝 ${t.notes}</div>`:''}
             ${t.training&&t.training.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${t.training.map(tr=>`<span style="background:var(--bglow);color:var(--blue);border:1px solid rgba(61,155,233,.3);border-radius:20px;padding:2px 8px;font-size:10px;font-family:var(--mono)">${tr}</span>`).join('')}</div>`:''}
@@ -3708,9 +3766,10 @@ function renderCrew(){
           <button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="adminResetPassword('${t.id}')" title="Admin: reset password">🔑</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="resendWelcomeEmail('${t.id}')" title="Resend welcome email">📧</button>
+          <button class="btn ${inactive?'ba':'bgh'} bsm" data-perm="admin" onclick="toggleTechActive('${t.id}')" title="${inactive?'Reactivate — allow login & scheduling':'Deactivate — block login & scheduling'}">${inactive?'✅ Reactivate':'🚫 Deactivate'}</button>
           <button class="btn bgh bsm" data-perm="admin" onclick="requirePin(()=>removeTech('${t.id}'))">✕</button>
         </div>
-      </div>`).join('');
+      </div>`;}).join('');
   document.getElementById('crewStats').innerHTML=!db.technicians.length?''
     :db.technicians.map(t=>{
         const rep=db.outages.filter(o=>o.techId===t.id).length;
@@ -4057,8 +4116,25 @@ function sendNotif(title,body){
 
 // ── Tech helpers ──
 function getCurTech(){return _techId?db.technicians.find(t=>t.id===_techId)||null:null;}
+function isTechActive(t){ return !!t && t.active !== false; }
+function toggleTechActive(id){
+  if(!isAdmin()){ toast('Admin permission required','error'); return; }
+  const t = db.technicians.find(x=>x.id===id); if(!t) return;
+  const master = db.technicians.find(x=>x.userRole==='master');
+  if(master && master.id===t.id && isTechActive(t)){ toast("Can't deactivate the Master Admin","error"); return; }
+  const goingInactive = isTechActive(t);
+  if(goingInactive && !confirm('Mark '+t.name+' as inactive? They will be blocked from logging in and from being added to the schedule.')) return;
+  t.active = goingInactive ? false : true;
+  logAudit(t.active===false?'Crew Deactivated':'Crew Reactivated', t.name);
+  // Force-logout if they're currently signed in and just got deactivated
+  if(t.active===false && _techId===t.id){ lsLogout(); }
+  save(); renderCrew();
+  toast(t.name+(t.active===false?' marked inactive':' reactivated'),'success');
+}
 function loadTech(){try{_techId=localStorage.getItem(TECH_KEY)||null;}catch(e){}updTechUI();}
 function setTech(id){
+  const t0=db.technicians.find(x=>x.id===id);
+  if(t0 && !isTechActive(t0)){ toast('This account is inactive','error'); return; }
   _techId=id;try{localStorage.setItem(TECH_KEY,id);}catch(e){}
   updTechUI();closeM('whoAmI');applyPermissions();
   const t=db.technicians.find(x=>x.id===id);if(t)toast('Welcome, '+t.name+'! 👋','success');
@@ -4108,11 +4184,14 @@ function closeAllM(){['whoAmI','addTech','editTech','addFixture','editFixture','
 function buildWhoGrid(){
   const el=document.getElementById('whoGrid');
   if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians yet.</p>';return;}
-  el.innerHTML=db.technicians.map(t=>`<div class="tpb ${t.id===_techId?'sel':''}" onclick="whoSelectTech('${t.id}')"><div class="tav">${t.avatar||'👤'}</div><div>${t.name.split(' ')[0]}</div></div>`).join('');
+  const activeTechs=db.technicians.filter(isTechActive);
+  if(!activeTechs.length){el.innerHTML='<p class="dim">No active technicians.</p>';return;}
+  el.innerHTML=activeTechs.map(t=>`<div class="tpb ${t.id===_techId?'sel':''}" onclick="whoSelectTech('${t.id}')"><div class="tav">${t.avatar||'👤'}</div><div>${t.name.split(' ')[0]}</div></div>`).join('');
 }
 let _whoSelectedId=null;
 function whoSelectTech(id){
   const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  if(!isTechActive(t)){ toast('This account is inactive','error'); return; }
   // If technician has no password set, log in directly
   if(!t.passwordHash){setTech(id);return;}
   _whoSelectedId=id;
@@ -4197,7 +4276,7 @@ function addTech(){
   const techNotes=document.getElementById('tnotes').value.trim();
   const techTraining=getSelectedTraining('t');
   const techDept=document.getElementById('tdept').value||'';
-  const newTech = {id:'t'+Date.now(),name,role,dept:techDept,avatar:av,email,phone:document.getElementById('tphone').value.trim(),emergency:document.getElementById('temergency').value.trim(),passwordHash:simpleHash(pw),canSchedule:canSched,userRole,notes:techNotes,training:techTraining,joinedAt:Date.now(),volunteerHours:0,onboarding:{}};
+  const newTech = {id:'t'+Date.now(),name,role,dept:techDept,avatar:av,email,phone:document.getElementById('tphone').value.trim(),emergency:document.getElementById('temergency').value.trim(),passwordHash:simpleHash(pw),canSchedule:canSched,userRole,notes:techNotes,training:techTraining,joinedAt:Date.now(),volunteerHours:0,onboarding:{},active:true};
   db.technicians.push(newTech);
   logAudit('Crew Added', newTech.name+' ('+newTech.role+')');
   save();closeM('addTech');renderCrew();
@@ -5395,7 +5474,9 @@ function printLabels(){
 // ── Inv tabs ──
 function invTab(tab,btn){
   ['stock','orders','usage','used','registry'].forEach(t=>document.getElementById('it-'+t).style.display=t===tab?'':'none');
-  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  else {const idx=['stock','orders','usage','used','registry'].indexOf(tab);const tb=document.querySelectorAll('#pg-inventory .tab')[idx];if(tb)tb.classList.add('active');}
   if(tab==='used')renderUsedBulbs();
   if(tab==='registry')renderBulbRegistry();
 }
@@ -5409,12 +5490,32 @@ function clearBulbRegistry(){
   toast('Bulb Registry cleared','info');
 }
 
+function bulbLifeStatus(b){
+  const inv=db.inventory.find(i=>i.bulbType===b.bulbType);
+  const lifeHours=inv?inv.expectedLifeHours||0:0;
+  const used=b.hoursUsed||0;
+  if(!lifeHours)return{status:'untracked',label:'Not tracked',color:'#888780',pct:0};
+  const pct=Math.min(100,Math.round((used/lifeHours)*100));
+  if(pct>=100)return{status:'overdue',label:'Past expected life ('+used+'h / '+lifeHours+'h)',color:'#E24B4A',pct};
+  if(pct>=80)return{status:'due-soon',label:pct+'% of life used ('+used+'h / '+lifeHours+'h)',color:'#BA7517',pct};
+  return{status:'ok',label:pct+'% of life used',color:'#639922',pct};
+}
+function logBulbHours(bulbId){
+  const b=db.bulbRegistry.find(x=>x.bulbId===bulbId);if(!b)return;
+  const val=prompt('Hours to add for '+bulbId+' ('+b.bulbType+'):','');
+  if(val===null)return;
+  const hrs=parseFloat(val);
+  if(isNaN(hrs)||hrs<=0){toast('Enter a positive number','error');return;}
+  b.hoursUsed=(b.hoursUsed||0)+hrs;
+  save();renderBulbRegistry();refreshPage();
+  toast('Logged '+hrs+'h for '+bulbId,'success');
+}
 function renderBulbRegistry(){
   const tbody=document.getElementById('regTbl');if(!tbody)return;
   const filter=document.getElementById('regFilter')?.value||'all';
   let list=[...db.bulbRegistry].sort((a,b)=>b.createdAt-a.createdAt);
   if(filter!=='all')list=list.filter(b=>b.status===filter);
-  if(!list.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--dim);padding:28px">No bulbs registered yet — generate labels to register them</td></tr>';return;}
+  if(!list.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--dim);padding:28px">No bulbs registered yet — generate labels to register them</td></tr>';return;}
   const statusStyle={
     unassigned:{icon:'🏷️',color:'var(--dim)',label:'Printed — not scanned in'},
     in_stock:{icon:'📦',color:'var(--blue)',label:'In Stock'},
@@ -5426,6 +5527,7 @@ function renderBulbRegistry(){
     const ss=statusStyle[b.status]||{icon:'❓',color:'var(--dim)',label:b.status};
     const curFix=b.installedIn?db.fixtures.find(f=>f.id===b.installedIn):null;
     const lastEvent=b.history.length?b.history[b.history.length-1]:null;
+    const ls=bulbLifeStatus(b);
     return`<tr>
       <td><span class="mono ca" style="font-size:12px">${b.bulbId}</span></td>
       <td style="font-size:12px">${b.bulbType}</td>
@@ -5434,6 +5536,7 @@ function renderBulbRegistry(){
       <td style="text-align:center"><strong>${b.history.filter(h=>h.event==='installed').length}</strong></td>
       <td class="dim">${fmtD(b.createdAt)}</td>
       <td class="dim">${lastEvent?lastEvent.event+' · '+ago(lastEvent.timestamp):'—'}</td>
+      <td style="font-size:11px">${ls.status==='untracked'?'<span class="dim">—</span>':`<span style="color:${ls.color};font-weight:700">${ls.label}</span>`}${b.status==='installed'?` <button class="btn bgh bsm" style="padding:2px 6px;font-size:10px" onclick="logBulbHours('${b.bulbId}')">⏱ Log</button>`:''}</td>
       <td><button class="btn bgh bsm" data-perm="admin" style="border-color:var(--red);color:var(--red)" onclick="deleteBulbRegistryEntry('${b.bulbId}')">🗑️</button></td>
     </tr>`;
   }).join('');
@@ -5490,6 +5593,9 @@ function schedKey(date){
 }
 
 let _schedServiceTab = 'service';
+let _schedViewMode = 'calendar';
+let _schedCalDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
 function schedSetServiceTab(tab, btn){
   _schedServiceTab = tab;
   document.querySelectorAll('#sched-service-tabs .tab').forEach(b=>b.classList.remove('active'));
@@ -5497,7 +5603,50 @@ function schedSetServiceTab(tab, btn){
   renderSchedule();
 }
 
+function schedSetViewMode(mode, btn){
+  _schedViewMode = mode;
+  document.querySelectorAll('#sched-view-toggle .tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderSchedule();
+}
+
+function schedCalShift(dir){
+  _schedCalDate = new Date(_schedCalDate.getFullYear(), _schedCalDate.getMonth()+dir, 1);
+  renderSchedule();
+}
+
+function schedCalToday(){
+  const n = new Date();
+  _schedCalDate = new Date(n.getFullYear(), n.getMonth(), 1);
+  renderSchedule();
+}
+
+function renderSchedQuickStats(){
+  const el = document.getElementById('sched-quickstats');
+  if(!el) return;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const upcoming = getSundaysOfYear(now.getFullYear()).concat(getSundaysOfYear(now.getFullYear()+1))
+    .filter(d=>d>=todayStart).slice(0,4);
+  const nextKey = upcoming.length ? schedKey(upcoming[0]) : null;
+  const nextEntry = nextKey ? db.schedules[nextKey] : null;
+  const nextCount = nextEntry ? (nextEntry.crew||[]).length : 0;
+  const unscheduled = upcoming.filter(d=>{
+    const e = db.schedules[schedKey(d)];
+    return !e || !(e.crew && e.crew.length);
+  }).length;
+  const pendingSwaps = (db.swapRequests||[]).filter(s=>s.status==='pending').length;
+  const upcomingRehearsals = (db.rehearsals||[]).filter(r=>r.date>=now.getTime()).length;
+
+  el.innerHTML =
+    '<div class="sc '+(nextCount?'cg':'cr')+'"><div class="sc-label">This Sunday</div><div class="sc-val">'+nextCount+'</div></div>'+
+    '<div class="sc '+(unscheduled?'cr':'cg')+'"><div class="sc-label">Unscheduled (4wk)</div><div class="sc-val">'+unscheduled+'</div></div>'+
+    '<div class="sc '+(pendingSwaps?'ca':'cg')+'"><div class="sc-label">Pending Swaps</div><div class="sc-val">'+pendingSwaps+'</div></div>'+
+    '<div class="sc cp"><div class="sc-label">Upcoming Rehearsals</div><div class="sc-val">'+upcomingRehearsals+'</div></div>';
+}
+
 function renderSchedule(){
+  renderSchedQuickStats();
   const yearSel = document.getElementById('schedYear');
   const now = new Date();
   const curYear = now.getFullYear();
@@ -5515,6 +5664,18 @@ function renderSchedule(){
   const canEdit = canEditSchedule();
   document.getElementById('schedNoPerms').style.display = canEdit ? 'none' : '';
   const grid = document.getElementById('schedGrid');
+
+  // Toggle nav visibility based on tab/view
+  const viewToggleWrap = document.getElementById('sched-view-toggle-wrap');
+  const calNav = document.getElementById('schedCalNav');
+  if(_schedServiceTab === 'rehearsals'){
+    if(viewToggleWrap) viewToggleWrap.style.display = 'none';
+    if(calNav) calNav.style.display = 'none';
+  } else {
+    if(viewToggleWrap) viewToggleWrap.style.display = '';
+    yearSel.style.display = _schedViewMode==='list' ? '' : 'none';
+    if(calNav) calNav.style.display = _schedViewMode==='calendar' ? '' : 'none';
+  }
 
   // ── Rehearsals tab ──────────────────────────────────────
   if(_schedServiceTab === 'rehearsals'){
@@ -5544,6 +5705,11 @@ function renderSchedule(){
   }
 
   // ── Single Sunday service ────────────────────────────────
+  if(_schedViewMode === 'calendar'){
+    renderScheduleCalendarGrid();
+    return;
+  }
+
   const serviceSlot = 'service';
   const sundays = getSundaysOfYear(year);
   const filtered = year === curYear
@@ -5618,6 +5784,75 @@ function renderSchedule(){
   ).join('');
 }
 
+function renderScheduleCalendarGrid(){
+  const grid = document.getElementById('schedGrid');
+  const now = new Date();
+  const todayKey = schedKey(now);
+  const calYear = _schedCalDate.getFullYear();
+  const calMonth = _schedCalDate.getMonth();
+  const monthLabel = document.getElementById('schedCalMonthLabel');
+  if(monthLabel) monthLabel.textContent = _schedCalDate.toLocaleDateString('en-CA',{month:'long',year:'numeric'});
+
+  const canEdit = canEditSchedule();
+  const first = new Date(calYear, calMonth, 1);
+  const startOffset = first.getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const totalCells = Math.ceil((startOffset+daysInMonth)/7)*7;
+
+  const rehByKey = {};
+  (db.rehearsals||[]).forEach(r=>{
+    const k = schedKey(new Date(r.date));
+    (rehByKey[k]=rehByKey[k]||[]).push(r);
+  });
+
+  const dowLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">'
+    + dowLabels.map(d=>'<div style="text-align:center;font-size:9px;font-family:var(--mono);color:var(--dim);letter-spacing:1px;padding-bottom:2px">'+d+'</div>').join('')
+    + '</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">';
+
+  for(let i=0;i<totalCells;i++){
+    const dayNum = i - startOffset + 1;
+    const inMonth = dayNum>=1 && dayNum<=daysInMonth;
+    if(!inMonth){
+      html += '<div style="min-height:88px;border-radius:8px;background:var(--s1);opacity:.3"></div>';
+      continue;
+    }
+    const d = new Date(calYear, calMonth, dayNum);
+    const key = schedKey(d);
+    const isSun = d.getDay()===0;
+    const isToday = key===todayKey;
+    const isPast = d < new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    const reh = rehByKey[key]||[];
+
+    if(isSun){
+      const entry = db.schedules[key]||null;
+      const assignedTechs = entry ? (entry.crew||[]).map(id=>db.technicians.find(t=>t.id===id)).filter(Boolean) : [];
+      const swapCount = (db.swapRequests||[]).filter(s=>s.dateKey===key&&s.status==='pending').length;
+      const clickable = canEdit && !isPast;
+      html += '<div '+(clickable?'onclick="openScheduleEdit(\''+key+'\',this)"':'')+' style="min-height:88px;border-radius:8px;padding:7px;background:'+(isToday?'var(--aglow)':isPast?'var(--s1)':'var(--s2)')+';border:1px solid '+(isToday?'rgba(240,165,0,.5)':'var(--border2)')+';'+(clickable?'cursor:pointer':'')+';display:flex;flex-direction:column;gap:3px">'
+        + '<div class="row jbet">'
+        + '<span style="font-weight:900;font-size:12px">'+dayNum+'</span>'
+        + (assignedTechs.length ? '<span class="badge bok" style="font-size:8px;padding:2px 6px">'+assignedTechs.length+' crew</span>' : (isPast ? '' : '<span class="badge" style="font-size:8px;padding:2px 6px;background:#FDEAEA;color:#A32D2D;border:1px solid #F3B9B9">open</span>'))
+        + '</div>'
+        + (assignedTechs.length
+            ? '<div style="display:flex;flex-wrap:wrap;gap:2px">'+assignedTechs.slice(0,5).map(t=>'<span title="'+t.name+'" style="font-size:13px">'+(t.avatar||'👤')+'</span>').join('')+(assignedTechs.length>5?'<span style="font-size:9px;color:var(--dim)">+'+(assignedTechs.length-5)+'</span>':'')+'</div>'
+            : (isPast ? '' : '<div class="dim" style="font-size:9px">Tap to assign</div>'))
+        + (swapCount ? '<span style="font-size:8px;color:#854F0B">↔️ '+swapCount+' swap'+(swapCount>1?'s':'')+'</span>' : '')
+        + (reh.length ? '<span style="font-size:8px;color:var(--purple)">🎸 '+reh.length+'</span>' : '')
+        + '</div>';
+    } else {
+      const singleReh = reh.length===1 ? reh[0] : null;
+      const clickable = canEdit && singleReh;
+      html += '<div '+(clickable?'onclick="openEditRehearsalModal(\''+singleReh.id+'\')"':'')+' style="min-height:88px;border-radius:8px;padding:7px;background:var(--s1);border:1px solid var(--border);opacity:'+(isPast?'.55':'1')+';'+(clickable?'cursor:pointer':'')+';display:flex;flex-direction:column;gap:3px">'
+        + '<span style="font-size:11px;color:var(--dim2)">'+dayNum+'</span>'
+        + (reh.length ? '<div style="display:flex;flex-direction:column;gap:2px">'+reh.slice(0,2).map(r=>'<span style="font-size:9px;background:var(--pglow);color:var(--purple);border-radius:4px;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.title||'Rehearsal')+'">🎸 '+(r.title||'Rehearsal')+'</span>').join('')+(reh.length>2?'<span style="font-size:8px;color:var(--dim)">+'+(reh.length-2)+' more</span>':'')+'</div>' : '')
+        + '</div>';
+    }
+  }
+  html += '</div>';
+  grid.innerHTML = html;
+}
+
 let _schedEditKey = null;
 
 function openScheduleEdit(key, el){
@@ -5628,6 +5863,7 @@ function openScheduleEdit(key, el){
   document.getElementById('schedModalDate').textContent = date.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
   const entry = db.schedules[key] || {crew:[],roles:{},notes:'',briefing:''};
+  db.schedules[key] = entry;
   document.getElementById('schedNotes').value = entry.notes||'';
   document.getElementById('schedBriefing').value = entry.briefing||'';
   document.getElementById('schedRundown').value = entry.rundown||'';
@@ -5638,72 +5874,80 @@ function openScheduleEdit(key, el){
     tplSel.innerHTML = '<option value="">— Load a template —</option>' + tpls.map((t,i)=>`<option value="${i}">${t.name}</option>`).join('');
   }
 
-  // Build crew assignment grid
-  const grid = document.getElementById('schedCrewGrid');
-  grid.innerHTML = db.technicians.map(t=>{
-    const assigned = (entry.crew||[]).includes(t.id);
-    const role = entry.roles&&entry.roles[t.id] ? entry.roles[t.id] : '';
-    const avail=(db.availability[t.id]||{})[_schedEditKey];
-    const availWarn=avail==='no'?'<span style="color:var(--red);font-size:11px;font-family:var(--mono)">❌ Marked unavailable</span>':'';
-    return `<div id="schedcrew-${t.id}" style="background:${assigned?'var(--aglow)':'var(--s2)'};border:1px solid ${assigned?'rgba(240,165,0,.4)':'var(--border)'};border-radius:8px;padding:12px;transition:all .18s">
-      <div class="row gap8 mb8" style="cursor:pointer" onclick="toggleSchedCrew('${t.id}')">
-        <span style="font-size:22px">${t.avatar||'👤'}</span>
-        <div>
-          <div style="font-weight:700;font-size:13px">${t.name}</div>
-          <div class="dim">${t.role||'Technician'}</div>
-          ${availWarn}
-        </div>
-        <div style="margin-left:auto">
-          <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${assigned?'var(--amber)':'var(--border2)'};background:${assigned?'var(--amber)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:12px">${assigned?'✓':''}</div>
-        </div>
-      </div>
-      <div id="schedrole-wrap-${t.id}" style="display:${assigned?'':'none'}">
-        <select id="schedrole-${t.id}" style="font-size:11px;padding:5px 8px">
-          <option value="">— Select Station —</option>
-          ${getScheduleRoles().map(r=>`<option value="${r.name}" ${role===r.name?"selected":""}>${r.icon} ${r.name}</option>`).join("")}
-        </select>
-      </div>
-    </div>`;
-  }).join('');
-
+  renderSchedStationAssignments();
   openM('editSchedule');
 }
 
-function toggleSchedCrew(techId){
-  const wrap = document.getElementById('schedcrew-'+techId);
-  const roleWrap = document.getElementById('schedrole-wrap-'+techId);
-  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{},notes:''};
-  const idx = (entry.crew||[]).indexOf(techId);
-  const isNowAssigned = idx === -1;
+// Station-first crew assignment: pick who fills each station (Camera, Streaming,
+// Presentation/ProPresenter, Sound/Audio, Lighting, ...) instead of scanning every crew member.
+function renderSchedStationAssignments(){
+  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{}};
+  const assignedIds = entry.crew || [];
+  const roles = entry.roles || {};
+  const stations = getScheduleRoles();
+  const chip = (t) => `<div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border2);border-radius:20px;padding:3px 6px 3px 8px;font-size:12px">
+      <span>${t.avatar||'👤'}</span><span>${t.name.split(' ')[0]}</span>
+      <button type="button" onclick="schedRemoveAssignment('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--dim2);font-size:13px;padding:0 2px;line-height:1" title="Remove">✕</button>
+    </div>`;
 
-  if(isNowAssigned){
-    if(!entry.crew) entry.crew = [];
-    entry.crew.push(techId);
-  } else {
-    entry.crew.splice(idx,1);
-    if(entry.roles) delete entry.roles[techId];
+  let html = stations.map(st=>{
+    const members = assignedIds.filter(id => roles[id] === st.name).map(id=>db.technicians.find(t=>t.id===id)).filter(Boolean);
+    const options = db.technicians.filter(t=>!assignedIds.includes(t.id) && isTechActive(t));
+    return `<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+      <div class="row gap8 mb6"><span style="font-size:16px">${st.icon}</span><span class="fw7" style="font-size:12px;letter-spacing:.5px;text-transform:uppercase">${st.name}</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;${members.length?'margin-bottom:8px':''}">${members.map(chip).join('')}</div>
+      ${options.length
+        ? `<select onchange="schedAssignToStation(this,'${st.name.replace(/'/g,"\\'")}')" style="font-size:11px;padding:5px 8px;width:100%">
+            <option value="">+ Add to ${st.name}…</option>
+            ${options.map(t=>{
+              const avail = (db.availability[t.id]||{})[_schedEditKey];
+              return `<option value="${t.id}">${t.avatar||'👤'} ${t.name}${avail==='no'?' — ❌ unavailable':''}</option>`;
+            }).join('')}
+          </select>`
+        : '<div class="dim" style="font-size:11px">All crew already assigned</div>'}
+    </div>`;
+  }).join('');
+
+  // Anything assigned with a role that no longer matches a current station (legacy data)
+  const knownNames = stations.map(s=>s.name);
+  const otherTechs = assignedIds.filter(id => !knownNames.includes(roles[id])).map(id=>db.technicians.find(t=>t.id===id)).filter(Boolean);
+  if(otherTechs.length){
+    html += `<div style="background:var(--s2);border:1px dashed var(--border2);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+      <div class="fw7" style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;color:var(--dim2)">Other / Unassigned Station</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${otherTechs.map(chip).join('')}</div>
+    </div>`;
   }
-  db.schedules[_schedEditKey] = entry;
 
-  // Update UI
-  wrap.style.background = isNowAssigned ? 'var(--aglow)' : 'var(--s2)';
-  wrap.style.border = isNowAssigned ? '1px solid rgba(240,165,0,.4)' : '1px solid var(--border)';
-  roleWrap.style.display = isNowAssigned ? '' : 'none';
-  const dot = wrap.querySelector('div[style*="border-radius:50%"]');
-  if(dot){ dot.style.border = isNowAssigned?'2px solid var(--amber)':'2px solid var(--border2)'; dot.style.background = isNowAssigned?'var(--amber)':'transparent'; dot.textContent = isNowAssigned?'✓':''; }
+  document.getElementById('schedCrewGrid').innerHTML = html;
+}
+
+function schedAssignToStation(selectEl, stationName){
+  const techId = selectEl.value;
+  if(!techId) return;
+  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{}};
+  if(!entry.crew) entry.crew = [];
+  if(!entry.roles) entry.roles = {};
+  if(!entry.crew.includes(techId)) entry.crew.push(techId);
+  entry.roles[techId] = stationName;
+  db.schedules[_schedEditKey] = entry;
+  renderSchedStationAssignments();
+}
+
+function schedRemoveAssignment(techId){
+  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{}};
+  const idx = (entry.crew||[]).indexOf(techId);
+  if(idx>-1) entry.crew.splice(idx,1);
+  if(entry.roles) delete entry.roles[techId];
+  db.schedules[_schedEditKey] = entry;
+  renderSchedStationAssignments();
 }
 
 function saveScheduleEntry(){
   if(!canEditSchedule()){ toast('No permission','error'); return; }
-  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{},notes:''};
+  const entry = db.schedules[_schedEditKey] || {crew:[],roles:{}};
   entry.notes = document.getElementById('schedNotes').value.trim();
   entry.briefing = document.getElementById('schedBriefing').value.trim();
   entry.rundown = document.getElementById('schedRundown').value.trim();
-  if(!entry.roles) entry.roles = {};
-  (entry.crew||[]).forEach(id=>{
-    const roleEl = document.getElementById('schedrole-'+id);
-    if(roleEl) entry.roles[id] = roleEl.value.trim();
-  });
   db.schedules[_schedEditKey] = entry;
   logAudit('Schedule Saved', 'Key: '+_schedEditKey);
   save();
@@ -5863,10 +6107,10 @@ function openAddRehearsalModal(id){
   document.getElementById('rh-rundown').value = r ? r.rundown||'' : '';
   const crewWrap = document.getElementById('rh-crew');
   const assigned = r ? (r.crew||[]) : [];
-  crewWrap.innerHTML = (db.technicians||[]).map(t=>`
+  crewWrap.innerHTML = (db.technicians||[]).filter(t=>isTechActive(t)||assigned.includes(t.id)).map(t=>`
     <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;cursor:pointer;font-size:13px">
       <input type="checkbox" value="${t.id}" ${assigned.includes(t.id)?'checked':''} style="accent-color:#0F6E56">
-      <span>${t.avatar||'👤'} ${t.name}</span>
+      <span>${t.avatar||'👤'} ${t.name}${!isTechActive(t)?' 🚫':''}</span>
       ${t.dept?deptBadge(t.dept):''}
     </label>`).join('');
   document.getElementById('rh-modal-title').textContent = r ? '✏️ Edit Rehearsal' : '🎸 Add Rehearsal';
@@ -6149,6 +6393,16 @@ function deleteShow(id){
 // ══════════════════════════════════════════════════
 const CHANGELOG = [
   {
+    version: 'v3.2 — Photos, External Requests, Vendors & Bulb Forecasting',
+    date: 'Aug 2026',
+    items: [
+      '📷 Photo Attachments — attach a photo when reporting an outage or logging gear maintenance, viewable in the outage history and service log',
+      '🌐 External Tech Request Form — a no-login public form (share the link from the Tech Requests page) so other ministries can request AV/lighting/camera help directly into your queue, with multi-select categories and drag-and-drop photo/media attachments',
+      '🚚 Vendors & Parts Suppliers — track where to order bulbs, cables, and gear from in Settings, then link a vendor to any fixture or gear item to see who to call for a replacement',
+      '💡 Bulb Life Forecasting — set an expected life (hours) per bulb type in Inventory, log hours on installed bulbs from the Bulb Registry, and get a dashboard alert when bulbs are approaching end of life',
+    ]
+  },
+  {
     version: 'v3.1 — Attendance Removed',
     date: 'Aug 2026',
     items: [
@@ -6272,7 +6526,7 @@ const CHANGELOG = [
   },
 ];
 
-const CHANGELOG_SEEN_KEY = 'kcc_changelog_seen_v31';
+const CHANGELOG_SEEN_KEY = 'kcc_changelog_seen_v32';
 
 function openChangelog(){
   const listEl = document.getElementById('changelog-list');
@@ -7940,14 +8194,47 @@ window._reqTab = 'open';
 
 // ── TECH REQUESTS ─────────────────────────────────────────
 // ── External Tech-Support Intake (no login) ──
+let _erMediaList=[];
 function showExternalRequestScreen(){
   const ls=document.getElementById('loginScreen');if(ls)ls.style.display='none';
   const hs=document.getElementById('homeScreen');if(hs)hs.style.display='none';
   const er=document.getElementById('extRequestScreen');if(er)er.style.display='block';
 }
+function _erRenderMediaPreview(){
+  const p=document.getElementById('er-media-preview');if(!p)return;
+  p.innerHTML=_erMediaList.map((src,i)=>'<div class="er-media-thumb"><img src="'+src+'"><button type="button" class="rm" onclick="_erMediaRemove('+i+')">✕</button></div>').join('');
+}
+function _erMediaAdd(fileList){
+  const files=Array.from(fileList||[]).slice(0,6-_erMediaList.length);
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=function(e){
+      const img=new Image();
+      img.onload=function(){
+        let w=img.width,h=img.height;const maxDim=900;
+        if(w>h&&w>maxDim){h=Math.round(h*(maxDim/w));w=maxDim;}
+        else if(h>maxDim){w=Math.round(w*(maxDim/h));h=maxDim;}
+        const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        _erMediaList.push(canvas.toDataURL('image/jpeg',0.6));
+        _erRenderMediaPreview();
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('er-media-input').value='';
+}
+function _erMediaDrop(e){
+  e.preventDefault();
+  e.currentTarget.style.borderColor='var(--border2)';
+  if(e.dataTransfer&&e.dataTransfer.files)_erMediaAdd(e.dataTransfer.files);
+}
+function _erMediaRemove(i){_erMediaList.splice(i,1);_erRenderMediaPreview();}
 function resetExternalRequestForm(){
   ['er-name','er-dept','er-contact','er-eventdate','er-details'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const cat=document.getElementById('er-cat');if(cat)cat.value='AV';
+  document.querySelectorAll('#er-cat-group input[type=checkbox]').forEach(cb=>cb.checked=false);
+  _erMediaList=[];_erRenderMediaPreview();
   document.getElementById('extReq-status').textContent='';
   document.getElementById('extReq-form').style.display='';
   document.getElementById('extReq-success').style.display='none';
@@ -7956,13 +8243,14 @@ function submitExternalRequest(){
   const name=(document.getElementById('er-name').value||'').trim();
   const dept=(document.getElementById('er-dept').value||'').trim();
   const details=(document.getElementById('er-details').value||'').trim();
+  const cats=Array.from(document.querySelectorAll('#er-cat-group input[type=checkbox]:checked')).map(cb=>cb.value);
   const statusEl=document.getElementById('extReq-status');
   if(!name||!dept){statusEl.textContent='Name and ministry/department are required.';statusEl.style.color='var(--red)';return;}
   if(!details){statusEl.textContent='Please describe what you need.';statusEl.style.color='var(--red)';return;}
   const req={
     id:'req_'+Date.now(),
-    title:dept+' — '+(document.getElementById('er-cat').value||'Other'),
-    category:document.getElementById('er-cat').value||'Other',
+    title:dept+' — '+(cats.length?cats.join(', '):'Other'),
+    category:cats.length?cats.join(', '):'Other',
     priority:'normal',
     neededBy:document.getElementById('er-eventdate').value?new Date(document.getElementById('er-eventdate').value+'T12:00:00').getTime():null,
     requestedBy:'',
@@ -7974,7 +8262,8 @@ function submitExternalRequest(){
     source:'external',
     requesterName:name,
     requesterDept:dept,
-    requesterContact:(document.getElementById('er-contact').value||'').trim()
+    requesterContact:(document.getElementById('er-contact').value||'').trim(),
+    photos:_erMediaList.slice()
   };
   if(!db.techRequests)db.techRequests=[];
   db.techRequests.unshift(req);
@@ -8021,7 +8310,8 @@ function openEditRequest(id){
   document.getElementById('er-summary').innerHTML=
     '<div class="fw7 mb8">'+r.title+'</div>'+
     '<div class="dim">'+r.category+' · '+requesterLine+'</div>'+
-    (r.details?'<div class="dim" style="margin-top:4px">'+r.details+'</div>':'');
+    (r.details?'<div class="dim" style="margin-top:4px">'+r.details+'</div>':'')+
+    (r.photos&&r.photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+r.photos.map(p=>'<img src="'+p+'" onclick="viewPhotoLightbox(\''+p+'\')" style="width:56px;height:56px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)">').join('')+'</div>':'');
   document.getElementById('er-status').value=r.status||'open';
   document.getElementById('er-notes').value=r.adminNotes||'';
   _populatePersonSelect('er-assigned');
@@ -8099,6 +8389,7 @@ function _updateReqBadge(){
       '<div class="dim">'+r.category+(requesterLabel?' · '+requesterLabel:'')+(r.neededBy?' · Needed by '+fmtDate(r.neededBy):'')+'</div>'+
       (r.requesterContact?'<div class="dim" style="font-size:11px">Contact: '+r.requesterContact+'</div>':'')+
       (r.details?'<div style="font-size:12px;color:var(--dim2);margin-top:4px;font-family:var(--mono)">'+r.details+'</div>':'')+
+      (r.photos&&r.photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+r.photos.map(p=>'<img src="'+p+'" onclick="viewPhotoLightbox(\''+p+'\')" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)">').join('')+'</div>':'')+
       (assigned?'<div class="dim" style="margin-top:4px">Assigned: <strong>'+assigned.name+'</strong></div>':'')+
       (r.adminNotes?'<div class="dim" style="margin-top:4px;font-style:italic">Note: '+r.adminNotes+'</div>':'')+
       '<div style="margin-top:10px">'+
