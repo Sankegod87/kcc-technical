@@ -216,7 +216,7 @@ function renderCheckout(){
       return'<div class="co-card">'+
         '<div class="co-icon">'+gearIcon(g)+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+dept+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+
+          '<div class="row gap6 mb8"><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')" style="font-size:14px">'+g.name+'</div>'+dept+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+
             (g.qty>1?'<span class="badge" style="background:var(--bglow);color:var(--blue);font-size:9px">QTY: '+g.qty+'</span>':'')+
             (g.damaged?'<span class="badge" style="background:#fef2f2;color:var(--red);font-size:9px">⚠️ DAMAGED</span>':'')+
             (g.lowStockAt&&g.qty<=g.lowStockAt?'<span class="badge" style="background:#fff3cd;color:#854F0B;font-size:9px">📦 LOW STOCK</span>':'')+
@@ -257,7 +257,7 @@ function renderCheckout(){
       return'<div class="co-card" style="'+(over?'border-left:3px solid var(--red);':'')+'">' +
         '<div class="co-icon">'+gearIcon(g)+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+badge+
+          '<div class="row gap6 mb8"><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')" style="font-size:14px">'+g.name+'</div>'+badge+
             (over?`<span style="font-size:10px;font-family:var(--mono);color:var(--red)">${daysOver}d overdue</span>`:'')+
           '</div>'+
           '<div class="dim">With: <strong>'+p.name+'</strong>'+(p.dept?' · '+p.dept:'')+'</div>'+
@@ -284,7 +284,7 @@ function renderCheckout(){
       return'<div class="co-card">'+
         '<div class="co-icon">'+gearIcon(g)+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="row gap6 mb8"><div class="fw7" style="font-size:14px">'+g.name+'</div><span class="co-badge-in">RETURNED</span></div>'+
+          '<div class="row gap6 mb8"><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')" style="font-size:14px">'+g.name+'</div><span class="co-badge-in">RETURNED</span></div>'+
           '<div class="dim">Borrowed by <strong>'+p.name+'</strong> · Returned '+fmtDate(co.returnedAt)+'</div>'+
           (co.returnCondition?'<div style="font-size:11px;font-family:var(--mono);color:'+condColor+';margin-top:3px">Condition: '+co.returnCondition+'</div>':'')+
           (co.returnNotes?'<div class="dim" style="margin-top:2px">'+co.returnNotes+'</div>':'')+
@@ -527,7 +527,7 @@ function renderMaintenance(){
         const g=(db.gearItems||[]).find(x=>x.id===entry.gearId)||{name:'Unknown item',category:'Other'};
         return'<div class="maint-log-entry" style="padding:12px 16px">'+
           '<div class="row jbet mb8">'+
-            '<div class="row gap8"><span style="font-size:18px">'+gearIcon(g)+'</span><div><div class="fw7">'+g.name+'</div><div class="dim">'+entry.type+'</div></div></div>'+
+            '<div class="row gap8"><span style="font-size:18px">'+gearIcon(g)+'</span><div><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')">'+g.name+'</div><div class="dim">'+entry.type+'</div></div></div>'+
             '<div style="text-align:right"><div style="font-size:12px;font-family:var(--mono)">'+fmtDate(entry.date)+'</div>'+(entry.cost?'<div style="font-size:11px;font-family:var(--mono);color:var(--amber)">$'+entry.cost.toFixed(2)+'</div>':'')+'</div>'+
           '</div>'+
           (entry.by?'<div class="dim">By: '+entry.by+'</div>':'')+
@@ -562,7 +562,7 @@ function renderMaintenance(){
         '<div class="row gap8">'+
           '<span style="font-size:22px">'+gearIcon(g)+'</span>'+
           '<div>'+
-            '<div class="row gap6"><div class="fw7" style="font-size:14px">'+g.name+'</div>'+(g.dept?deptBadge(g.dept):'')+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+'</div>'+
+            '<div class="row gap6"><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')" style="font-size:14px">'+g.name+'</div>'+(g.dept?deptBadge(g.dept):'')+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+'</div>'+
             '<div style="font-size:12px;font-family:var(--mono);color:'+ms.color+';margin-top:2px">'+ms.label+'</div>'+
           '</div>'+
         '</div>'+
@@ -1476,4 +1476,52 @@ function saveFirstRun(){
   showHomeScreen();
   toast('Welcome '+name+'! You are now the Master Admin.','success');
   buildLsGrid();
+}
+
+
+// ── ITEM DETAIL: checkout + maintenance + history for one piece of gear ──
+const gdEsc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function openGearDetail(id){
+  const g=(db.gearItems||[]).find(x=>x.id===id); if(!g) return;
+  window._gdId=id; renderGearDetail(); openM('gearDetail');
+}
+function renderGearDetail(){
+  const g=(db.gearItems||[]).find(x=>x.id===window._gdId); if(!g){closeM('gearDetail');return;}
+  const co=activeCheckout(g.id), ms=maintStatus(g);
+  const who=co?(db.technicians||[]).find(x=>x.id===co.personId):null;
+  const logs=(db.maintLogs||[]).filter(l=>l.gearId===g.id).map(l=>({t:l.date,k:'service',l}));
+  const outs=(db.checkouts||[]).filter(c=>c.gearId===g.id).map(c=>({t:c.checkedOutAt,k:'out',c}));
+  const hist=logs.concat(outs).sort((a,b)=>b.t-a.t).slice(0,30);
+  const row=h=>{
+    if(h.k==='service') return '<div class="gd-row"><span class="gd-d">'+fmtDateShort(h.t)+'</span><span><b>Service</b> · '+gdEsc(h.l.type||'Check')+(h.l.by?' · '+gdEsc(h.l.by):'')+(h.l.notes?'<br><span class="dim">'+gdEsc(h.l.notes)+'</span>':'')+'</span></div>';
+    const p=(db.technicians||[]).find(x=>x.id===h.c.personId);
+    return '<div class="gd-row"><span class="gd-d">'+fmtDateShort(h.t)+'</span><span><b>'+(h.c.returnedAt?'Out and returned':'Checked out')+'</b> · '+gdEsc(p?p.name:'—')+(h.c.returnedAt?' · back '+fmtDateShort(h.c.returnedAt)+(h.c.returnCondition?' ('+gdEsc(h.c.returnCondition)+')':''):'')+(h.c.purpose?'<br><span class="dim">'+gdEsc(h.c.purpose)+'</span>':'')+'</span></div>';
+  };
+  document.getElementById('gd-title').innerHTML=gdEsc(g.name)+(g.assetId?' <span class="badge blow" style="font-size:10px">'+gdEsc(g.assetId)+'</span>':'');
+  document.getElementById('gd-body').innerHTML=
+    '<div class="gd-sec"><div class="gd-k">Checkout</div>'+
+      (co?'<div><b>'+(isOverdue(co)?'Overdue — ':'Out — ')+'</b>with '+gdEsc(who?who.name:'unknown')+(co.dueDate?', due '+fmtDate(co.dueDate):'')+'</div>':'<div>Available</div>')+
+    '</div>'+
+    '<div class="gd-sec"><div class="gd-k">Maintenance</div><div style="color:'+ms.color+';font-weight:600">'+ms.label+'</div>'+
+      '<div class="dim">Every '+(g.serviceInterval||90)+' days'+(g.hoursUsed?' · '+g.hoursUsed+'h used'+(g.expectedLifeHours?' of '+g.expectedLifeHours+'h':''):'')+'</div></div>'+
+    '<div class="gd-acts">'+
+      (co?`<button class="btn bb" onclick="closeM('gearDetail');openReturnModal('${co.id}')">Return</button>`
+         :`<button class="btn bg" onclick="gdCheckout()">Check out</button>`)+
+      `<button class="btn bgh" data-perm="admin" onclick="gdLogService()">Log service</button>`+
+      `<button class="btn bgh" onclick="closeM('gearDetail');openLogGearHours('${g.id}')">Log hours</button>`+
+      `<button class="btn br" onclick="closeM('gearDetail');openIncidentReport('${g.id}')">Report problem</button>`+
+    '</div>'+
+    '<div class="gd-k" style="margin-top:14px">History</div>'+
+    (hist.length?hist.map(row).join(''):'<p class="dim">Nothing logged yet.</p>');
+  if(typeof applyPermissions==='function') applyPermissions();
+}
+function gdCheckout(){
+  const id=window._gdId; closeM('gearDetail');
+  _populateGearSelect('co-item',true); document.getElementById('co-item').value=id;
+  _populatePersonSelect('co-person');
+  const t=new Date();t.setDate(t.getDate()+7);document.getElementById('co-due').value=t.toISOString().slice(0,10);
+  openM('checkoutGear');
+}
+function gdLogService(){
+  const id=window._gdId; closeM('gearDetail'); openM_addMaintEntry(); document.getElementById('me-item').value=id;
 }

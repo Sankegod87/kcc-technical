@@ -852,3 +852,12 @@ body.dark-mode #ctrlHero{display:block;margin-bottom:18px;}
 
 /* Icon set */
 svg.ic{width:1.1em;height:1.1em;vertical-align:-.18em;flex-shrink:0;display:inline-block;}
+
+/* Gear item detail */
+.gd-link{cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .15s}
+.gd-link:hover{text-decoration-color:currentColor}
+.gd-sec{padding:10px 0;border-bottom:1px solid var(--border)}
+.gd-k{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);margin-bottom:4px;font-family:var(--mono)}
+.gd-acts{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0 2px}
+.gd-row{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border);font-size:13px}
+.gd-d{width:56px;flex-shrink:0;font-family:var(--mono);font-size:11px;color:var(--dim2)}
