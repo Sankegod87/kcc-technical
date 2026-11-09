@@ -1,13 +1,14 @@
 /* KCC Technical — Full Rebrand */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{color-scheme:dark;}
 
 :root {
-  --bg:#f4f5f7;
-  --s1:#ffffff;
-  --s2:#f0f2f5;
-  --s3:#e8eaed;
-  --border:#e1e4e8;
-  --border2:#c8cdd5;
+  --bg:#0d1117;
+  --s1:#161b22;
+  --s2:#1c2128;
+  --s3:#252c36;
+  --border:#30363d;
+  --border2:#444c56;
   --amber:#0F6E56;
   --amber2:#085041;
   --aglow:rgba(15,110,86,.08);
@@ -19,9 +20,9 @@
   --bglow:rgba(15,110,86,.08);
   --purple:#534AB7;
   --pglow:rgba(83,74,183,.08);
-  --text:#111827;
-  --dim:#9ca3af;
-  --dim2:#6b7280;
+  --text:#e6edf3;
+  --dim:#8b949e;
+  --dim2:#6e7681;
   --mono:'IBM Plex Mono',monospace;
   --head:'Barlow Condensed',sans-serif;
   --radius:10px;
