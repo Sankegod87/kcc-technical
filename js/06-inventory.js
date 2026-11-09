@@ -28,16 +28,16 @@ function renderInv(){
         const safeType=i.bulbType.replace(/'/g,"\\'");
         return`<div class="stock-card ${low?'low':'ok'}">
           <div class="stock-card-head">
-            <div class="stock-card-type">${i.bulbType}</div>
+            <div class="stock-card-type">${esc(i.bulbType)}</div>
             <div>${low
               ?'<span class="badge blow"><span class="bd pulse"></span>LOW</span>'
               :'<span class="badge bok"><span class="bd"></span>OK</span>'}</div>
           </div>
           <div class="stock-card-body">
             <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px">
-              <span style="font-size:38px;font-weight:900;font-family:var(--head);color:${low?'var(--red)':'var(--green)'};line-height:1">${i.inStock}</span>
+              <span style="font-size:38px;font-weight:900;font-family:var(--head);color:${low?'var(--red)':'var(--green)'};line-height:1">${esc(i.inStock)}</span>
               <span class="dim">in stock</span>
-              <span class="dim" style="margin-left:auto">min: ${i.threshold}</span>
+              <span class="dim" style="margin-left:auto">min: ${esc(i.threshold)}</span>
             </div>
             <div class="stock-bar-wrap">
               <div class="stock-bar-fill" style="width:${pct}%;background:${barColor}"></div>
@@ -70,8 +70,8 @@ function renderInv(){
   document.getElementById('ordersTbl').innerHTML=!db.orders.length
     ?'<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:28px">No orders yet</td></tr>'
     :[...db.orders].sort((a,b)=>b.date-a.date).map(o=>`<tr>
-        <td class="dim">${fmtD(o.date)}</td><td>${o.bulbType}</td><td><strong>${o.qty}</strong></td>
-        <td>${o.supplier||'\u2014'}</td><td>${o.tech||'\u2014'}</td><td class="dim">${o.notes||'\u2014'}</td>
+        <td class="dim">${fmtD(o.date)}</td><td>${esc(o.bulbType)}</td><td><strong>${esc(o.qty)}</strong></td>
+        <td>${esc(o.supplier||'\u2014')}</td><td>${esc(o.tech||'\u2014')}</td><td class="dim">${esc(o.notes||'\u2014')}</td>
       </tr>`).join('');
 
   // Usage table
@@ -82,9 +82,9 @@ function renderInv(){
       const mismatchTag=u.mismatch?'<span style="color:var(--amber);font-size:10px;display:block">\u26A0\uFE0F type mismatch</span>':'';
       const condCol=u.bulbCondition==='blown'?'var(--red)':'var(--green)';
       return`<tr>
-        <td class="dim">${fmtD(u.date)}</td><td>${u.bulbType}</td><td><strong>${u.qty}</strong></td>
-        <td class="mono">${u.fixture}</td><td>${u.tech||'\u2014'}</td>
-        <td class="mono" style="font-size:11px">${u.bulbId||'\u2014'}</td>
+        <td class="dim">${fmtD(u.date)}</td><td>${esc(u.bulbType)}</td><td><strong>${esc(u.qty)}</strong></td>
+        <td class="mono">${esc(u.fixture)}</td><td>${esc(u.tech||'\u2014')}</td>
+        <td class="mono" style="font-size:11px">${esc(u.bulbId||'\u2014')}</td>
         <td style="color:${condCol};font-size:12px;font-weight:600">${u.bulbCondition?condIcon:'\u2014'}${mismatchTag}</td>
       </tr>`;}).join('');
   applyPermissions();
@@ -107,8 +107,8 @@ function openAddUsedBulbModal(){
   // Populate datalists
   const typeList=document.getElementById('aub-type-list');
   const fixList=document.getElementById('aub-fix-list');
-  if(typeList) typeList.innerHTML=db.inventory.map(i=>`<option value="${i.bulbType}">`).join('');
-  if(fixList)  fixList.innerHTML=db.fixtures.map(f=>`<option value="${f.id}">`).join('');
+  if(typeList) typeList.innerHTML=db.inventory.map(i=>`<option value="${esc(i.bulbType)}">`).join('');
+  if(fixList)  fixList.innerHTML=db.fixtures.map(f=>`<option value="${esc(f.id)}">`).join('');
   openM('addUsedBulb');
 }
 function addUsedBulb(){
@@ -135,18 +135,18 @@ function renderUsedBulbs(){
   const condLabel={new:'✅ New',blown:'💀 Blown'};
   const statusColor={available:'var(--amber)',reinstalled:'var(--blue)',disposed:'var(--dim)'};
   tbody.innerHTML=list.map(b=>`<tr>
-    <td class="mono" style="font-size:11px">${b.bulbId||'<span class="dim">unlabelled</span>'}</td>
-    <td>${b.bulbType}</td>
-    <td class="dim">${b.fixtureName?b.fixtureName+' ('+b.pulledFrom+')':b.pulledFrom||'—'}</td>
+    <td class="mono" style="font-size:11px">${esc(b.bulbId||'<span class="dim">unlabelled</span>')}</td>
+    <td>${esc(b.bulbType)}</td>
+    <td class="dim">${b.fixtureName?b.fixtureName+' ('+esc(b.pulledFrom)+')':b.pulledFrom||'—'}</td>
     <td class="dim">${b.datePulled?fmtD(b.datePulled):'—'}</td>
     <td>${condLabel[b.condition]||b.condition}</td>
     <td><span style="font-weight:700;color:${statusColor[b.status]||'var(--text)'}">${b.status==='available'?'♻️ Available':b.status==='reinstalled'?'🔄 Reinstalled':'🗑️ Disposed'}</span>
-      ${b.reinstalledIn?`<div class="dim" style="font-size:10px">→ ${b.reinstalledIn} by ${b.reinstalledBy||'?'}</div>`:''}
+      ${b.reinstalledIn?`<div class="dim" style="font-size:10px">→ ${esc(b.reinstalledIn)} by ${esc(b.reinstalledBy||'?')}</div>`:''}
     </td>
-    <td class="dim" style="font-size:11px;max-width:150px">${b.notes||'—'}</td>
+    <td class="dim" style="font-size:11px;max-width:150px">${esc(b.notes||'—')}</td>
     <td><div class="row gap6">
-      ${b.status==='available'?`<button class="btn bgh bsm" onclick="setUsedBulbStatus('${b.id}','disposed')">🗑️</button>`:''}
-      <button class="btn bgh bsm" onclick="editUsedBulbCond('${b.id}')">✏️</button>
+      ${b.status==='available'?`<button class="btn bgh bsm" onclick="setUsedBulbStatus('${esc(b.id)}','disposed')">🗑️</button>`:''}
+      <button class="btn bgh bsm" onclick="editUsedBulbCond('${esc(b.id)}')">✏️</button>
     </div></td>
   </tr>`).join('');
 }

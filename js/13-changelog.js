@@ -152,8 +152,8 @@ function openChangelog(){
     listEl.innerHTML = CHANGELOG.map((entry, i) => `
       <div style="padding:16px 20px;${i < CHANGELOG.length - 1 ? 'border-bottom:1px solid var(--border)' : ''}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-family:var(--head);font-weight:700;font-size:14px;color:var(--text)">${entry.version}</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--dim2)">${entry.date}</div>
+          <div style="font-family:var(--head);font-weight:700;font-size:14px;color:var(--text)">${esc(entry.version)}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--dim2)">${esc(entry.date)}</div>
         </div>
         <ul style="margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:6px">
           ${entry.items.map(item => `<li style="font-size:13px;color:var(--text);line-height:1.5;display:flex;gap:8px;align-items:flex-start"><span style="flex-shrink:0;margin-top:1px">${item.slice(0,2)}</span><span>${item.slice(2)}</span></li>`).join('')}
@@ -196,7 +196,7 @@ function renderRolesList(){
   const roles=getScheduleRoles();
   el.innerHTML=!roles.length?'<p class="dim">No roles yet.</p>':roles.map((r,i)=>`
     <div class="row jbet" style="padding:8px 10px;background:var(--s2);border-radius:6px;margin-bottom:6px">
-      <div class="row gap8"><span style="font-size:18px">${r.icon}</span><span class="fw7">${r.name}</span></div>
+      <div class="row gap8"><span style="font-size:18px">${r.icon}</span><span class="fw7">${esc(r.name)}</span></div>
       <button class="btn bgh bsm" onclick="removeScheduleRole(${i})" style="color:var(--red)">✕</button>
     </div>`).join('');
 }

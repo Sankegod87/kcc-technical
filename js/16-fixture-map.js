@@ -28,7 +28,7 @@
     const layers=['map-grid-layer','map-zones-layer','map-fixtures-layer'];
     layers.forEach(id=>{
       const el=document.getElementById(id);
-      if(el)el.setAttribute('transform',`translate(${_pan.x},${_pan.y}) scale(${_scale})`);
+      if(el)el.setAttribute('transform',`translate(${esc(_pan.x)},${esc(_pan.y)}) scale(${_scale})`);
     });
     // Also reposition the grid pattern for infinite feel
     const pat=document.getElementById('map-grid');
@@ -70,7 +70,7 @@
     db.fixtures.forEach(f=>{
       if(f.mapX==null||f.mapY==null)return;
       const col=fixColor(f);
-      const g=svgEl('g',{transform:`translate(${f.mapX},${f.mapY})`,cursor:admin?'grab':'pointer','data-id':f.id},layer);
+      const g=svgEl('g',{transform:`translate(${esc(f.mapX)},${esc(f.mapY)})`,cursor:admin?'grab':'pointer','data-id':f.id},layer);
       // Glow ring for OUT fixtures
       if(f.status==='out') svgEl('circle',{cx:0,cy:0,r:16,fill:col+'22',stroke:col+'55','stroke-width':1},g);
       // Main dot
@@ -115,10 +115,10 @@
     const list=document.getElementById('unplaced-fixtures-list');
     const count=document.getElementById('unplaced-count');
     if(list)list.innerHTML=unplaced.map(f=>`
-      <div draggable="true" data-fid="${f.id}"
-        ondragstart="mapTrayDragStart(event,'${f.id}')"
+      <div draggable="true" data-fid="${esc(f.id)}"
+        ondragstart="mapTrayDragStart(event,'${esc(f.id)}')"
         style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;background:${fixColor(f)}18;border:1px solid ${fixColor(f)}44;font-family:var(--mono);font-size:10px;font-weight:600;color:${fixColor(f)};cursor:grab;white-space:nowrap">
-        <span style="width:8px;height:8px;border-radius:50%;background:${fixColor(f)};display:inline-block"></span>${f.id} ${f.name.length>10?f.name.slice(0,9)+'…':f.name}
+        <span style="width:8px;height:8px;border-radius:50%;background:${fixColor(f)};display:inline-block"></span>${esc(f.id)} ${f.name.length>10?f.name.slice(0,9)+'…':f.name}
       </div>`).join('');
     if(count)count.textContent=unplaced.length+' fixtures not yet placed';
   }
@@ -273,8 +273,8 @@
     el.innerHTML=zones.map((z,i)=>`
       <div class="row jbet" style="padding:8px 0;border-bottom:1px solid var(--border)">
         <div class="row gap8">
-          <div style="width:14px;height:14px;border-radius:3px;background:${z.color||'#0F6E56'};flex-shrink:0;margin-top:2px"></div>
-          <div><div class="fw7" style="font-size:13px">${z.name}</div><div class="dim">${z.w||200}×${z.h||150}px</div></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:${esc(z.color||'#0F6E56')};flex-shrink:0;margin-top:2px"></div>
+          <div><div class="fw7" style="font-size:13px">${esc(z.name)}</div><div class="dim">${z.w||200}×${z.h||150}px</div></div>
         </div>
         <button class="btn br bsm" onclick="removeMapZone(${i})">✕</button>
       </div>`).join('');

@@ -53,10 +53,10 @@ function buildLsGrid(){
   grid.innerHTML = activeTechs.map(t=>{
     const roleLabel = t.userRole==='master'?'👑 Master':t.userRole==='admin'?'🔑 Admin':'';
     const deptColor = {Lighting:'#5DCAA5',Audio:'#85B7EB',Cameras:'#EF9F27',IT:'#B4B2A9'}[t.dept]||'rgba(255,255,255,.3)';
-    return `<div class="ls-user-btn" data-id="${t.id}" onclick="lsSelectUser('${t.id}')">
-      <div class="ls-av">${t.avatar||'👤'}</div>
-      <div class="ls-uname">${t.name.split(' ')[0]}</div>
-      ${t.dept?`<div class="ls-dept-tag">${t.dept}</div>`:''}
+    return `<div class="ls-user-btn" data-id="${esc(t.id)}" onclick="lsSelectUser('${esc(t.id)}')">
+      <div class="ls-av">${esc(t.avatar||'👤')}</div>
+      <div class="ls-uname">${esc(t.name.split(' ')[0])}</div>
+      ${t.dept?`<div class="ls-dept-tag">${esc(t.dept)}</div>`:''}
       ${roleLabel?`<div class="ls-role-tag" style="font-size:8px;background:rgba(15,110,86,.2);color:#5DCAA5;padding:1px 5px;border-radius:6px">${roleLabel}</div>`:''}
     </div>`;
   }).join('');

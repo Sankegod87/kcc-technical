@@ -654,15 +654,15 @@ function renderBulbRegistry(){
     const lastEvent=b.history.length?b.history[b.history.length-1]:null;
     const ls=bulbLifeStatus(b);
     return`<tr>
-      <td><span class="mono ca" style="font-size:12px">${b.bulbId}</span></td>
-      <td style="font-size:12px">${b.bulbType}</td>
-      <td><span style="color:${ss.color};font-weight:700;font-size:12px">${ss.icon} ${ss.label}</span></td>
-      <td style="font-size:12px">${curFix?curFix.name+' ('+b.installedIn+')':b.status==='installed'?b.installedIn||'—':'—'}</td>
+      <td><span class="mono ca" style="font-size:12px">${esc(b.bulbId)}</span></td>
+      <td style="font-size:12px">${esc(b.bulbType)}</td>
+      <td><span style="color:${ss.color};font-weight:700;font-size:12px">${ss.icon} ${esc(ss.label)}</span></td>
+      <td style="font-size:12px">${curFix?curFix.name+' ('+esc(b.installedIn)+')':b.status==='installed'?b.installedIn||'—':'—'}</td>
       <td style="text-align:center"><strong>${b.history.filter(h=>h.event==='installed').length}</strong></td>
       <td class="dim">${fmtD(b.createdAt)}</td>
       <td class="dim">${lastEvent?lastEvent.event+' · '+ago(lastEvent.timestamp):'—'}</td>
-      <td style="font-size:11px">${ls.status==='untracked'?'<span class="dim">—</span>':`<span style="color:${ls.color};font-weight:700">${ls.label}</span>`}${b.status==='installed'?` <button class="btn bgh bsm" style="padding:2px 6px;font-size:10px" onclick="logBulbHours('${b.bulbId}')">⏱ Log</button>`:''}</td>
-      <td><button class="btn bgh bsm" data-perm="admin" style="border-color:var(--red);color:var(--red)" onclick="deleteBulbRegistryEntry('${b.bulbId}')">🗑️</button></td>
+      <td style="font-size:11px">${ls.status==='untracked'?'<span class="dim">—</span>':`<span style="color:${ls.color};font-weight:700">${esc(ls.label)}</span>`}${b.status==='installed'?` <button class="btn bgh bsm" style="padding:2px 6px;font-size:10px" onclick="logBulbHours('${esc(b.bulbId)}')">⏱ Log</button>`:''}</td>
+      <td><button class="btn bgh bsm" data-perm="admin" style="border-color:var(--red);color:var(--red)" onclick="deleteBulbRegistryEntry('${esc(b.bulbId)}')">🗑️</button></td>
     </tr>`;
   }).join('');
 }
@@ -685,4 +685,4 @@ function deleteBulbRegistryEntry(bulbId){
 function fmtD(ts){return new Date(ts).toLocaleString('en-CA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
 function ago(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
 function fmtDur(ms){const m=Math.round(ms/60000);if(m<60)return m+' min';return Math.floor(m/60)+'h '+m%60+'m';}
-function toast(msg,type='info'){const c=document.getElementById('toasts');const el=document.createElement('div');el.className='toast '+type;el.innerHTML=(type==='success'?'✅':type==='error'?'🔴':'💡')+' '+msg;c.appendChild(el);setTimeout(()=>el.remove(),3000);}
+function toast(msg,type='info'){const c=document.getElementById('toasts');const el=document.createElement('div');el.className='toast '+type;el.innerHTML=(type==='success'?'✅':type==='error'?'🔴':'💡')+' '+esc(msg);c.appendChild(el);setTimeout(()=>el.remove(),3000);}

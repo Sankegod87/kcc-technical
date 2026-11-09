@@ -38,12 +38,12 @@ function _populateGearSelect(selId, onlyAvailable){
   const sel = document.getElementById(selId); if(!sel)return;
   const items = (db.gearItems||[]).filter(g=> onlyAvailable ? !activeCheckout(g.id) : true);
   sel.innerHTML = '<option value="">— Select item —</option>' +
-    items.map(g=>`<option value="${g.id}">${gearIcon(g)} ${g.name}${g.assetId?' ('+g.assetId+')':''}</option>`).join('');
+    items.map(g=>`<option value="${esc(g.id)}">${gearIcon(g)} ${esc(g.name)}${g.assetId?' ('+esc(g.assetId)+')':''}</option>`).join('');
 }
 function _populatePersonSelect(selId){
   const sel = document.getElementById(selId); if(!sel)return;
   sel.innerHTML = '<option value="">— Select crew member —</option>' +
-    (db.technicians||[]).map(t=>`<option value="${t.id}">${t.avatar||'👤'} ${t.name}${t.dept?' · '+t.dept:''}</option>`).join('');
+    (db.technicians||[]).map(t=>`<option value="${esc(t.id)}">${esc(t.avatar||'👤')} ${esc(t.name)}${t.dept?' · '+t.dept:''}</option>`).join('');
 }
 
 // ── GEAR LIBRARY ─────────────────────────────────────────
@@ -164,7 +164,7 @@ function openReturnModal(coId){
   document.getElementById('rg-coId').value=coId;
   document.getElementById('rg-summary').innerHTML=
     '<div style="font-weight:700;margin-bottom:4px">'+(g?gearIcon(g)+' '+g.name:'Item')+'</div>'+
-    '<div class="dim">Checked out by <strong>'+(p?p.name:'—')+'</strong> on '+fmtDate(co.checkedOutAt)+'</div>'+
+    '<div class="dim">Checked out by <strong>'+esc(p?p.name:'—')+'</strong> on '+fmtDate(co.checkedOutAt)+'</div>'+
     (co.dueDate?'<div class="dim">Due back: '+fmtDate(co.dueDate)+(isOverdue(co)?'&nbsp;<span class="co-badge-over">OVERDUE</span>':'')+'</div>':'');
   document.getElementById('rg-notes').value='';
   document.getElementById('rg-condition').value='Good';
@@ -216,29 +216,29 @@ function renderCheckout(){
       return'<div class="co-card">'+
         '<div class="co-icon">'+gearIcon(g)+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="row gap6 mb8"><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')" style="font-size:14px">'+g.name+'</div>'+dept+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+
-            (g.qty>1?'<span class="badge" style="background:var(--bglow);color:var(--blue);font-size:9px">QTY: '+g.qty+'</span>':'')+
+          '<div class="row gap6 mb8"><div class="fw7 gd-link" onclick="openGearDetail(\''+esc(g.id||'')+'\')" style="font-size:14px">'+esc(g.name)+'</div>'+dept+(g.assetId?'<span class="badge blow" style="font-size:9px">'+esc(g.assetId)+'</span>':'')+
+            (g.qty>1?'<span class="badge" style="background:var(--bglow);color:var(--blue);font-size:9px">QTY: '+esc(g.qty)+'</span>':'')+
             (g.damaged?'<span class="badge" style="background:#fef2f2;color:var(--red);font-size:9px">⚠️ DAMAGED</span>':'')+
             (g.lowStockAt&&g.qty<=g.lowStockAt?'<span class="badge" style="background:#fff3cd;color:#854F0B;font-size:9px">📦 LOW STOCK</span>':'')+
           '</div>'+
-          '<div class="dim">'+g.category+(g.notes?' · '+g.notes:'')+'</div>'+
+          '<div class="dim">'+esc(g.category)+(g.notes?' · '+esc(g.notes):'')+'</div>'+
           // Lifespan bar
           (g.expectedLifeHours?
             (()=>{const pct=Math.min(100,Math.round((g.hoursUsed||0)/g.expectedLifeHours*100));const barColor=pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
-            return'<div style="margin-top:6px"><div style="display:flex;justify-content:space-between;font-size:10px;font-family:var(--mono);color:var(--dim2);margin-bottom:3px"><span>Lifespan</span><span>'+(g.hoursUsed||0)+'h / '+g.expectedLifeHours+'h ('+pct+'%)</span></div>'+
+            return'<div style="margin-top:6px"><div style="display:flex;justify-content:space-between;font-size:10px;font-family:var(--mono);color:var(--dim2);margin-bottom:3px"><span>Lifespan</span><span>'+(g.hoursUsed||0)+'h / '+esc(g.expectedLifeHours)+'h ('+pct+'%)</span></div>'+
               '<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:2px;transition:width .3s"></div></div></div>';})()
           :'')+
           '<div style="margin-top:6px;display:flex;align-items:center;gap:8px">'+
             '<span class="gear-status-dot" style="background:'+ms.color+'"></span>'+
-            '<span style="font-size:11px;font-family:var(--mono);color:'+ms.color+'">'+ms.label+'</span>'+
+            '<span style="font-size:11px;font-family:var(--mono);color:'+ms.color+'">'+esc(ms.label)+'</span>'+
           '</div>'+
-          (co?'<div style="margin-top:4px;font-size:11px;font-family:var(--mono);color:var(--dim2)">With: '+(p?p.name:'unknown')+(co.dueDate?' · due '+fmtDateShort(co.dueDate):'')+'</div>':'')+
+          (co?'<div style="margin-top:4px;font-size:11px;font-family:var(--mono);color:var(--dim2)">With: '+esc(p?p.name:'unknown')+(co.dueDate?' · due '+fmtDateShort(co.dueDate):'')+'</div>':'')+
         '</div>'+
         '<div class="row gap6">'+
           (co?`<button class="btn bb bsm" onclick="openReturnModal('${co.id}')">↩ Return</button>`:`<button class="btn bg bsm" onclick="(()=>{_populateGearSelect('co-item',true);document.getElementById('co-item').value='${g.id}';_populatePersonSelect('co-person');const t=new Date();t.setDate(t.getDate()+7);document.getElementById('co-due').value=t.toISOString().slice(0,10);openM('checkoutGear')})()">📤 Out</button>`)+
-          `<button class="btn br bsm" onclick="openIncidentReport('${g.id}')" title="Report damage/incident">⚠️</button>`+
-          `<button class="btn bg bsm" onclick="openLogGearHours('${g.id}')" title="Log usage hours">⏱</button>`+
-          `<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem('${g.id}')">✏️</button>`+
+          `<button class="btn br bsm" onclick="openIncidentReport('${esc(g.id)}')" title="Report damage/incident">⚠️</button>`+
+          `<button class="btn bg bsm" onclick="openLogGearHours('${esc(g.id)}')" title="Log usage hours">⏱</button>`+
+          `<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem('${esc(g.id)}')">✏️</button>`+
         '</div>'+
       '</div>';
     }).join('');
@@ -257,17 +257,17 @@ function renderCheckout(){
       return'<div class="co-card" style="'+(over?'border-left:3px solid var(--red);':'')+'">' +
         '<div class="co-icon">'+gearIcon(g)+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="row gap6 mb8"><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')" style="font-size:14px">'+g.name+'</div>'+badge+
+          '<div class="row gap6 mb8"><div class="fw7 gd-link" onclick="openGearDetail(\''+esc(g.id||'')+'\')" style="font-size:14px">'+esc(g.name)+'</div>'+badge+
             (over?`<span style="font-size:10px;font-family:var(--mono);color:var(--red)">${daysOver}d overdue</span>`:'')+
           '</div>'+
-          '<div class="dim">With: <strong>'+p.name+'</strong>'+(p.dept?' · '+p.dept:'')+'</div>'+
+          '<div class="dim">With: <strong>'+esc(p.name)+'</strong>'+(p.dept?' · '+p.dept:'')+'</div>'+
           '<div class="dim">Out since: '+fmtDate(co.checkedOutAt)+(co.dueDate?' · Due: '+fmtDate(co.dueDate):'')+'</div>'+
-          (co.purpose?'<div class="dim">Purpose: '+co.purpose+'</div>':'')+
+          (co.purpose?'<div class="dim">Purpose: '+esc(co.purpose)+'</div>':'')+
         '</div>'+
         '<div class="row gap6">'+
-          `<button class="btn bb bsm" onclick="openReturnModal('${co.id}')">↩ Return</button>`+
-          `<button class="btn br bsm" onclick="openIncidentReport('${g.id}')" title="Report damage">⚠️</button>`+
-          (over&&p.email?`<button class="btn bsm" style="background:#fef2f2;border:1px solid var(--red);color:var(--red)" onclick="sendOverdueAlert('${co.id}')">📧 Remind</button>`:'')+
+          `<button class="btn bb bsm" onclick="openReturnModal('${esc(co.id)}')">↩ Return</button>`+
+          `<button class="btn br bsm" onclick="openIncidentReport('${esc(g.id)}')" title="Report damage">⚠️</button>`+
+          (over&&p.email?`<button class="btn bsm" style="background:#fef2f2;border:1px solid var(--red);color:var(--red)" onclick="sendOverdueAlert('${esc(co.id)}')">📧 Remind</button>`:'')+
         '</div>'+
       '</div>';
     }).join('');
@@ -284,10 +284,10 @@ function renderCheckout(){
       return'<div class="co-card">'+
         '<div class="co-icon">'+gearIcon(g)+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="row gap6 mb8"><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')" style="font-size:14px">'+g.name+'</div><span class="co-badge-in">RETURNED</span></div>'+
-          '<div class="dim">Borrowed by <strong>'+p.name+'</strong> · Returned '+fmtDate(co.returnedAt)+'</div>'+
-          (co.returnCondition?'<div style="font-size:11px;font-family:var(--mono);color:'+condColor+';margin-top:3px">Condition: '+co.returnCondition+'</div>':'')+
-          (co.returnNotes?'<div class="dim" style="margin-top:2px">'+co.returnNotes+'</div>':'')+
+          '<div class="row gap6 mb8"><div class="fw7 gd-link" onclick="openGearDetail(\''+esc(g.id||'')+'\')" style="font-size:14px">'+esc(g.name)+'</div><span class="co-badge-in">RETURNED</span></div>'+
+          '<div class="dim">Borrowed by <strong>'+esc(p.name)+'</strong> · Returned '+fmtDate(co.returnedAt)+'</div>'+
+          (co.returnCondition?'<div style="font-size:11px;font-family:var(--mono);color:'+condColor+';margin-top:3px">Condition: '+esc(co.returnCondition)+'</div>':'')+
+          (co.returnNotes?'<div class="dim" style="margin-top:2px">'+esc(co.returnNotes)+'</div>':'')+
         '</div>'+
       '</div>';
     }).join('');
@@ -303,14 +303,14 @@ function renderCheckout(){
         return'<div class="co-card" style="border-left:3px solid '+(SEV_COLOR[r.severity]||'var(--amber)')+'">'+
           '<div class="co-icon">⚠️</div>'+
           '<div style="flex:1;min-width:0">'+
-            '<div class="row gap6 mb4"><div class="fw7" style="font-size:14px">'+gearIcon(g)+' '+g.name+'</div>'+
+            '<div class="row gap6 mb4"><div class="fw7" style="font-size:14px">'+gearIcon(g)+' '+esc(g.name)+'</div>'+
               '<span style="font-size:10px;font-family:var(--mono);font-weight:700;color:'+(SEV_COLOR[r.severity]||'var(--amber)')+'">'+r.severity.toUpperCase()+'</span>'+
               (r.resolved?'<span style="font-size:10px;font-family:var(--mono);color:var(--green)">✓ RESOLVED</span>':'')+
             '</div>'+
-            '<div style="font-size:13px;color:var(--text);margin-bottom:4px">'+r.description+'</div>'+
-            '<div class="dim" style="font-size:11px;font-family:var(--mono)">Reported by '+r.reportedBy+' · '+fmtDate(r.date)+'</div>'+
+            '<div style="font-size:13px;color:var(--text);margin-bottom:4px">'+esc(r.description)+'</div>'+
+            '<div class="dim" style="font-size:11px;font-family:var(--mono)">Reported by '+esc(r.reportedBy)+' · '+fmtDate(r.date)+'</div>'+
           '</div>'+
-          (!r.resolved?`<button class="btn bg bsm" data-perm="admin" onclick="resolveIncident('${r.id}')">✓ Resolve</button>`:'')+
+          (!r.resolved?`<button class="btn bg bsm" data-perm="admin" onclick="resolveIncident('${esc(r.id)}')">✓ Resolve</button>`:'')+
         '</div>';
       }).join('');
     }
@@ -527,12 +527,12 @@ function renderMaintenance(){
         const g=(db.gearItems||[]).find(x=>x.id===entry.gearId)||{name:'Unknown item',category:'Other'};
         return'<div class="maint-log-entry" style="padding:12px 16px">'+
           '<div class="row jbet mb8">'+
-            '<div class="row gap8"><span style="font-size:18px">'+gearIcon(g)+'</span><div><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')">'+g.name+'</div><div class="dim">'+entry.type+'</div></div></div>'+
+            '<div class="row gap8"><span style="font-size:18px">'+gearIcon(g)+'</span><div><div class="fw7 gd-link" onclick="openGearDetail(\''+esc(g.id||'')+'\')">'+esc(g.name)+'</div><div class="dim">'+esc(entry.type)+'</div></div></div>'+
             '<div style="text-align:right"><div style="font-size:12px;font-family:var(--mono)">'+fmtDate(entry.date)+'</div>'+(entry.cost?'<div style="font-size:11px;font-family:var(--mono);color:var(--amber)">$'+entry.cost.toFixed(2)+'</div>':'')+'</div>'+
           '</div>'+
-          (entry.by?'<div class="dim">By: '+entry.by+'</div>':'')+
-          (entry.notes?'<div class="dim" style="margin-top:2px">'+entry.notes+'</div>':'')+
-          (entry.photo?'<img src="'+entry.photo+'" onclick="viewPhotoLightbox(\''+entry.photo+'\')" style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border);margin-top:6px">':'')+
+          (entry.by?'<div class="dim">By: '+esc(entry.by)+'</div>':'')+
+          (entry.notes?'<div class="dim" style="margin-top:2px">'+esc(entry.notes)+'</div>':'')+
+          (entry.photo?'<img src="'+esc(safeImg(entry.photo))+'" onclick="viewPhotoLightbox(this.src)" style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border);margin-top:6px">':'')+
           (entry.nextDue?'<div style="font-size:11px;font-family:var(--mono);color:var(--blue);margin-top:4px">Next due: '+fmtDate(entry.nextDue)+'</div>':'')+
         '</div>';
       }).join('')+
@@ -557,23 +557,23 @@ function renderMaintenance(){
     const lastLog=logs[0];
     const co=activeCheckout(g.id);
     const p=co?(db.technicians||[]).find(x=>x.id===co.personId):null;
-    return'<div class="maint-card '+ms.status+'">'+
+    return'<div class="maint-card '+esc(ms.status)+'">'+
       '<div class="row jbet mb8">'+
         '<div class="row gap8">'+
           '<span style="font-size:22px">'+gearIcon(g)+'</span>'+
           '<div>'+
-            '<div class="row gap6"><div class="fw7 gd-link" onclick="openGearDetail(\''+(g.id||'')+'\')" style="font-size:14px">'+g.name+'</div>'+(g.dept?deptBadge(g.dept):'')+(g.assetId?'<span class="badge blow" style="font-size:9px">'+g.assetId+'</span>':'')+'</div>'+
-            '<div style="font-size:12px;font-family:var(--mono);color:'+ms.color+';margin-top:2px">'+ms.label+'</div>'+
+            '<div class="row gap6"><div class="fw7 gd-link" onclick="openGearDetail(\''+esc(g.id||'')+'\')" style="font-size:14px">'+esc(g.name)+'</div>'+(g.dept?deptBadge(g.dept):'')+(g.assetId?'<span class="badge blow" style="font-size:9px">'+esc(g.assetId)+'</span>':'')+'</div>'+
+            '<div style="font-size:12px;font-family:var(--mono);color:'+ms.color+';margin-top:2px">'+esc(ms.label)+'</div>'+
           '</div>'+
         '</div>'+
         '<div class="row gap6">'+
           `<button class="btn ba bsm" onclick="(()=>{_populateGearSelect('me-item',false);document.getElementById('me-item').value='${g.id}';document.getElementById('me-date').value=new Date().toISOString().slice(0,10);openM('addMaintEntry')})()">+ Log</button>`+
-          `<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem('${g.id}')">✏️</button>`+
+          `<button class="btn bgh bsm" data-perm="admin" onclick="openEditGearItem('${esc(g.id)}')">✏️</button>`+
         '</div>'+
       '</div>'+
       '<div class="dim">Last service: '+(lastLog?fmtDate(lastLog.date)+' · '+lastLog.type:'Never')+'</div>'+
-      (g.vendorId?(()=>{const v=getVendors().find(x=>x.id===g.vendorId);return v?'<div class="dim" style="margin-top:2px">🚚 Order from: <strong>'+v.name+'</strong>'+(v.phone?' · '+v.phone:'')+'</div>':'';})():'')+
-      (co?'<div class="dim" style="margin-top:2px">Currently with: '+(p?p.name:'unknown')+'</div>':'')+
+      (g.vendorId?(()=>{const v=getVendors().find(x=>x.id===g.vendorId);return v?'<div class="dim" style="margin-top:2px">🚚 Order from: <strong>'+esc(v.name)+'</strong>'+(v.phone?' · '+v.phone:'')+'</div>':'';})():'')+
+      (co?'<div class="dim" style="margin-top:2px">Currently with: '+esc(p?p.name:'unknown')+'</div>':'')+
       (logs.length>1?'<div style="margin-top:8px;font-size:11px;font-family:var(--mono);color:var(--dim2)">'+logs.length+' service records</div>':'')+
     '</div>';
   }).join('');
@@ -609,7 +609,7 @@ function showExternalRequestScreen(){
 }
 function _erRenderMediaPreview(){
   const p=document.getElementById('er-media-preview');if(!p)return;
-  p.innerHTML=_erMediaList.map((src,i)=>'<div class="er-media-thumb"><img src="'+src+'"><button type="button" class="rm" onclick="_erMediaRemove('+i+')">✕</button></div>').join('');
+  p.innerHTML=_erMediaList.map((src,i)=>'<div class="er-media-thumb"><img src="'+esc(safeImg(src))+'"><button type="button" class="rm" onclick="_erMediaRemove('+i+')">✕</button></div>').join('');
 }
 function _erMediaAdd(fileList){
   const files=Array.from(fileList||[]).slice(0,6-_erMediaList.length);
@@ -654,6 +654,10 @@ function submitExternalRequest(){
   const statusEl=document.getElementById('extReq-status');
   if(!name||!dept){statusEl.textContent='Name and ministry/department are required.';statusEl.style.color='var(--red)';return;}
   if(!details){statusEl.textContent='Please describe what you need.';statusEl.style.color='var(--red)';return;}
+  // Public form: keep submissions small and slow so it cannot be used to flood the shared database.
+  if(name.length>80||dept.length>80||details.length>2000||(document.getElementById('er-contact').value||'').length>120){statusEl.textContent='One of the answers is too long. Please shorten it.';statusEl.style.color='var(--red)';return;}
+  try{ const last=+localStorage.getItem('kcc_ext_last')||0; if(Date.now()-last<60000){statusEl.textContent='Please wait a minute before sending another request.';statusEl.style.color='var(--red)';return;} }catch(e){}
+  if((db.techRequests||[]).filter(r=>r.source==='external'&&r.status==='open').length>=150){statusEl.textContent='The request queue is full. Please contact the tech team directly.';statusEl.style.color='var(--red)';return;}
   const req={
     id:'req_'+Date.now(),
     title:dept+' — '+(cats.length?cats.join(', '):'Other'),
@@ -670,11 +674,12 @@ function submitExternalRequest(){
     requesterName:name,
     requesterDept:dept,
     requesterContact:(document.getElementById('er-contact').value||'').trim(),
-    photos:_erMediaList.slice()
+    photos:_erMediaList.slice(0,3).filter(safeImg)
   };
   if(!db.techRequests)db.techRequests=[];
   db.techRequests.unshift(req);
   statusEl.textContent='Submitting…';statusEl.style.color='';
+  try{localStorage.setItem('kcc_ext_last',String(Date.now()));}catch(e){}
   save().then(()=>{
     document.getElementById('extReq-form').style.display='none';
     document.getElementById('extReq-success').style.display='block';
@@ -715,10 +720,10 @@ function openEditRequest(id){
   const requesterLine=r.source==='external'?('🌐 '+r.requesterName+(r.requesterDept?' — '+r.requesterDept:'')+(r.requesterContact?' · '+r.requesterContact:'')):(by?by.name:'Unknown');
   document.getElementById('er-id').value=r.id;
   document.getElementById('er-summary').innerHTML=
-    '<div class="fw7 mb8">'+r.title+'</div>'+
-    '<div class="dim">'+r.category+' · '+requesterLine+'</div>'+
-    (r.details?'<div class="dim" style="margin-top:4px">'+r.details+'</div>':'')+
-    (r.photos&&r.photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+r.photos.map(p=>'<img src="'+p+'" onclick="viewPhotoLightbox(\''+p+'\')" style="width:56px;height:56px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)">').join('')+'</div>':'');
+    '<div class="fw7 mb8">'+esc(r.title)+'</div>'+
+    '<div class="dim">'+esc(r.category)+' · '+requesterLine+'</div>'+
+    (r.details?'<div class="dim" style="margin-top:4px">'+esc(r.details)+'</div>':'')+
+    (r.photos&&r.photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+r.photos.map(p=>'<img src="'+esc(safeImg(p))+'" onclick="viewPhotoLightbox(this.src)" style="width:56px;height:56px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)">').join('')+'</div>':'');
   document.getElementById('er-status').value=r.status||'open';
   document.getElementById('er-notes').value=r.adminNotes||'';
   _populatePersonSelect('er-assigned');
@@ -781,26 +786,26 @@ function _updateReqBadge(){
   if(!items.length){listEl.innerHTML='<p class="dim" style="padding:16px">No requests in this category.</p>';return;}
   listEl.innerHTML=items.map(r=>{
     const by=(db.technicians||[]).find(x=>x.id===r.requestedBy);
-    const requesterLabel=r.source==='external'?('🌐 '+r.requesterName+(r.requesterDept?' ('+r.requesterDept+')':'')):(by?by.name:'');
+    const requesterLabel=r.source==='external'?('🌐 '+r.requesterName+(r.requesterDept?' ('+esc(r.requesterDept)+')':'')):(by?by.name:'');
     const assigned=(db.technicians||[]).find(x=>x.id===r.assignedTo);
     const statusBadge={open:'<span class="req-badge-open">Open</span>',progress:'<span class="req-badge-progress">In Progress</span>',done:'<span class="req-badge-done">Done</span>',cancelled:'<span class="badge" style="background:var(--s3);color:var(--dim2)">Cancelled</span>'}[r.status]||'';
     const priColor=REQ_PRIORITY_COLORS[r.priority]||'#888';
-    return'<div class="req-card '+r.priority+'">'+
+    return'<div class="req-card '+esc(r.priority)+'">'+
       '<div class="row jbet mb8">'+
         '<div class="row gap6 fw7" style="font-size:14px;flex:1;min-width:0">'+
           (r.priority==='urgent'?'<span style="color:#E24B4A;font-size:11px;font-family:var(--mono);font-weight:700">URGENT</span> ':'')
-          +r.title+
+          +esc(r.title)+
         '</div>'+
         statusBadge+
       '</div>'+
-      '<div class="dim">'+r.category+(requesterLabel?' · '+requesterLabel:'')+(r.neededBy?' · Needed by '+fmtDate(r.neededBy):'')+'</div>'+
-      (r.requesterContact?'<div class="dim" style="font-size:11px">Contact: '+r.requesterContact+'</div>':'')+
-      (r.details?'<div style="font-size:12px;color:var(--dim2);margin-top:4px;font-family:var(--mono)">'+r.details+'</div>':'')+
-      (r.photos&&r.photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+r.photos.map(p=>'<img src="'+p+'" onclick="viewPhotoLightbox(\''+p+'\')" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)">').join('')+'</div>':'')+
-      (assigned?'<div class="dim" style="margin-top:4px">Assigned: <strong>'+assigned.name+'</strong></div>':'')+
-      (r.adminNotes?'<div class="dim" style="margin-top:4px;font-style:italic">Note: '+r.adminNotes+'</div>':'')+
+      '<div class="dim">'+esc(r.category)+(requesterLabel?' · '+esc(requesterLabel):'')+(r.neededBy?' · Needed by '+fmtDate(r.neededBy):'')+'</div>'+
+      (r.requesterContact?'<div class="dim" style="font-size:11px">Contact: '+esc(r.requesterContact)+'</div>':'')+
+      (r.details?'<div style="font-size:12px;color:var(--dim2);margin-top:4px;font-family:var(--mono)">'+esc(r.details)+'</div>':'')+
+      (r.photos&&r.photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+r.photos.map(p=>'<img src="'+esc(safeImg(p))+'" onclick="viewPhotoLightbox(this.src)" style="width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)">').join('')+'</div>':'')+
+      (assigned?'<div class="dim" style="margin-top:4px">Assigned: <strong>'+esc(assigned.name)+'</strong></div>':'')+
+      (r.adminNotes?'<div class="dim" style="margin-top:4px;font-style:italic">Note: '+esc(r.adminNotes)+'</div>':'')+
       '<div style="margin-top:10px">'+
-        `<button class="btn bgh bsm" onclick="openEditRequest('${r.id}')">${isAdmin()?'✏️ Manage':'View'}</button>`+
+        `<button class="btn bgh bsm" onclick="openEditRequest('${esc(r.id)}')">${isAdmin()?'✏️ Manage':'View'}</button>`+
       '</div>'+
     '</div>';
   }).join('');
@@ -925,16 +930,16 @@ function renderFeedbackAdmin(){
     <div class="panel mb14">
       <div class="ph row jbet">
         <div class="row gap8">
-          <span style="font-size:12px;font-family:var(--mono);font-weight:700;color:${CAT_COLORS[f.category]||'var(--dim2)'}">${f.category}</span>
+          <span style="font-size:12px;font-family:var(--mono);font-weight:700;color:${CAT_COLORS[f.category]||'var(--dim2)'}">${esc(f.category)}</span>
         </div>
         <div class="row gap8">
           <span class="dim" style="font-size:11px;font-family:var(--mono)">${fmtDate(f.createdAt)}</span>
-          <button onclick="deleteFeedback('${f.id}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px" title="Delete">✕</button>
+          <button onclick="deleteFeedback('${esc(f.id)}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px" title="Delete">✕</button>
         </div>
       </div>
       <div class="pb">
         <div style="font-size:14px;line-height:1.6;color:var(--text);margin-bottom:8px">${f.message}</div>
-        <div class="dim" style="font-size:12px;font-family:var(--mono)">From: ${f.author}</div>
+        <div class="dim" style="font-size:12px;font-family:var(--mono)">From: ${esc(f.author)}</div>
       </div>
     </div>`).join('');
 }
@@ -970,20 +975,20 @@ function renderAnnouncements(){
     const reactHTML = REACT_EMOJIS.map(emoji => {
       const who = reactions[emoji] || [];
       const iMine = curTech && who.includes(curTech.id);
-      return `<button onclick="annReact('${a.id}','${emoji}')" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;border:1px solid ${iMine?'var(--amber)':'var(--border)'};background:${iMine?'var(--aglow)':'transparent'};cursor:pointer;font-size:12px;font-family:var(--mono);color:${iMine?'var(--amber)':'var(--dim2)'};transition:all .15s">${emoji}${who.length?' '+who.length:''}</button>`;
+      return `<button onclick="annReact('${esc(a.id)}','${emoji}')" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;border:1px solid ${iMine?'var(--amber)':'var(--border)'};background:${iMine?'var(--aglow)':'transparent'};cursor:pointer;font-size:12px;font-family:var(--mono);color:${iMine?'var(--amber)':'var(--dim2)'};transition:all .15s">${emoji}${who.length?' '+who.length:''}</button>`;
     }).join('');
     return'<div class="ann-card'+(a.pinned?' pinned':'')+'">'+
       '<div class="row jbet mb8">'+
         '<div class="row gap6">'+
           (a.pinned?'<span style="font-size:12px;font-family:var(--mono);color:#0F6E56;font-weight:700">📌 PINNED</span>':'')+
-          '<div class="fw7" style="font-size:15px">'+a.title+'</div>'+
+          '<div class="fw7" style="font-size:15px">'+esc(a.title)+'</div>'+
         '</div>'+
         deptB+
       '</div>'+
-      '<div style="font-size:14px;line-height:1.6;color:var(--text);margin-bottom:10px">'+a.body+'</div>'+
+      '<div style="font-size:14px;line-height:1.6;color:var(--text);margin-bottom:10px">'+esc(a.body)+'</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+reactHTML+'</div>'+
-      '<div class="dim">'+a.author+' · '+fmtDate(a.createdAt)+
-        (isAdmin()?`&nbsp;<button onclick="deleteAnnouncement('${a.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;font-family:var(--mono)">delete</button>`:'')+
+      '<div class="dim">'+esc(a.author)+' · '+fmtDate(a.createdAt)+
+        (isAdmin()?`&nbsp;<button onclick="deleteAnnouncement('${esc(a.id)}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;font-family:var(--mono)">delete</button>`:'')+
       '</div>'+
     '</div>';
   }).join('');
@@ -1002,7 +1007,7 @@ function renderSignoffs(){
     const s=record[dept];
     const signed=s&&s.name;
     const chip=signed
-      ?('<span class="signoff-chip signed">✓ '+s.name+'</span>')
+      ?('<span class="signoff-chip signed">✓ '+esc(s.name)+'</span>')
       :'<span class="signoff-chip pending">Pending</span>';
     const canSign=tech&&(tech.dept===dept||isAdmin());
     return'<div class="signoff-row">'+
@@ -1149,26 +1154,26 @@ function renderTraining(){
     const requiredB=m.required?'<span style="background:#FCEBEB;color:#791F1F;border:1px solid #F7C1C1;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600">REQUIRED</span>':'';
     const completedB=completed?'<span style="background:#EAF3DE;color:#27500A;border:1px solid #C0DD97;border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600">✓ DONE</span>':'';
     return'<div class="training-module'+(completed?' completed':'')+'">'+
-      `<div class="tm-header" onclick="toggleTmBody('${m.id}')">` +
+      `<div class="tm-header" onclick="toggleTmBody('${esc(m.id)}')">` +
         '<div style="flex:1;min-width:0">'+
           '<div class="row gap6 mb8">'+
-            '<div class="fw7" style="font-size:14px">'+m.title+'</div>'+
+            '<div class="fw7" style="font-size:14px">'+esc(m.title)+'</div>'+
             requiredB+completedB+
           '</div>'+
           '<div class="row gap6">'+
             deptB+
-            '<span style="background:'+levelBg+';color:'+levelColor+';border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600">'+m.level+'</span>'+
-            (m.duration?'<span class="dim" style="font-size:11px">⏱ '+m.duration+'</span>':'')+
+            '<span style="background:'+levelBg+';color:'+levelColor+';border-radius:20px;padding:2px 8px;font-size:9px;font-family:var(--mono);font-weight:600">'+esc(m.level)+'</span>'+
+            (m.duration?'<span class="dim" style="font-size:11px">⏱ '+esc(m.duration)+'</span>':'')+
           '</div>'+
         '</div>'+
         '<span style="font-size:18px;margin-left:8px;transition:transform .2s">›</span>'+
       '</div>'+
-      '<div class="tm-body" id="tmb-'+m.id+'">'+
-        (m.desc?'<div style="font-size:13px;color:var(--text);margin-bottom:10px;line-height:1.6">'+m.desc+'</div>':'')+
-        (m.url?'<div class="tm-resource"><span style="font-size:18px">🔗</span><a href="'+m.url+'" target="_blank" style="color:var(--blue);font-size:13px;font-family:var(--mono)">Open resource →</a></div>':'')+
+      '<div class="tm-body" id="tmb-'+esc(m.id)+'">'+
+        (m.desc?'<div style="font-size:13px;color:var(--text);margin-bottom:10px;line-height:1.6">'+esc(m.desc)+'</div>':'')+
+        (m.url?'<div class="tm-resource"><span style="font-size:18px">🔗</span><a href="'+esc(safeUrl(m.url))+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue);font-size:13px;font-family:var(--mono)">Open resource →</a></div>':'')+
         '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
-          (tech?`<button class="btn ${completed?'bg':'ba'} bsm" onclick="markModuleComplete('${tech.id}','${m.id}')">${completed?'↺ Mark incomplete':'✓ Mark complete'}</button>`:'')+
-          (isAdmin()?`<button class="btn br bsm" onclick="deleteTrainingModule('${m.id}')">Delete</button>`:'')+
+          (tech?`<button class="btn ${completed?'bg':'ba'} bsm" onclick="markModuleComplete('${esc(tech.id)}','${esc(m.id)}')">${completed?'↺ Mark incomplete':'✓ Mark complete'}</button>`:'')+
+          (isAdmin()?`<button class="btn br bsm" onclick="deleteTrainingModule('${esc(m.id)}')">Delete</button>`:'')+
         '</div>'+
       '</div>'+
     '</div>';
@@ -1222,14 +1227,14 @@ function renderProfiles(){
       const completedCount=(t.completedModules||[]).length;
       const totalMods=(db.trainingModules||[]).length;
       const isActive=window._openProfileId===t.id;
-      return`<div class="profile-card ${isActive?'selected':''}" onclick="openProfile('${t.id}')" style="cursor:pointer;${isActive?'border:2px solid #0F6E56;':''}">` +
+      return`<div class="profile-card ${isActive?'selected':''}" onclick="openProfile('${esc(t.id)}')" style="cursor:pointer;${isActive?'border:2px solid #0F6E56;':''}">` +
         '<div class="profile-header">'+
           '<div class="profile-avatar" style="background:'+(_deptAvatarColor(t.dept))+';color:white">'+
             (t.avatar||t.name[0]||'👤')+
           '</div>'+
           '<div style="flex:1;min-width:0">'+
-            '<div class="fw7" style="font-size:15px;margin-bottom:4px">'+t.name+'</div>'+
-            '<div class="dim">'+( t.role||'Technician')+'</div>'+
+            '<div class="fw7" style="font-size:15px;margin-bottom:4px">'+esc(t.name)+'</div>'+
+            '<div class="dim">'+esc(t.role||'Technician')+'</div>'+
             '<div style="margin-top:6px">'+deptBadge(t.dept)+'</div>'+
           '</div>'+
         '</div>'+
@@ -1238,8 +1243,8 @@ function renderProfiles(){
             '<div><div style="font-size:20px;font-weight:700;color:#534AB7">'+completedCount+(totalMods?'/'+totalMods:'')+'</div><div style="font-size:10px;font-family:var(--mono);color:var(--dim2)">MODULES</div></div>'+
           '</div>'+
           (t.training&&t.training.length?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+t.training.map(s=>'<span class="skill-tag">'+s+'</span>').join('')+'</div>':'')+
-          ((t.certs||[]).length?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">'+t.certs.map(c=>'<span class="cert-tag">🏅 '+c.name+'</span>').join('')+'</div>':'')+
-          `<button class="btn bb bsm" style="margin-top:10px;width:100%;justify-content:center" onclick="event.stopPropagation();openProfile('${t.id}')">View full profile →</button>`+
+          ((t.certs||[]).length?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">'+t.certs.map(c=>'<span class="cert-tag">🏅 '+esc(c.name)+'</span>').join('')+'</div>':'')+
+          `<button class="btn bb bsm" style="margin-top:10px;width:100%;justify-content:center" onclick="event.stopPropagation();openProfile('${esc(t.id)}')">View full profile →</button>`+
         '</div>'+
       '</div>';
     }).join('');
@@ -1276,13 +1281,13 @@ function renderProfiles(){
     '<div class="ph row jbet">'+
       '<div class="row gap12">'+
         '<div class="profile-avatar" style="background:'+_deptAvatarColor(t.dept)+';color:white;width:48px;height:48px;font-size:22px">'+( t.avatar||t.name[0])+'</div>'+
-        '<div><div class="fw7" style="font-size:16px">'+t.name+'</div><div class="dim">'+( t.role||'Technician')+'</div><div style="margin-top:4px">'+deptBadge(t.dept)+'</div></div>'+
+        '<div><div class="fw7" style="font-size:16px">'+esc(t.name)+'</div><div class="dim">'+esc(t.role||'Technician')+'</div><div style="margin-top:4px">'+deptBadge(t.dept)+'</div></div>'+
       '</div>'+
       '<div class="row gap6">'+
-        `<button class="btn bg bsm" onclick="openLogHoursModal('${t.id}')">⏱ Log Hours</button>`+
-        `<button class="btn bb bsm" data-perm="admin" onclick="openPerfNoteModal('${t.id}')">📝 Add Note</button>`+
+        `<button class="btn bg bsm" onclick="openLogHoursModal('${esc(t.id)}')">⏱ Log Hours</button>`+
+        `<button class="btn bb bsm" data-perm="admin" onclick="openPerfNoteModal('${esc(t.id)}')">📝 Add Note</button>`+
         `<button class="btn ba bsm" onclick="document.getElementById('cert-techId').value='${t.id}';['cert-name','cert-issuer','cert-date','cert-expiry','cert-notes'].forEach(id=>document.getElementById(id).value='');openM('addCert')">+ Cert</button>`+
-        `<button class="btn bgh bsm" data-perm="admin" onclick="editTech('${t.id}')">✏️ Edit</button>`+
+        `<button class="btn bgh bsm" data-perm="admin" onclick="editTech('${esc(t.id)}')">✏️ Edit</button>`+
         '<button class="btn bgh bsm" onclick="window._openProfileId=null;renderProfiles()">✕</button>'+
       '</div>'+
     '</div>'+
@@ -1299,9 +1304,9 @@ function renderProfiles(){
       ((t.email||t.phone||t.emergency)?
         '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px">'+
           '<div style="font-size:10px;font-family:var(--mono);color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Contact</div>'+
-          (t.email?'<div style="font-size:13px;display:flex;align-items:center;gap:8px"><span>📧</span><a href="mailto:'+t.email+'" style="color:var(--blue);font-family:var(--mono);font-size:12px">'+t.email+'</a></div>':'')+
-          (t.phone?'<div style="font-size:13px;display:flex;align-items:center;gap:8px"><span>📱</span><span style="font-family:var(--mono);font-size:12px">'+t.phone+'</span></div>':'')+
-          (t.emergency?'<div style="font-size:13px;display:flex;align-items:center;gap:8px"><span>🆘</span><span style="font-family:var(--mono);font-size:12px;color:var(--amber)">'+t.emergency+'</span></div>':'')+
+          (t.email?'<div style="font-size:13px;display:flex;align-items:center;gap:8px"><span>📧</span><a href="mailto:'+esc(safeUrl('mailto:'+t.email).slice(7))+'" style="color:var(--blue);font-family:var(--mono);font-size:12px">'+t.email+'</a></div>':'')+
+          (t.phone?'<div style="font-size:13px;display:flex;align-items:center;gap:8px"><span>📱</span><span style="font-family:var(--mono);font-size:12px">'+esc(t.phone)+'</span></div>':'')+
+          (t.emergency?'<div style="font-size:13px;display:flex;align-items:center;gap:8px"><span>🆘</span><span style="font-family:var(--mono);font-size:12px;color:var(--amber)">'+esc(t.emergency)+'</span></div>':'')+
           (t.joinedAt?'<div style="font-size:11px;color:var(--dim2);font-family:var(--mono);margin-top:2px">Joined: '+new Date(t.joinedAt).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'})+'</div>':'')+
         '</div>':'')+
 
@@ -1312,8 +1317,8 @@ function renderProfiles(){
         ONBOARD_STEPS.map(step=>{
           const done=!!onb[step.id];
           return'<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:6px">'+
-            `<button onclick="toggleOnboarding('${t.id}','${step.id}')" style="width:20px;height:20px;border-radius:50%;border:2px solid ${done?'#0F6E56':'var(--border2)'};background:${done?'#0F6E56':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:white;flex-shrink:0;cursor:pointer">${done?'✓':''}</button>`+
-            '<div style="flex:1;font-size:13px;'+(done?'text-decoration:line-through;color:var(--dim2)':'')+'">'+step.label+'</div>'+
+            `<button onclick="toggleOnboarding('${esc(t.id)}','${esc(step.id)}')" style="width:20px;height:20px;border-radius:50%;border:2px solid ${done?'#0F6E56':'var(--border2)'};background:${done?'#0F6E56':'transparent'};display:flex;align-items:center;justify-content:center;font-size:11px;color:white;flex-shrink:0;cursor:pointer">${done?'✓':''}</button>`+
+            '<div style="flex:1;font-size:13px;'+(done?'text-decoration:line-through;color:var(--dim2)':'')+'">'+esc(step.label)+'</div>'+
           '</div>';
         }).join('')+
       '</div>'+
@@ -1321,7 +1326,7 @@ function renderProfiles(){
       // Volunteer hours log
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
         '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2)">Volunteer Hours</div>'+
-        `<button class="btn bg bsm" onclick="openLogHoursModal('${t.id}')">+ Log Hours</button>`+
+        `<button class="btn bg bsm" onclick="openLogHoursModal('${esc(t.id)}')">+ Log Hours</button>`+
       '</div>'+
       '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--s2);border-radius:8px;margin-bottom:14px">'+
         '<div style="font-size:36px;font-weight:900;color:#0F6E56;font-family:var(--head)">'+volHours+'</div>'+
@@ -1332,7 +1337,7 @@ function renderProfiles(){
       (t.hoursLog&&t.hoursLog.length?
         '<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;max-height:160px;overflow-y:auto">'+
           [...t.hoursLog].reverse().map(h=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--s2);border-radius:6px;font-size:12px">'+
-            '<div><span style="font-weight:700;color:#0F6E56">+'+h.hours+'h</span>'+(h.note?' <span class="dim">'+h.note+'</span>':'')+'</div>'+
+            '<div><span style="font-weight:700;color:#0F6E56">+'+esc(h.hours)+'h</span>'+(h.note?' <span class="dim">'+esc(h.note)+'</span>':'')+'</div>'+
             '<div class="dim" style="font-family:var(--mono);font-size:10px">'+new Date(h.date).toLocaleDateString('en-CA',{month:'short',day:'numeric'})+'</div></div>'
           ).join('')+
         '</div>':'<div class="dim" style="margin-bottom:14px">No hours logged yet</div>')+
@@ -1341,23 +1346,23 @@ function renderProfiles(){
       (isAdmin()?
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
           '<div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2)">Performance Notes</div>'+
-          `<button class="btn bb bsm" onclick="openPerfNoteModal('${t.id}')">+ Add Note</button>`+
+          `<button class="btn bb bsm" onclick="openPerfNoteModal('${esc(t.id)}')">+ Add Note</button>`+
         '</div>'+
         ((t.perfNotes&&t.perfNotes.length)?
           '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">'+
             t.perfNotes.map(n=>{
               const colors={positive:'#0F6E56',constructive:'#854F0B',neutral:'#185FA5'};
               const bgs={positive:'#E1F5EE',constructive:'#fff3cd',neutral:'var(--bglow)'};
-              return'<div style="padding:10px 12px;background:'+bgs[n.type]+';border-radius:8px;border-left:3px solid '+(colors[n.type]||'var(--dim2)')+'">'+
-                '<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:4px">'+n.text+'</div>'+
+              return'<div style="padding:10px 12px;background:'+esc(bgs[n.type])+';border-radius:8px;border-left:3px solid '+(colors[n.type]||'var(--dim2)')+'">'+
+                '<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:4px">'+esc(n.text)+'</div>'+
                 '<div style="display:flex;align-items:center;justify-content:space-between">'+
-                  '<div class="dim" style="font-size:11px;font-family:var(--mono)">'+n.by+' · '+fmtDate(n.at)+'</div>'+
-                  `<button onclick="deletePerfNote('${t.id}','${n.id}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px">✕</button>`+
+                  '<div class="dim" style="font-size:11px;font-family:var(--mono)">'+esc(n.by)+' · '+fmtDate(n.at)+'</div>'+
+                  `<button onclick="deletePerfNote('${esc(t.id)}','${esc(n.id)}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px">✕</button>`+
                 '</div>'+
               '</div>';
             }).join('')+
           '</div>' :
-          `<div class="dim" style="margin-bottom:14px;font-size:12px">No notes yet — <button onclick="openPerfNoteModal('${t.id}')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-family:var(--mono);font-size:11px">add one</button></div>`
+          `<div class="dim" style="margin-bottom:14px;font-size:12px">No notes yet — <button onclick="openPerfNoteModal('${esc(t.id)}')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-family:var(--mono);font-size:11px">add one</button></div>`
         ):'') +
 
       // Skills
@@ -1371,11 +1376,11 @@ function renderProfiles(){
           t.certs.map(c=>
             '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">'+
               '<span style="font-size:20px">🏅</span>'+
-              '<div style="flex:1"><div class="fw7" style="font-size:13px">'+c.name+'</div>'+
-                (c.issuer?'<div class="dim">'+c.issuer+'</div>':'')+
+              '<div style="flex:1"><div class="fw7" style="font-size:13px">'+esc(c.name)+'</div>'+
+                (c.issuer?'<div class="dim">'+esc(c.issuer)+'</div>':'')+
                 (c.date?'<div class="dim">Earned: '+c.date+(c.expiry?' · Expires: '+c.expiry:'')+'</div>':'')+
               '</div>'+
-              `<button onclick="removeCert('${t.id}','${c.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px" title="Remove">✕</button>`+
+              `<button onclick="removeCert('${esc(t.id)}','${esc(c.id)}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px" title="Remove">✕</button>`+
             '</div>'
           ).join('')+
         '</div>':
@@ -1389,7 +1394,7 @@ function renderProfiles(){
             const done=completedMods.includes(m.id);
             return'<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s2);border-radius:6px">'+
               '<div style="width:18px;height:18px;border-radius:50%;border:2px solid '+(done?'#0F6E56':'var(--border2)')+';background:'+(done?'#0F6E56':'transparent')+';display:flex;align-items:center;justify-content:center;font-size:11px;color:white;flex-shrink:0">'+(done?'✓':'')+'</div>'+
-              '<div style="flex:1;font-size:13px;'+(done?'text-decoration:line-through;color:var(--dim2)':'')+'">'+m.title+'</div>'+
+              '<div style="flex:1;font-size:13px;'+(done?'text-decoration:line-through;color:var(--dim2)':'')+'">'+esc(m.title)+'</div>'+
               (m.dept?deptBadge(m.dept):'')+
             '</div>';
           }).join('')+
@@ -1502,14 +1507,14 @@ function renderGearDetail(){
     '<div class="gd-sec"><div class="gd-k">Checkout</div>'+
       (co?'<div><b>'+(isOverdue(co)?'Overdue — ':'Out — ')+'</b>with '+gdEsc(who?who.name:'unknown')+(co.dueDate?', due '+fmtDate(co.dueDate):'')+'</div>':'<div>Available</div>')+
     '</div>'+
-    '<div class="gd-sec"><div class="gd-k">Maintenance</div><div style="color:'+ms.color+';font-weight:600">'+ms.label+'</div>'+
-      '<div class="dim">Every '+(g.serviceInterval||90)+' days'+(g.hoursUsed?' · '+g.hoursUsed+'h used'+(g.expectedLifeHours?' of '+g.expectedLifeHours+'h':''):'')+'</div></div>'+
+    '<div class="gd-sec"><div class="gd-k">Maintenance</div><div style="color:'+ms.color+';font-weight:600">'+esc(ms.label)+'</div>'+
+      '<div class="dim">Every '+(g.serviceInterval||90)+' days'+(g.hoursUsed?' · '+esc(g.hoursUsed)+'h used'+(g.expectedLifeHours?' of '+esc(g.expectedLifeHours)+'h':''):'')+'</div></div>'+
     '<div class="gd-acts">'+
-      (co?`<button class="btn bb" onclick="closeM('gearDetail');openReturnModal('${co.id}')">Return</button>`
+      (co?`<button class="btn bb" onclick="closeM('gearDetail');openReturnModal('${esc(co.id)}')">Return</button>`
          :`<button class="btn bg" onclick="gdCheckout()">Check out</button>`)+
       `<button class="btn bgh" data-perm="admin" onclick="gdLogService()">Log service</button>`+
-      `<button class="btn bgh" onclick="closeM('gearDetail');openLogGearHours('${g.id}')">Log hours</button>`+
-      `<button class="btn br" onclick="closeM('gearDetail');openIncidentReport('${g.id}')">Report problem</button>`+
+      `<button class="btn bgh" onclick="closeM('gearDetail');openLogGearHours('${esc(g.id)}')">Log hours</button>`+
+      `<button class="btn br" onclick="closeM('gearDetail');openIncidentReport('${esc(g.id)}')">Report problem</button>`+
     '</div>'+
     '<div class="gd-k" style="margin-top:14px">History</div>'+
     (hist.length?hist.map(row).join(''):'<p class="dim">Nothing logged yet.</p>');

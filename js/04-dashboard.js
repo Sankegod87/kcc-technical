@@ -99,7 +99,7 @@ function renderDash(){
       if(!total) return '';
       const pct=Math.round(done/total*100);
       return`<div class="row jbet" style="padding:7px 0;border-bottom:1px solid var(--border)">
-        <div class="row gap8"><span>${r.icon}</span><span style="font-size:13px">${r.name}</span></div>
+        <div class="row gap8"><span>${r.icon}</span><span style="font-size:13px">${esc(r.name)}</span></div>
         <div class="row gap8">
           <div style="width:80px;background:var(--border);border-radius:4px;height:6px;overflow:hidden"><div style="height:100%;background:${pct===100?'var(--green)':'var(--amber)'};width:${pct}%"></div></div>
           <span class="dim" style="font-size:11px;min-width:32px;text-align:right">${done}/${total}</span>
@@ -120,7 +120,7 @@ function renderDash(){
   document.getElementById('maintDue') && (document.getElementById('maintDue').innerHTML=!maintDue.length
     ?'<p class="cg" style="font-family:var(--mono);font-size:12px">✅ No maintenance due</p>'
     :maintDue.slice(0,5).map(f=>`<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
-        <div><div class="fw7" style="font-size:14px">${f.name}</div><div class="dim">${f.id} · due ${f.dueStr}</div></div>
+        <div><div class="fw7" style="font-size:14px">${esc(f.name)}</div><div class="dim">${esc(f.id)} · due ${esc(f.dueStr)}</div></div>
         <span class="maint-badge">DUE</span>
       </div>`).join(''));
   const recent=[...db.outages].sort((a,b)=>b.timestamp-a.timestamp).slice(0,6);
@@ -134,8 +134,8 @@ function renderDash(){
           const priColor = r.priority==='urgent'?'var(--red)':r.priority==='low'?'var(--dim2)':'var(--blue)';
           return `<div class="row jbet" style="padding:9px 0;border-bottom:1px solid var(--border)">
             <div style="flex:1;min-width:0">
-              <div class="fw7" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.title}</div>
-              <div class="dim">${r.category}${by?' · '+by.name:''}</div>
+              <div class="fw7" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.title)}</div>
+              <div class="dim">${esc(r.category)}${by?' · '+by.name:''}</div>
             </div>
             <span style="font-size:10px;font-family:var(--mono);color:${priColor};flex-shrink:0;margin-left:8px">${r.priority.toUpperCase()}</span>
           </div>`;
@@ -145,8 +145,8 @@ function renderDash(){
     ?'<p class="dim">No activity yet.</p>'
     :recent.map(o=>`<div class="row gap10" style="padding:9px 0;border-bottom:1px solid rgba(31,45,66,.6)">
         <span style="font-size:17px">${o.resolved?'✅':'🔴'}</span>
-        <div><div style="font-size:13px">${o.resolved?'<span class="cg">Resolved</span>':'<span class="cr">Outage</span>'}: <strong>${o.fixtureName}</strong></div>
-        <div class="dim">${fmtD(o.timestamp)} · ${o.reportedBy}</div></div>
+        <div><div style="font-size:13px">${o.resolved?'<span class="cg">Resolved</span>':'<span class="cr">Outage</span>'}: <strong>${esc(o.fixtureName)}</strong></div>
+        <div class="dim">${fmtD(o.timestamp)} · ${esc(o.reportedBy)}</div></div>
       </div>`).join(''));
   try{renderCtrlHero();}catch(e){console.warn('ctrlHero',e);}
   try{sdApplyPending();sdAutoSend();}catch(e){console.warn('callsheet',e);}
@@ -352,7 +352,7 @@ function psnHtml(esc){
   return `<div class="sd-card" id="psnCard">
     <h3>After service notes <span class="sd-pill">${esc(sunday.toLocaleDateString(undefined,{month:'short',day:'numeric'}))}</span></h3>
     <div class="psn-f">
-      <div class="psn-moods" role="group" aria-label="How did it go">${moods.map(m=>`<button type="button" class="psn-mood ${n.mood===m[0]?'on':''}" onclick="psnMood('${m[0]}')">${m[1]}</button>`).join('')}</div>
+      <div class="psn-moods" role="group" aria-label="How did it go">${moods.map(m=>`<button type="button" class="psn-mood ${n.mood===m[0]?'on':''}" onclick="psnMood('${esc(m[0])}')">${esc(m[1])}</button>`).join('')}</div>
       <label>What went wrong</label>
       <textarea oninput="psnSet('wrong',this.value)" placeholder="Anything that broke, lagged or surprised you" style="min-height:64px;width:100%">${esc(n.wrong)}</textarea>
       <label>What to fix</label>
@@ -362,7 +362,7 @@ function psnHtml(esc){
       <select onchange="psnAddFix(this.value);this.value=''" style="width:100%"><option value="">Add a fixture…</option>${fx.map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('')}</select>
       <label>Photo (optional)</label>
       <input id="psnPhotoInput" type="file" accept="image/*" capture="environment" onchange="psnPhoto()">
-      ${n.photo?`<img src="${n.photo}" alt="Attached photo" style="max-width:100%;max-height:140px;border-radius:8px;margin-top:8px">`:''}
+      ${n.photo?`<img src="${esc(safeImg(n.photo))}" alt="Attached photo" style="max-width:100%;max-height:140px;border-radius:8px;margin-top:8px">`:''}
       <label style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-size:14px;margin-top:14px"><input type="checkbox" ${n.makeReq?'checked':''} onchange="psnSet('makeReq',this.checked)" style="width:20px;height:20px"> Also create a tech request from "What to fix"</label>
       <button class="btn ba" style="margin-top:14px;min-height:48px;width:100%;justify-content:center" onclick="psnSave()">Save notes</button>
     </div>
@@ -371,7 +371,7 @@ function psnHtml(esc){
       ${x.wrong?`<div><span class="dim">Went wrong:</span> ${esc(x.wrong)}</div>`:''}
       ${x.fix?`<div><span class="dim">To fix:</span> ${esc(x.fix)}</div>`:''}
       ${(x.fixtureIds||[]).length?`<div class="dim" style="font-size:12px;margin-top:4px">Fixtures: ${x.fixtureIds.map(id=>esc((db.fixtures.find(f=>f.id===id)||{name:id}).name)).join(', ')}</div>`:''}
-      ${x.photo?`<img src="${x.photo}" alt="Attached photo" onclick="viewPhotoLightbox(this.src)" style="max-width:100%;max-height:120px;border-radius:8px;margin-top:6px;cursor:pointer">`:''}
+      ${x.photo?`<img src="${esc(safeImg(x.photo))}" alt="Attached photo" onclick="viewPhotoLightbox(this.src)" style="max-width:100%;max-height:120px;border-radius:8px;margin-top:6px;cursor:pointer">`:''}
       ${x.requestId?'<div class="dim" style="font-size:12px;margin-top:4px">Tech request created</div>':''}
       ${isAdmin()?`<button class="btn bgh bsm" style="margin-top:6px" onclick="psnDelete('${esc(x.id)}')">Delete</button>`:''}
     </div>`).join('')}</div>`:''}
@@ -619,8 +619,8 @@ function renderSunday(){
 // ══ Automatic alert digest (email) ══
 function alCollect(){
   const out=[], now=Date.now();
-  (db.inventory||[]).filter(i=>i.inStock<=i.threshold).forEach(i=>out.push({key:'inv:'+i.bulbType,cat:'Low bulb stock',text:i.bulbType+': '+i.inStock+' left (alert at '+i.threshold+')'}));
-  (db.gearItems||[]).filter(g=>g.lowStockAt&&g.qty<=g.lowStockAt).forEach(g=>out.push({key:'gear-low:'+g.id,cat:'Low gear stock',text:g.name+': '+g.qty+' left (alert at '+g.lowStockAt+')'}));
+  (db.inventory||[]).filter(i=>i.inStock<=i.threshold).forEach(i=>out.push({key:'inv:'+i.bulbType,cat:'Low bulb stock',text:i.bulbType+': '+esc(i.inStock)+' left (alert at '+esc(i.threshold)+')'}));
+  (db.gearItems||[]).filter(g=>g.lowStockAt&&g.qty<=g.lowStockAt).forEach(g=>out.push({key:'gear-low:'+g.id,cat:'Low gear stock',text:g.name+': '+esc(g.qty)+' left (alert at '+esc(g.lowStockAt)+')'}));
   (db.bulbRegistry||[]).filter(b=>b.status==='installed').forEach(b=>{
     const st=bulbLifeStatus(b); if(st.status==='due-soon'||st.status==='overdue')
       out.push({key:'bulb:'+b.bulbId+':'+st.status,cat:'Bulbs near end of life',text:b.bulbId+' ('+b.bulbType+(b.installedIn?' in '+b.installedIn:'')+'): '+st.label});

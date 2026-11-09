@@ -36,9 +36,9 @@ function renderAuditLog(){
     <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:16px;flex-shrink:0;margin-top:1px">${ACTION_ICONS[e.action]||'🔷'}</span>
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700">${e.action}</div>
-        ${e.detail?`<div class="dim" style="font-size:12px">${e.detail}</div>`:''}
-        <div class="dim" style="font-size:11px;font-family:var(--mono)">${e.by} · ${fmtDate(e.at)}</div>
+        <div style="font-size:13px;font-weight:700">${esc(e.action)}</div>
+        ${e.detail?`<div class="dim" style="font-size:12px">${esc(e.detail)}</div>`:''}
+        <div class="dim" style="font-size:11px;font-family:var(--mono)">${esc(e.by)} · ${fmtDate(e.at)}</div>
       </div>
     </div>`).join('');
 }
@@ -149,8 +149,8 @@ function openAddRehearsalModal(id){
   const assigned = r ? (r.crew||[]) : [];
   crewWrap.innerHTML = (db.technicians||[]).filter(t=>isTechActive(t)||assigned.includes(t.id)).map(t=>`
     <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;cursor:pointer;font-size:13px">
-      <input type="checkbox" value="${t.id}" ${assigned.includes(t.id)?'checked':''} style="accent-color:#0F6E56">
-      <span>${t.avatar||'👤'} ${t.name}${!isTechActive(t)?' 🚫':''}</span>
+      <input type="checkbox" value="${esc(t.id)}" ${assigned.includes(t.id)?'checked':''} style="accent-color:#0F6E56">
+      <span>${esc(t.avatar||'👤')} ${esc(t.name)}${!isTechActive(t)?' 🚫':''}</span>
       ${t.dept?deptBadge(t.dept):''}
     </label>`).join('');
   document.getElementById('rh-modal-title').textContent = r ? '✏️ Edit Rehearsal' : '🎸 Add Rehearsal';
@@ -199,12 +199,12 @@ function openAddSpecialEventModal(id){
   document.getElementById('se-crew').innerHTML = (db.technicians||[]).filter(t=>isTechActive(t)||assigned.includes(t.id)).map(t=>`
     <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--s2);border-radius:6px;font-size:13px">
       <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;text-transform:none;letter-spacing:0;font-family:var(--head);font-size:13px;color:var(--text)">
-        <input type="checkbox" value="${t.id}" ${assigned.includes(t.id)?'checked':''} style="accent-color:#0F6E56;width:auto">
-        <span>${t.avatar||'👤'} ${t.name}</span>
+        <input type="checkbox" value="${esc(t.id)}" ${assigned.includes(t.id)?'checked':''} style="accent-color:#0F6E56;width:auto">
+        <span>${esc(t.avatar||'👤')} ${esc(t.name)}</span>
       </label>
-      <select data-role-for="${t.id}" style="width:auto;max-width:150px;font-size:11px;padding:4px 6px">
+      <select data-role-for="${esc(t.id)}" style="width:auto;max-width:150px;font-size:11px;padding:4px 6px">
         <option value="">Role…</option>
-        ${stations.map(st=>`<option value="${st.name}" ${roles[t.id]===st.name?'selected':''}>${st.icon} ${st.name}</option>`).join('')}
+        ${stations.map(st=>`<option value="${esc(st.name)}" ${roles[t.id]===st.name?'selected':''}>${st.icon} ${esc(st.name)}</option>`).join('')}
       </select>
     </div>`).join('');
   document.getElementById('se-modal-title').textContent = r ? '✏️ Edit Special Event' : '⭐ Add Special Event';
@@ -268,7 +268,7 @@ function openSwapRequestModal(schedKey){
   document.getElementById('sw-service').textContent='Sunday Service';
   const targetSel=document.getElementById('sw-target');
   const opts = onSched.length ? onSched : (db.technicians||[]).filter(t=>t.id!==curTech.id);
-  targetSel.innerHTML=opts.map(t=>`<option value="${t.id}">${t.avatar||'👤'} ${t.name}</option>`).join('');
+  targetSel.innerHTML=opts.map(t=>`<option value="${esc(t.id)}">${esc(t.avatar||'👤')} ${esc(t.name)}</option>`).join('');
   document.getElementById('sw-reason').value='';
   document.getElementById('m-swapRequest').style.display='flex';
 }
@@ -302,12 +302,12 @@ function renderSwapRequests(){
   if(!swaps.length){el.innerHTML='<div class="dim" style="padding:12px 0">No pending swap requests</div>';return;}
   el.innerHTML=swaps.map(s=>`
     <div style="background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:8px">
-      <div class="row jbet mb6"><div class="fw7" style="font-size:13px">${s.requesterName} ↔️ ${s.targetName}</div><span style="font-size:10px;font-family:var(--mono);color:var(--amber)">PENDING</span></div>
+      <div class="row jbet mb6"><div class="fw7" style="font-size:13px">${esc(s.requesterName)} ↔️ ${esc(s.targetName)}</div><span style="font-size:10px;font-family:var(--mono);color:var(--amber)">PENDING</span></div>
       <div class="dim" style="font-size:12px">${s.dateKey?new Date(s.dateKey+'T12:00:00').toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'}):''} · Sunday Service</div>
-      ${s.reason?`<div class="dim" style="font-size:12px;margin-top:4px">Reason: ${s.reason}</div>`:''}
+      ${s.reason?`<div class="dim" style="font-size:12px;margin-top:4px">Reason: ${esc(s.reason)}</div>`:''}
       <div class="row gap6" style="margin-top:10px">
-        <button class="btn ba bsm" onclick="resolveSwap('${s.id}','approved')">✓ Approve</button>
-        <button class="btn br bsm" onclick="resolveSwap('${s.id}','denied')">✗ Deny</button>
+        <button class="btn ba bsm" onclick="resolveSwap('${esc(s.id)}','approved')">✓ Approve</button>
+        <button class="btn br bsm" onclick="resolveSwap('${esc(s.id)}','denied')">✗ Deny</button>
       </div>
     </div>`).join('');
 }

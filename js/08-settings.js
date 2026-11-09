@@ -15,8 +15,8 @@ function renderSettings(){
   if(roleList&&isMaster()){
     roleList.innerHTML=db.technicians.filter(t=>t.userRole!=='master').map(t=>`
       <div class="row jbet" style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div class="row gap8"><span style="font-size:20px">${t.avatar||'👤'}</span><div><div class="fw7">${t.name}</div><div class="dim">${t.role||'Technician'}</div></div></div>
-        <select onchange="setUserRole('${t.id}',this.value)" style="width:auto;padding:5px 8px;font-size:11px">
+        <div class="row gap8"><span style="font-size:20px">${esc(t.avatar||'👤')}</span><div><div class="fw7">${esc(t.name)}</div><div class="dim">${esc(t.role||'Technician')}</div></div></div>
+        <select onchange="setUserRole('${esc(t.id)}',this.value)" style="width:auto;padding:5px 8px;font-size:11px">
           <option value="user" ${(t.userRole||'user')==='user'?'selected':''}>👤 Regular User</option>
           <option value="admin" ${t.userRole==='admin'?'selected':''}>🔑 User Admin</option>
         </select></div>`).join('')||'<p class="dim">No other crew members yet.</p>';
@@ -53,8 +53,8 @@ function renderSettings(){
     const wp=s.widgetPrefs||{};
     wtEl.innerHTML=widgets.map(w=>`
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-family:var(--head);color:var(--text);letter-spacing:0;text-transform:none">
-        <input type="checkbox" id="wt-${w.key}" ${wp[w.key]===false?'':'checked'} style="width:18px;height:18px;cursor:pointer;accent-color:var(--amber)">
-        ${w.label}
+        <input type="checkbox" id="wt-${esc(w.key)}" ${wp[w.key]===false?'':'checked'} style="width:18px;height:18px;cursor:pointer;accent-color:var(--amber)">
+        ${esc(w.label)}
       </label>`).join('');
   }
   // Gear categories
@@ -148,7 +148,7 @@ function getDepts(){return db.settings?.departments||DEFAULT_DEPTS;}
 function renderDeptsSettings(){
   const el=document.getElementById('s-deptsEl');if(!el)return;
   const depts=getDepts();
-  el.innerHTML=depts.map((d,i)=>`<div class="row jbet" style="padding:6px 0;border-bottom:1px solid var(--border)"><div class="row gap8"><div style="width:14px;height:14px;border-radius:3px;background:${d.color||'#888'};flex-shrink:0"></div><span style="font-size:13px;font-family:var(--head)">${d.name}</span></div><button class="btn br bsm" onclick="removeDept(${i})">✕</button></div>`).join('')||'<p class="dim">No departments.</p>';
+  el.innerHTML=depts.map((d,i)=>`<div class="row jbet" style="padding:6px 0;border-bottom:1px solid var(--border)"><div class="row gap8"><div style="width:14px;height:14px;border-radius:3px;background:${esc(d.color||'#888')};flex-shrink:0"></div><span style="font-size:13px;font-family:var(--head)">${esc(d.name)}</span></div><button class="btn br bsm" onclick="removeDept(${i})">✕</button></div>`).join('')||'<p class="dim">No departments.</p>';
 }
 function addDept(){
   const ni=document.getElementById('s-newDept');const ci=document.getElementById('s-newDeptColor');
@@ -170,17 +170,17 @@ function renderVendors(){
   const vendors=getVendors();
   el.innerHTML=vendors.map(v=>`<div class="row jbet" style="padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="min-width:0">
-        <div class="fw7" style="font-size:13px">${v.name}</div>
+        <div class="fw7" style="font-size:13px">${esc(v.name)}</div>
         <div class="dim" style="font-size:11px">${[v.contact,v.phone,v.email].filter(Boolean).join(' · ')||'No contact info'}</div>
-        ${v.parts?'<div class="dim" style="font-size:11px;margin-top:2px">Supplies: '+v.parts+'</div>':''}
+        ${v.parts?'<div class="dim" style="font-size:11px;margin-top:2px">Supplies: '+esc(v.parts)+'</div>':''}
       </div>
-      <button class="btn bgh bsm" onclick="openEditVendor('${v.id}')">✏️</button>
+      <button class="btn bgh bsm" onclick="openEditVendor('${esc(v.id)}')">✏️</button>
     </div>`).join('')||'<p class="dim">No vendors added yet.</p>';
 }
 function _populateVendorSelect(selectId,currentVal){
   const sel=document.getElementById(selectId);if(!sel)return;
   const vendors=getVendors();
-  sel.innerHTML='<option value="">— None —</option>'+vendors.map(v=>`<option value="${v.id}">${v.name}</option>`).join('');
+  sel.innerHTML='<option value="">— None —</option>'+vendors.map(v=>`<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('');
   sel.value=currentVal||'';
 }
 function openAddVendor(){
@@ -378,7 +378,7 @@ function buildTechGrid(cid,key){
   if(!_selTech[key]&&_techId)_selTech[key]=_techId;
   const sel=_selTech[key];
   if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians. <a href="#" class="ca" onclick="closeAllM();go(\'crew\')">Add crew →</a></p>';return;}
-  el.innerHTML=db.technicians.map(t=>`<div class="tpb ${t.id===sel?'sel':''}" onclick="pickTech('${key}','${t.id}','${cid}')"><div class="tav">${t.avatar||'👤'}</div><div>${t.name.split(' ')[0]}</div></div>`).join('');
+  el.innerHTML=db.technicians.map(t=>`<div class="tpb ${t.id===sel?'sel':''}" onclick="pickTech('${key}','${esc(t.id)}','${cid}')"><div class="tav">${esc(t.avatar||'👤')}</div><div>${esc(t.name.split(' ')[0])}</div></div>`).join('');
 }
 function pickTech(key,id,cid){_selTech[key]=id;buildTechGrid(cid,key);}
 function getTech(key){const id=_selTech[key];return id?db.technicians.find(t=>t.id===id)||null:null;}

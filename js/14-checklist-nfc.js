@@ -40,11 +40,11 @@ function renderChecklist(){
       background:${isActive?'var(--aglow)':'transparent'};
       border:1px solid ${isActive?'rgba(240,165,0,.3)':'transparent'};
       transition:all .18s;
-    " onmouseover="if('${s.name}'!==_curChecklistStation)this.style.background='var(--s2)'"
-       onmouseout="if('${s.name}'!==_curChecklistStation)this.style.background='transparent'">
+    " onmouseover="if('${esc(s.name)}'!==_curChecklistStation)this.style.background='var(--s2)'"
+       onmouseout="if('${esc(s.name)}'!==_curChecklistStation)this.style.background='transparent'">
       <div class="row gap8">
         <span style="font-size:18px">${s.icon}</span>
-        <span style="font-size:13px;font-weight:${isActive?'700':'400'};color:${isActive?'var(--amber)':'var(--text)'}">${s.name}</span>
+        <span style="font-size:13px;font-weight:${isActive?'700':'400'};color:${isActive?'var(--amber)':'var(--text)'}">${esc(s.name)}</span>
       </div>
       <span style="font-family:var(--mono);font-size:10px;background:${allDone?'var(--green)':total>0?'var(--s3)':'transparent'};color:${allDone?'#000':'var(--dim2)'};padding:2px 7px;border-radius:20px">${total>0?done+'/'+total:''}</span>
     </div>`;
@@ -85,15 +85,15 @@ function renderChecklist(){
               return`<div style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:14px;transition:all .2s">
                 <div class="row jbet mb10">
                   <div>
-                    <div class="fw7" style="font-size:14px">${f.name}</div>
-                    <div class="dim">${f.id}${f.location?' · '+f.location:''} · ${f.bulbType}</div>
+                    <div class="fw7" style="font-size:14px">${esc(f.name)}</div>
+                    <div class="dim">${esc(f.id)}${f.location?' · '+f.location:''} · ${esc(f.bulbType)}</div>
                   </div>
                   <span style="font-size:26px">${icon}</span>
                 </div>
                 <div class="row gap6">
-                  <button class="btn bg bsm" style="flex:1;justify-content:center" onclick="clCheckItem('fix_${f.id}','ok')">✅ OK</button>
-                  <button class="btn br bsm" style="flex:1;justify-content:center" onclick="clCheckItem('fix_${f.id}','issue')">🔴 Issue</button>
-                  ${s!=='pending'?`<button class="btn bgh bsm" onclick="clCheckItem('fix_${f.id}','pending')">↺</button>`:''}
+                  <button class="btn bg bsm" style="flex:1;justify-content:center" onclick="clCheckItem('fix_${esc(f.id)}','ok')">✅ OK</button>
+                  <button class="btn br bsm" style="flex:1;justify-content:center" onclick="clCheckItem('fix_${esc(f.id)}','issue')">🔴 Issue</button>
+                  ${s!=='pending'?`<button class="btn bgh bsm" onclick="clCheckItem('fix_${esc(f.id)}','pending')">↺</button>`:''}
                 </div>
               </div>`;
             }).join('')}
@@ -255,21 +255,21 @@ function renderNFC(){
   const sel=document.getElementById('nfcFixtureSel');
   if(list){
     list.innerHTML=!db.fixtures.length?'<p class="dim">No fixtures added yet.</p>':db.fixtures.map(f=>{
-      const url=`https://sankegod87.github.io/stage-light/?scan=${f.id}`;
+      const url=`https://sankegod87.github.io/stage-light/?scan=${esc(f.id)}`;
       return`<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
-          <div class="fw7">${f.name} <span class="mono" style="color:var(--dim2);font-size:11px">(${f.id})</span></div>
+          <div class="fw7">${esc(f.name)} <span class="mono" style="color:var(--dim2);font-size:11px">(${esc(f.id)})</span></div>
           <div class="dim" style="font-size:11px;margin-top:2px;word-break:break-all">${url}</div>
         </div>
         <div class="row gap6">
           <button class="btn bb bsm" onclick="copyNFCUrl('${url}')">📋 Copy URL</button>
-          <button class="btn bgh bsm" onclick="showNFCQR('${f.id}','${f.name}','${url}')">🔲 QR</button>
+          <button class="btn bgh bsm" onclick="showNFCQR('${esc(f.id)}','${esc(f.name)}','${url}')">🔲 QR</button>
         </div>
       </div>`;
     }).join('');
   }
   if(sel){
-    sel.innerHTML='<option value="">— Select fixture —</option>'+db.fixtures.map(f=>`<option value="${f.id}">${f.name} (${f.id})</option>`).join('');
+    sel.innerHTML='<option value="">— Select fixture —</option>'+db.fixtures.map(f=>`<option value="${esc(f.id)}">${esc(f.name)} (${esc(f.id)})</option>`).join('');
   }
   // Check Web NFC support
   const statusEl=document.getElementById('webNFCStatus');
@@ -291,7 +291,7 @@ function copyNFCUrl(url){
 function showNFCQR(id,name,url){
   const pa=document.getElementById('printArea');
   pa.innerHTML=`<div style="font-family:monospace;padding:20px;background:#fff;display:inline-block">
-    <h3 style="color:#000;margin-bottom:10px">${name} (${id})</h3>
+    <h3 style="color:#000;margin-bottom:10px">${esc(name)} (${esc(id)})</h3>
     <div id="nfcqr"></div>
     <div style="font-size:10px;color:#555;margin-top:8px;max-width:180px;word-break:break-all">${url}</div>
   </div>`;
@@ -335,7 +335,7 @@ async function readNFCTag(){
             const code=match[1].toUpperCase();
             const f=db.fixtures.find(x=>x.id===code);
             resultEl.style.display='';
-            resultEl.innerHTML=`<div class="cg fw7">✅ Tag read successfully!</div><div class="dim mt4">Fixture: ${f?f.name:code}</div><div class="dim">URL: ${url}</div>`;
+            resultEl.innerHTML=`<div class="cg fw7">✅ Tag read successfully!</div><div class="dim mt4">Fixture: ${esc(f?f.name:code)}</div><div class="dim">URL: ${url}</div>`;
             toast('Tag read: '+(f?f.name:code),'success');
           }
         }

@@ -129,13 +129,13 @@ function renderSchedule(){
       return`<div style="background:${isPast?'var(--s1)':'var(--s2)'};border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:14px">
         <div style="font-size:28px;flex-shrink:0">🎸</div>
         <div style="flex:1;min-width:0">
-          <div class="fw7" style="font-size:15px;margin-bottom:4px">${r.title||'Rehearsal'}</div>
-          <div class="dim" style="font-size:12px;font-family:var(--mono)">${fmtDate(r.date)}${r.time?' · '+r.time:''} · ${r.location||'Location TBD'}</div>
-          ${r.notes?`<div style="font-size:12px;color:var(--dim2);margin-top:4px;font-style:italic">${r.notes}</div>`:''}
+          <div class="fw7" style="font-size:15px;margin-bottom:4px">${esc(r.title||'Rehearsal')}</div>
+          <div class="dim" style="font-size:12px;font-family:var(--mono)">${fmtDate(r.date)}${r.time?' · '+r.time:''} · ${esc(r.location||'Location TBD')}</div>
+          ${r.notes?`<div style="font-size:12px;color:var(--dim2);margin-top:4px;font-style:italic">${esc(r.notes)}</div>`:''}
           ${r.rundown?`<div style="margin-top:8px;padding:8px 10px;background:#E1F5EE;border-radius:6px;font-size:12px;color:#085041">📋 ${r.rundown.length>120?r.rundown.slice(0,120)+'…':r.rundown}</div>`:''}
-          ${crew.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${crew.map(t=>`<div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px"><span>${t.avatar||'👤'}</span><span>${t.name.split(' ')[0]}</span></div>`).join('')}</div>`:'<div class="dim" style="font-size:12px;margin-top:6px">No crew assigned</div>'}
+          ${crew.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${crew.map(t=>`<div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px"><span>${esc(t.avatar||'👤')}</span><span>${esc(t.name.split(' ')[0])}</span></div>`).join('')}</div>`:'<div class="dim" style="font-size:12px;margin-top:6px">No crew assigned</div>'}
         </div>
-        ${canEdit?`<div class="row gap6"><button class="btn ba bsm" onclick="openEditRehearsalModal('${r.id}')">✏️ Edit</button><button class="btn br bsm" onclick="deleteRehearsal('${r.id}')">🗑</button></div>`:''}
+        ${canEdit?`<div class="row gap6"><button class="btn ba bsm" onclick="openEditRehearsalModal('${esc(r.id)}')">✏️ Edit</button><button class="btn br bsm" onclick="deleteRehearsal('${esc(r.id)}')">🗑</button></div>`:''}
       </div>`;
     }).join('');
     applyPermissions();
@@ -182,7 +182,7 @@ function renderSchedule(){
             const e = d._ev;
             const crew = (e.crew||[]).map(id=>db.technicians.find(t=>t.id===id)).filter(Boolean);
             const evPast = e.date < new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-            return `<div style="background:${evPast?'var(--s1)':'var(--aglow)'};border:1px solid rgba(15,110,86,.35);border-left:3px solid var(--amber);border-radius:8px;padding:14px;${evPast?'opacity:.6;':''}${canEdit?'cursor:pointer':''}" ${canEdit?`onclick="openAddSpecialEventModal('${e.id}')"`:''}>
+            return `<div style="background:${evPast?'var(--s1)':'var(--aglow)'};border:1px solid rgba(15,110,86,.35);border-left:3px solid var(--amber);border-radius:8px;padding:14px;${evPast?'opacity:.6;':''}${canEdit?'cursor:pointer':''}" ${canEdit?`onclick="openAddSpecialEventModal('${esc(e.id)}')"`:''}>
               <div class="row jbet mb8">
                 <div>
                   <div style="font-weight:900;font-size:15px">${d.toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'})}</div>
@@ -190,10 +190,10 @@ function renderSchedule(){
                 </div>
                 ${crew.length?`<span class="badge bok">${crew.length} crew</span>`:'<span class="badge blow">Unscheduled</span>'}
               </div>
-              <div class="fw7" style="font-size:14px;margin-bottom:2px">${e.title||'Special Event'}</div>
+              <div class="fw7" style="font-size:14px;margin-bottom:2px">${esc(e.title||'Special Event')}</div>
               <div class="dim" style="font-size:11px;font-family:var(--mono);margin-bottom:6px">${[e.time?(e.time+(e.endTime?' – '+e.endTime:'')):'',e.location].filter(Boolean).join(' · ')||'Time / location TBD'}</div>
-              ${crew.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${crew.map(t=>`<div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px"><span>${t.avatar||'👤'}</span><span>${t.name.split(' ')[0]}</span>${e.roles&&e.roles[t.id]?`<span style="color:var(--dim2);font-size:10px;font-family:var(--mono)">· ${e.roles[t.id]}</span>`:''}</div>`).join('')}</div>`:''}
-              ${e.notes?`<div style="font-size:11px;color:var(--dim2);font-family:var(--mono);margin-top:6px;font-style:italic">${e.notes}</div>`:''}
+              ${crew.length?`<div style="display:flex;flex-wrap:wrap;gap:6px">${crew.map(t=>`<div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px"><span>${esc(t.avatar||'👤')}</span><span>${esc(t.name.split(' ')[0])}</span>${e.roles&&e.roles[t.id]?`<span style="color:var(--dim2);font-size:10px;font-family:var(--mono)">· ${esc(e.roles[t.id])}</span>`:''}</div>`).join('')}</div>`:''}
+              ${e.notes?`<div style="font-size:11px;color:var(--dim2);font-family:var(--mono);margin-top:6px;font-style:italic">${esc(e.notes)}</div>`:''}
               ${e.rundown?`<div style="font-size:11px;color:#534AB7;font-family:var(--mono);margin-top:4px;padding:4px 8px;background:#F0EEFF;border-radius:4px">📝 ${e.rundown.length>80?e.rundown.slice(0,80)+'…':e.rundown}</div>`:''}
             </div>`;
           }
@@ -229,14 +229,14 @@ function renderSchedule(){
               ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${entry&&(entry.notes||entry.briefing)?'8px':'0'}">
                   ${assignedTechs.map(t=>`
                     <div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px">
-                      <span>${t.avatar||'👤'}</span>
-                      <span>${t.name.split(' ')[0]}</span>
-                      ${entry&&entry.roles&&entry.roles[t.id]?`<span style="color:var(--dim2);font-size:10px;font-family:var(--mono)">· ${entry.roles[t.id]}</span>`:''}
+                      <span>${esc(t.avatar||'👤')}</span>
+                      <span>${esc(t.name.split(' ')[0])}</span>
+                      ${entry&&entry.roles&&entry.roles[t.id]?`<span style="color:var(--dim2);font-size:10px;font-family:var(--mono)">· ${esc(entry.roles[t.id])}</span>`:''}
                     </div>`).join('')}
                 </div>`
               : (!isPast&&canEdit?`<div class="dim" style="font-size:12px">Tap to assign crew</div>`:`<div class="dim" style="font-size:12px">No crew assigned</div>`)
             }
-            ${entry&&entry.notes?`<div style="font-size:11px;color:var(--dim2);font-family:var(--mono);margin-top:4px;font-style:italic">${entry.notes}</div>`:''}
+            ${entry&&entry.notes?`<div style="font-size:11px;color:var(--dim2);font-family:var(--mono);margin-top:4px;font-style:italic">${esc(entry.notes)}</div>`:''}
             ${entry&&entry.briefing?`<div style="font-size:11px;color:#0F6E56;font-family:var(--mono);margin-top:4px;padding:4px 8px;background:#E1F5EE;border-radius:4px">📋 ${entry.briefing.length>80?entry.briefing.slice(0,80)+'…':entry.briefing}</div>`:''}
             ${entry&&entry.rundown?`<div style="font-size:11px;color:#534AB7;font-family:var(--mono);margin-top:4px;padding:4px 8px;background:#F0EEFF;border-radius:4px">📝 ${entry.rundown.length>80?entry.rundown.slice(0,80)+'…':entry.rundown}</div>`:''}
             ${!isPast?`<div style="display:flex;gap:10px;margin-top:8px;font-size:10px;font-family:var(--mono);color:var(--dim2)">
@@ -308,19 +308,19 @@ function renderScheduleCalendarGrid(){
         + (assignedTechs.length ? '<span class="badge bok" style="font-size:8px;padding:2px 6px">'+assignedTechs.length+' crew</span>' : (isPast ? '' : '<span class="badge" style="font-size:8px;padding:2px 6px;background:#FDEAEA;color:#A32D2D;border:1px solid #F3B9B9">open</span>'))
         + '</div>'
         + (assignedTechs.length
-            ? '<div style="display:flex;flex-wrap:wrap;gap:2px">'+assignedTechs.slice(0,5).map(t=>'<span title="'+t.name+'" style="font-size:13px">'+(t.avatar||'👤')+'</span>').join('')+(assignedTechs.length>5?'<span style="font-size:9px;color:var(--dim)">+'+(assignedTechs.length-5)+'</span>':'')+'</div>'
+            ? '<div style="display:flex;flex-wrap:wrap;gap:2px">'+assignedTechs.slice(0,5).map(t=>'<span title="'+esc(t.name)+'" style="font-size:13px">'+esc(t.avatar||'👤')+'</span>').join('')+(assignedTechs.length>5?'<span style="font-size:9px;color:var(--dim)">+'+(assignedTechs.length-5)+'</span>':'')+'</div>'
             : (isPast ? '' : '<div class="dim" style="font-size:9px">Tap to assign</div>'))
         + (swapCount ? '<span style="font-size:8px;color:#854F0B">↔️ '+swapCount+' swap'+(swapCount>1?'s':'')+'</span>' : '')
         + (reh.length ? '<span style="font-size:8px;color:var(--purple)">🎸 '+reh.length+'</span>' : '')
-        + evs.slice(0,2).map(e=>'<span onclick="event.stopPropagation();'+(canEdit?'openAddSpecialEventModal(\''+e.id+'\')':'')+'" style="font-size:9px;background:var(--aglow);color:var(--amber);border-radius:4px;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="'+(e.title||'Event')+'">⭐ '+(e.title||'Event')+'</span>').join('')
+        + evs.slice(0,2).map(e=>'<span onclick="event.stopPropagation();'+(canEdit?'openAddSpecialEventModal(\''+esc(e.id)+'\')':'')+'" style="font-size:9px;background:var(--aglow);color:var(--amber);border-radius:4px;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="'+esc(e.title||'Event')+'">⭐ '+esc(e.title||'Event')+'</span>').join('')
         + '</div>';
     } else {
       const singleReh = reh.length===1 ? reh[0] : null;
       const clickable = canEdit && singleReh && !evs.length;
-      html += '<div '+(clickable?'onclick="openEditRehearsalModal(\''+singleReh.id+'\')"':'')+' style="min-height:88px;border-radius:8px;padding:7px;background:var(--s1);border:1px solid var(--border);opacity:'+(isPast?'.55':'1')+';'+(clickable?'cursor:pointer':'')+';display:flex;flex-direction:column;gap:3px">'
+      html += '<div '+(clickable?'onclick="openEditRehearsalModal(\''+esc(singleReh.id)+'\')"':'')+' style="min-height:88px;border-radius:8px;padding:7px;background:var(--s1);border:1px solid var(--border);opacity:'+(isPast?'.55':'1')+';'+(clickable?'cursor:pointer':'')+';display:flex;flex-direction:column;gap:3px">'
         + '<span style="font-size:11px;color:var(--dim2)">'+dayNum+'</span>'
-        + (reh.length ? '<div style="display:flex;flex-direction:column;gap:2px">'+reh.slice(0,2).map(r=>'<span style="font-size:9px;background:var(--pglow);color:var(--purple);border-radius:4px;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.title||'Rehearsal')+'">🎸 '+(r.title||'Rehearsal')+'</span>').join('')+(reh.length>2?'<span style="font-size:8px;color:var(--dim)">+'+(reh.length-2)+' more</span>':'')+'</div>' : '')
-        + evs.slice(0,2).map(e=>'<span onclick="event.stopPropagation();'+(canEdit?'openAddSpecialEventModal(\''+e.id+'\')':'')+'" style="font-size:9px;background:var(--aglow);color:var(--amber);border-radius:4px;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="'+(e.title||'Event')+'">⭐ '+(e.title||'Event')+'</span>').join('')
+        + (reh.length ? '<div style="display:flex;flex-direction:column;gap:2px">'+reh.slice(0,2).map(r=>'<span style="font-size:9px;background:var(--pglow);color:var(--purple);border-radius:4px;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.title||'Rehearsal')+'">🎸 '+esc(r.title||'Rehearsal')+'</span>').join('')+(reh.length>2?'<span style="font-size:8px;color:var(--dim)">+'+(reh.length-2)+' more</span>':'')+'</div>' : '')
+        + evs.slice(0,2).map(e=>'<span onclick="event.stopPropagation();'+(canEdit?'openAddSpecialEventModal(\''+esc(e.id)+'\')':'')+'" style="font-size:9px;background:var(--aglow);color:var(--amber);border-radius:4px;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="'+esc(e.title||'Event')+'">⭐ '+esc(e.title||'Event')+'</span>').join('')
         + '</div>';
     }
   }
@@ -349,7 +349,7 @@ function openScheduleEdit(key, el){
   const tplSel = document.getElementById('schedTemplateSelect');
   if(tplSel){
     const tpls = db.settings.scheduleTemplates||[];
-    tplSel.innerHTML = '<option value="">— Load a template —</option>' + tpls.map((t,i)=>`<option value="${i}">${t.name}</option>`).join('');
+    tplSel.innerHTML = '<option value="">— Load a template —</option>' + tpls.map((t,i)=>`<option value="${i}">${esc(t.name)}</option>`).join('');
   }
 
   renderSchedStationAssignments();
@@ -364,8 +364,8 @@ function renderSchedStationAssignments(){
   const roles = entry.roles || {};
   const stations = getScheduleRoles();
   const chip = (t) => `<div style="display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--border2);border-radius:20px;padding:3px 6px 3px 8px;font-size:12px">
-      <span>${t.avatar||'👤'}</span><span>${t.name.split(' ')[0]}</span>
-      <button type="button" onclick="schedRemoveAssignment('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--dim2);font-size:13px;padding:0 2px;line-height:1" title="Remove">✕</button>
+      <span>${esc(t.avatar||'👤')}</span><span>${esc(t.name.split(' ')[0])}</span>
+      <button type="button" onclick="schedRemoveAssignment('${esc(t.id)}')" style="background:none;border:none;cursor:pointer;color:var(--dim2);font-size:13px;padding:0 2px;line-height:1" title="Remove">✕</button>
     </div>`;
 
   const unavailN = db.technicians.filter(t=>!assignedIds.includes(t.id)&&isTechActive(t)&&availStatus(t.id,_schedEditKey)==='no').length;
@@ -378,15 +378,15 @@ function renderSchedStationAssignments(){
       .sort((a,b)=>rank[availStatus(a.id,_schedEditKey)]-rank[availStatus(b.id,_schedEditKey)]);
     const hiddenN = allOpts.length-allOpts.filter(t=>availStatus(t.id,_schedEditKey)!=='no').length;
     return `<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-      <div class="row gap8 mb6"><span style="font-size:16px">${st.icon}</span><span class="fw7" style="font-size:12px;letter-spacing:.5px;text-transform:uppercase">${st.name}</span></div>
+      <div class="row gap8 mb6"><span style="font-size:16px">${st.icon}</span><span class="fw7" style="font-size:12px;letter-spacing:.5px;text-transform:uppercase">${esc(st.name)}</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;${members.length?'margin-bottom:8px':''}">${members.map(chip).join('')}</div>
       ${options.length
         ? `<select onchange="schedAssignToStation(this,'${st.name.replace(/'/g,"\\'")}')" style="font-size:11px;padding:5px 8px;width:100%">
-            <option value="">+ Add to ${st.name}…</option>
+            <option value="">+ Add to ${esc(st.name)}…</option>
             ${options.map(t=>{
               const avail = availStatus(t.id,_schedEditKey);
               const why = availBlackoutWhy(t.id,_schedEditKey);
-              return `<option value="${t.id}">${t.avatar||'👤'} ${t.name}${avail==='yes'?' — ✅ available':avail==='no'?' — ❌ unavailable'+(why?' ('+why+')':''):' — ❓ no response'}</option>`;
+              return `<option value="${esc(t.id)}">${esc(t.avatar||'👤')} ${esc(t.name)}${avail==='yes'?' — ✅ available':avail==='no'?' — ❌ unavailable'+(why?' ('+why+')':''):' — ❓ no response'}</option>`;
             }).join('')}
           </select>`
         : `<div class="dim" style="font-size:11px">${hiddenN?'Everyone left is unavailable':'All crew already assigned'}</div>`}

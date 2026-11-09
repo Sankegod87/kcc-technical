@@ -28,3 +28,15 @@ function applyPermissions(){
     el.style.display = admin ? '' : 'none';
   });
 }
+
+// Admin sessions end after 45 minutes with no activity, so a phone or laptop left open does not stay in admin mode.
+(function(){
+  const LIMIT=45*60000; let last=Date.now();
+  ['pointerdown','keydown','touchstart','scroll'].forEach(ev=>addEventListener(ev,()=>{last=Date.now();},{passive:true}));
+  setInterval(()=>{
+    try{
+      if(!_techId||!isAdmin()) return;
+      if(Date.now()-last>LIMIT){ last=Date.now(); if(typeof lsLogout==='function'){ lsLogout(); toast('Signed out after 45 minutes of no activity','info'); } }
+    }catch(e){}
+  },30000);
+})();

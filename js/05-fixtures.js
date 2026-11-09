@@ -58,7 +58,7 @@ function renderFix(){
     const isMaint=maintDueIds.has(f.id);
     const outageCount=db.outages.filter(o=>o.fixtureId===f.id).length;
     const reg=db.bulbRegistry.find(b=>b.installedIn===f.id&&b.status==='installed');
-    const bulbLabel=reg?`<span class="mono" style="color:var(--amber);font-size:11px;font-weight:700">${reg.bulbId}</span><span class="dim" style="margin-left:6px">since ${ago(reg.installedAt)}</span>`
+    const bulbLabel=reg?`<span class="mono" style="color:var(--amber);font-size:11px;font-weight:700">${esc(reg.bulbId)}</span><span class="dim" style="margin-left:6px">since ${ago(reg.installedAt)}</span>`
       :'<span class="dim">No bulb scanned</span>';
     const cardClass='fix-card'+(isOut?' status-out':' status-ok')+(isMaint?' status-maint':'');
     const catColors={wash:'#0F6E56',spot:'#534AB7',par:'#854F0B',fresnel:'#185FA5',led:'#3B6D11',follow:'#A32D2D',other:'#888'};
@@ -66,22 +66,22 @@ function renderFix(){
     return`<div class="${cardClass}">
       <div class="fix-card-head">
         <div style="flex:1;min-width:0">
-          <div class="fix-card-id">${f.id}</div>
-          <div class="fix-card-name">${f.name||'—'}</div>
-          <div class="fix-card-loc">📍 ${f.location||'No location'}</div>
+          <div class="fix-card-id">${esc(f.id)}</div>
+          <div class="fix-card-name">${esc(f.name||'—')}</div>
+          <div class="fix-card-loc">📍 ${esc(f.location||'No location')}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
           ${isOut
             ?'<span class="badge bout"><span class="bd pulse"></span>OUT</span>'
             :'<span class="badge bok"><span class="bd"></span>OK</span>'}
           ${isMaint?'<span class="maint-badge">MAINT</span>':''}
-          <span class="badge" style="background:${catColor}18;color:${catColor};border-color:${catColor}44">${f.category||'other'}</span>
+          <span class="badge" style="background:${catColor}18;color:${catColor};border-color:${catColor}44">${esc(f.category||'other')}</span>
         </div>
       </div>
       <div class="fix-card-body">
         <div class="fix-card-row">
           <span class="fix-card-label">Bulb Type</span>
-          <span class="fix-card-val">${f.bulbType||'—'}</span>
+          <span class="fix-card-val">${esc(f.bulbType||'—')}</span>
         </div>
         <div class="fix-card-row">
           <span class="fix-card-label">Current Bulb</span>
@@ -101,12 +101,12 @@ function renderFix(){
         </div>
       </div>
       <div class="fix-card-foot">
-        <button class="btn br bsm" onclick="openOutModal('${f.id}')">🔴 Out</button>
-        ${isOut?`<button class="btn bg bsm" onclick="openRepModal('${f.id}')">✅ Fix</button>`:''}
-        <button class="btn bgh bsm" onclick="viewFixture('${f.id}')">👁 View</button>
-        <button class="btn bgh bsm" data-perm="admin" onclick="editFixture('${f.id}')">✏️</button>
-        <button class="btn bgh bsm" onclick="markMaintDone('${f.id}')">🔧</button>
-        <button class="btn bgh bsm" data-perm="master" onclick="requirePin(()=>deleteFixture('${f.id}'))">🗑️</button>
+        <button class="btn br bsm" onclick="openOutModal('${esc(f.id)}')">🔴 Out</button>
+        ${isOut?`<button class="btn bg bsm" onclick="openRepModal('${esc(f.id)}')">✅ Fix</button>`:''}
+        <button class="btn bgh bsm" onclick="viewFixture('${esc(f.id)}')">👁 View</button>
+        <button class="btn bgh bsm" data-perm="admin" onclick="editFixture('${esc(f.id)}')">✏️</button>
+        <button class="btn bgh bsm" onclick="markMaintDone('${esc(f.id)}')">🔧</button>
+        <button class="btn bgh bsm" data-perm="master" onclick="requirePin(()=>deleteFixture('${esc(f.id)}'))">🗑️</button>
       </div>
     </div>`;
   }).join('');
@@ -116,12 +116,12 @@ function viewFixture(id){
   const f=db.fixtures.find(x=>x.id===id);if(!f)return;
   const outs=[...db.outages].filter(o=>o.fixtureId===id).sort((a,b)=>b.timestamp-a.timestamp);
   const avgDown=outs.filter(o=>o.resolved).reduce((s,o,_,a)=>s+(o.resolvedAt-o.timestamp)/a.length,0);
-  document.getElementById('vfTitle').textContent='💡 '+f.name+' ('+f.id+')';
+  document.getElementById('vfTitle').textContent='💡 '+esc(f.name)+' ('+esc(f.id)+')';
   document.getElementById('vfBody').innerHTML=`
     <div class="grid2 mb14">
-      <div><div class="dim mb8">LOCATION</div><div class="fw7">${f.location||'—'}</div></div>
-      <div><div class="dim mb8">BULB TYPE REQUIRED</div><div class="fw7">${f.bulbType}</div></div>
-      <div><div class="dim mb8">CATEGORY</div><span class="badge bblue">${f.category||'other'}</span></div>
+      <div><div class="dim mb8">LOCATION</div><div class="fw7">${esc(f.location||'—')}</div></div>
+      <div><div class="dim mb8">BULB TYPE REQUIRED</div><div class="fw7">${esc(f.bulbType)}</div></div>
+      <div><div class="dim mb8">CATEGORY</div><span class="badge bblue">${esc(f.category||'other')}</span></div>
       <div><div class="dim mb8">STATUS</div>${f.status==='ok'?'<span class="badge bok"><span class="bd"></span>OK</span>':'<span class="badge bout"><span class="bd pulse"></span>OUT</span>'}</div>
       <div><div class="dim mb8">TOTAL OUTAGES</div><div class="fw7" style="font-size:24px;color:var(--red)">${outs.length}</div></div>
       <div><div class="dim mb8">AVG DOWNTIME</div><div class="fw7">${avgDown?fmtDur(avgDown):'—'}</div></div>
@@ -139,21 +139,21 @@ function viewFixture(id){
       return '<div style="background:'+bg+';border:1px solid '+bdr+';border-radius:6px;padding:12px;margin-bottom:14px">'
         +'<div class="dim" style="letter-spacing:1px;margin-bottom:8px">CURRENT BULB INSTALLED</div>'
         +'<div class="row gap8" style="flex-wrap:wrap">'
-        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">BULB ID</div><div class="mono fw7" style="color:var(--amber)">'+reg.bulbId+'</div></div>'
-        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">TYPE</div><div class="fw7">'+reg.bulbType+' '+typeTag+'</div></div>'
+        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">BULB ID</div><div class="mono fw7" style="color:var(--amber)">'+esc(reg.bulbId)+'</div></div>'
+        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">TYPE</div><div class="fw7">'+esc(reg.bulbType)+' '+typeTag+'</div></div>'
         +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">INSTALLED</div><div class="fw7">'+ago(reg.installedAt)+'</div></div>'
-        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">BY</div><div class="fw7">'+(reg.installedBy||'—')+'</div></div>'
+        +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">BY</div><div class="fw7">'+esc(reg.installedBy||'—')+'</div></div>'
         +'<div><div class="dim" style="font-size:9px;margin-bottom:2px">TIMES INSTALLED</div><div class="fw7">'+installs+'</div></div>'
         +'</div></div>';
     })()}
-    ${f.notes?`<div class="note-box mb14">📝 ${f.notes}</div>`:''}
+    ${f.notes?`<div class="note-box mb14">📝 ${esc(f.notes)}</div>`:''}
     ${(()=>{
       if(!f.vendorId)return'';
       const v=getVendors().find(x=>x.id===f.vendorId);
       if(!v)return'';
       return '<div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px">'
         +'<div class="dim" style="letter-spacing:1px;margin-bottom:6px">🚚 ORDER REPLACEMENT FROM</div>'
-        +'<div class="fw7">'+v.name+'</div>'
+        +'<div class="fw7">'+esc(v.name)+'</div>'
         +'<div class="dim" style="font-size:12px;margin-top:2px">'+[v.contact,v.phone,v.email].filter(Boolean).join(' · ')+'</div>'
         +'</div>';
     })()}
@@ -163,8 +163,8 @@ function viewFixture(id){
         <thead><tr><th>Date</th><th>Reported By</th><th>Notes</th><th>Photo</th><th>Status</th><th>Down Time</th></tr></thead>
         <tbody>${!outs.length?'<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:20px">No outages</td></tr>':outs.map(o=>`<tr>
           <td class="dim mono" style="font-size:10px">${fmtD(o.timestamp)}</td>
-          <td>${o.reportedBy}</td><td class="dim">${o.notes||'—'}</td>
-          <td>${o.photo?`<img src="${o.photo}" onclick="viewPhotoLightbox('${o.photo}')" style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)">`:'—'}</td>
+          <td>${esc(o.reportedBy)}</td><td class="dim">${esc(o.notes||'—')}</td>
+          <td>${o.photo?`<img src="${esc(safeImg(o.photo))}" onclick="viewPhotoLightbox(this.src)" style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)">`:'—'}</td>
           <td>${o.resolved?'<span class="badge bok">Resolved</span>':'<span class="badge bout">Pending</span>'}</td>
           <td class="dim">${o.resolved?fmtDur(o.resolvedAt-o.timestamp):'<span class="cr">Ongoing</span>'}</td>
         </tr>`).join('')}</tbody>
@@ -177,16 +177,16 @@ function viewFixture(id){
         <thead><tr><th>Date</th><th>By</th><th>Notes</th></tr></thead>
         <tbody>${!(f.maintLog&&f.maintLog.length)?'<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:16px">No maintenance logged yet</td></tr>':[...f.maintLog].reverse().map(m=>`<tr>
           <td class="dim mono" style="font-size:10px">${fmtD(m.date)}</td>
-          <td>${m.tech||'—'}</td>
-          <td class="dim">${m.notes||'—'}</td>
+          <td>${esc(m.tech||'—')}</td>
+          <td class="dim">${esc(m.notes||'—')}</td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
     <div class="mf" style="border:none;padding:14px 0 0 0">
-      <button class="btn br" onclick="closeM('viewFixture');openOutModal('${f.id}')">🔴 Report Outage</button>
-      ${f.status==='out'?`<button class="btn bg" onclick="closeM('viewFixture');openRepModal('${f.id}')">✅ Mark Replaced</button>`:''}
-      <button class="btn ba" onclick="closeM('viewFixture');editFixture('${f.id}')">✏️ Edit Fixture</button>
-      <button class="btn bgh" onclick="markMaintDone('${f.id}');closeM('viewFixture')">🔧 Mark Maintained</button>
+      <button class="btn br" onclick="closeM('viewFixture');openOutModal('${esc(f.id)}')">🔴 Report Outage</button>
+      ${f.status==='out'?`<button class="btn bg" onclick="closeM('viewFixture');openRepModal('${esc(f.id)}')">✅ Mark Replaced</button>`:''}
+      <button class="btn ba" onclick="closeM('viewFixture');editFixture('${esc(f.id)}')">✏️ Edit Fixture</button>
+      <button class="btn bgh" onclick="markMaintDone('${esc(f.id)}');closeM('viewFixture')">🔧 Mark Maintained</button>
     </div>`;
   openM('viewFixture');
 }

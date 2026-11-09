@@ -1,3 +1,8 @@
+// Only let known-safe things into src/href: real image data, http(s) links, mailto/tel.
+function safeImg(u){u=String(u==null?'':u);return /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[^\s"'<>]+$/.test(u)?u:'';}
+function safeUrl(u){u=String(u==null?'':u).trim();return /^(https?:\/\/|mailto:|tel:)[^\s"'<>]*$/i.test(u)?u:'';}
+// HTML-escape any text that came from a person before it is put into markup.
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 const LS_KEY   = 'slt_db_v6';
 const TECH_KEY = 'slt_tech_id';
 const PIN_KEY  = 'slt_pin';

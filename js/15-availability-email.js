@@ -74,7 +74,7 @@ function renderAvailability(){
         </tr></thead>
         <tbody>
           ${db.technicians.map(t=>`<tr>
-            <td><div class="row gap8"><span style="font-size:18px">${t.avatar||'👤'}</span><div><div class="fw7">${esc(t.name.split(' ')[0])}</div></div></div></td>
+            <td><div class="row gap8"><span style="font-size:18px">${esc(t.avatar||'👤')}</span><div><div class="fw7">${esc(t.name.split(' ')[0])}</div></div></div></td>
             ${sundays.map(s=>{
               const key=schedKey(s);
               const av=availStatus(t.id,key);
@@ -84,7 +84,7 @@ function renderAvailability(){
               const bg=av==='yes'?'var(--gglow)':av==='no'?'var(--rglow)':'transparent';
               return`<td style="text-align:center">
                 ${isMe&&!away
-                  ? `<button onclick="setAvailability('${t.id}','${key}')" style="background:${bg};border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px" title="Tap to toggle">${icon}</button>`
+                  ? `<button onclick="setAvailability('${esc(t.id)}','${key}')" style="background:${bg};border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px" title="Tap to toggle">${icon}</button>`
                   : `<span style="font-size:16px" title="${esc(away)}">${icon}</span>`
                 }
               </td>`;
@@ -96,7 +96,7 @@ function renderAvailability(){
     <div class="dim" style="margin-top:10px;font-size:11px">✅ Available &nbsp; ❌ Unavailable &nbsp; ❓ Not responded &nbsp; — Tap your own row to toggle. Time off below marks you unavailable for every Sunday in the range.</div>
     ${curTech?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
       <div class="fw7" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim2);margin-bottom:8px">My time off</div>
-      ${mine.length?mine.map(x=>`<div class="row jbet" style="padding:6px 0;font-size:13px"><span>${fmt(x.r.from)}${x.r.to!==x.r.from?' to '+fmt(x.r.to):''}${x.r.reason?' · '+esc(x.r.reason):''}</span><button class="btn bgh bsm" onclick="removeBlackout(${x.i})">Remove</button></div>`).join(''):'<div class="dim" style="font-size:12px;margin-bottom:6px">No time off booked.</div>'}
+      ${mine.length?mine.map(x=>`<div class="row jbet" style="padding:6px 0;font-size:13px"><span>${fmt(x.r.from)}${x.r.to!==x.r.from?' to '+fmt(x.r.to):''}${x.r.reason?' · '+esc(x.r.reason):''}</span><button class="btn bgh bsm" onclick="removeBlackout(${esc(x.i)})">Remove</button></div>`).join(''):'<div class="dim" style="font-size:12px;margin-bottom:6px">No time off booked.</div>'}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:flex-end">
         <div class="fg" style="margin:0"><label>From</label><input type="date" id="bo-from"></div>
         <div class="fg" style="margin:0"><label>To</label><input type="date" id="bo-to"></div>

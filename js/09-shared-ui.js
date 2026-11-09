@@ -17,7 +17,7 @@ function buildWhoGrid(){
   if(!db.technicians.length){el.innerHTML='<p class="dim">No technicians yet.</p>';return;}
   const activeTechs=db.technicians.filter(isTechActive);
   if(!activeTechs.length){el.innerHTML='<p class="dim">No active technicians.</p>';return;}
-  el.innerHTML=activeTechs.map(t=>`<div class="tpb ${t.id===_techId?'sel':''}" onclick="whoSelectTech('${t.id}')"><div class="tav">${t.avatar||'👤'}</div><div>${t.name.split(' ')[0]}</div></div>`).join('');
+  el.innerHTML=activeTechs.map(t=>`<div class="tpb ${t.id===_techId?'sel':''}" onclick="whoSelectTech('${esc(t.id)}')"><div class="tav">${esc(t.avatar||'👤')}</div><div>${esc(t.name.split(' ')[0])}</div></div>`).join('');
 }
 let _whoSelectedId=null;
 function whoSelectTech(id){
@@ -87,11 +87,13 @@ function pwMatch(pw,stored){
   return _legacyHash(pw)===stored;
 }
 // Lock the sign-in form for a minute after 5 wrong tries.
-const _loginFails={};
-function loginLocked(id){const f=_loginFails[id];return f&&f.until&&Date.now()<f.until?Math.ceil((f.until-Date.now())/1000):0;}
-function loginFailed(id){const f=_loginFails[id]=_loginFails[id]||{n:0};f.n++;if(f.n>=5){f.until=Date.now()+60000;f.n=0;}}
+const _LF_KEY='kcc_login_fails';
+function _lfLoad(){try{return JSON.parse(localStorage.getItem(_LF_KEY)||'{}');}catch(e){return {};}}
+function _lfSave(o){try{localStorage.setItem(_LF_KEY,JSON.stringify(o));}catch(e){}}
+function loginLocked(id){const f=_lfLoad()[id];return f&&f.until&&Date.now()<f.until?Math.ceil((f.until-Date.now())/1000):0;}
+function loginFailed(id){const a=_lfLoad(),f=a[id]=a[id]||{n:0};f.n++;if(f.n>=5){f.until=Date.now()+60000*Math.min(30,Math.pow(2,f.locks||0));f.locks=(f.locks||0)+1;f.n=0;}_lfSave(a);}
 function loginOk(id,pw){ // upgrade legacy hash after a good sign-in
-  delete _loginFails[id];
+  const _a=_lfLoad(); delete _a[id]; _lfSave(_a);
   const t=db.technicians.find(x=>x.id===id);
   if(t&&pw&&t.passwordHash&&t.passwordHash.indexOf('s2:')!==0){t.passwordHash=simpleHash(pw);try{save();}catch(e){}}
 }
@@ -107,7 +109,7 @@ const DEPT_ICONS = {Lighting:'💡',Audio:'🎚️',Cameras:'📷',IT:'💻'};
 function deptBadge(dept){
   if(!dept)return'';
   const d=DEPT_COLORS[dept]||{color:'#888',bg:'#f0f0f0',border:'#ccc'};
-  return`<span class="dept-badge" style="color:${d.color};background:${d.bg};border-color:${d.border}">${DEPT_ICONS[dept]||''} ${dept}</span>`;
+  return`<span class="dept-badge" style="color:${d.color};background:${esc(d.bg)};border-color:${esc(d.border)}">${DEPT_ICONS[dept]||''} ${dept}</span>`;
 }
 function deptFilterRow(containerId, onFilter){
   const depts=['all','Lighting','Audio','Cameras','IT'];
@@ -277,7 +279,7 @@ function openOutModal(fid){
   const f=db.fixtures.find(x=>x.id===fid);if(!f)return;
   _curFix=fid;_selTech['outage']=_techId||null;
   document.getElementById('outTitle').textContent='🔴 Report Outage — '+f.id;
-  document.getElementById('outInfo').innerHTML=`<div class="fw7" style="font-size:14px;margin-bottom:3px">${f.name}</div><div class="dim">${f.location} · ${f.bulbType}</div>`;
+  document.getElementById('outInfo').innerHTML=`<div class="fw7" style="font-size:14px;margin-bottom:3px">${esc(f.name)}</div><div class="dim">${esc(f.location)} · ${esc(f.bulbType)}</div>`;
   document.getElementById('onotes').value='';
   const _opi=document.getElementById('outPhotoInput');if(_opi)_opi.value='';
   const _opp=document.getElementById('outPhotoPreview');if(_opp){_opp.innerHTML='';_opp.dataset.photo='';}
@@ -287,11 +289,11 @@ function openRepModal(fid){
   const f=db.fixtures.find(x=>x.id===fid);if(!f)return;
   _curFix=fid;_selTech['replace']=_techId||null;
   document.getElementById('repInfo').innerHTML=`
-    <div class="fw7" style="font-size:14px;margin-bottom:3px">${f.name}</div>
-    <div class="dim">${f.location}</div>
+    <div class="fw7" style="font-size:14px;margin-bottom:3px">${esc(f.name)}</div>
+    <div class="dim">${esc(f.location)}</div>
     <div style="margin-top:6px;font-family:var(--mono);font-size:11px">
-      Required bulb: <strong style="color:var(--amber)">${f.bulbType}</strong>
-      ${(()=>{const inv=db.inventory.find(i=>i.bulbType===f.bulbType);return inv?`<span style="margin-left:10px;color:${inv.inStock>0?'var(--green)':'var(--red)'}">${inv.inStock} in stock</span>`:'<span style="color:var(--red);margin-left:10px">Not in inventory</span>';})()}
+      Required bulb: <strong style="color:var(--amber)">${esc(f.bulbType)}</strong>
+      ${(()=>{const inv=db.inventory.find(i=>i.bulbType===f.bulbType);return inv?`<span style="margin-left:10px;color:${inv.inStock>0?'var(--green)':'var(--red)'}">${esc(inv.inStock)} in stock</span>`:'<span style="color:var(--red);margin-left:10px">Not in inventory</span>';})()}
     </div>`;
   document.getElementById('rnotes').value='';
   document.getElementById('rbulbid').value='';
@@ -331,14 +333,14 @@ function _photoPreview(fileInputId,previewId,maxDim,quality){
   _compressImageToDataURL(fileInputId,maxDim||900,quality||0.6,function(dataUrl){
     const p=document.getElementById(previewId);
     if(!p)return;
-    if(dataUrl){p.innerHTML='<img src="'+dataUrl+'" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid var(--border)">';p.dataset.photo=dataUrl;}
+    if(dataUrl){p.innerHTML='<img src="'+esc(safeImg(dataUrl))+'" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid var(--border)">';p.dataset.photo=dataUrl;}
     else{p.innerHTML='';p.dataset.photo='';}
   });
 }
 function viewPhotoLightbox(src){
-  if(!src)return;
+  src=safeImg(src); if(!src)return;
   const w=window.open('','_blank');
-  if(w){w.document.write('<title>Photo</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="'+src+'" style="max-width:100%;max-height:100vh"></body>');}
+  if(w){w.document.write('<title>Photo</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="'+esc(src)+'" style="max-width:100%;max-height:100vh"></body>');}
 }
 function submitOutage(){
   const f=db.fixtures.find(x=>x.id===_curFix);if(!f)return;
@@ -438,8 +440,8 @@ function onBulbIdInput(code){
         <div style="color:var(--red);font-size:15px;font-weight:900">🚫 HARD BLOCK — Bulb Currently In Use!</div>
         <div style="margin-top:8px;background:rgba(224,60,60,.1);border-radius:6px;padding:10px">
           <div style="font-family:var(--mono);font-size:11px;color:var(--text)">Bulb <strong>${code}</strong> is currently installed in:</div>
-          <div style="font-size:16px;font-weight:700;color:var(--red);margin-top:4px">${fixName} (${reg.installedIn})</div>
-          <div class="dim" style="margin-top:2px">Installed ${reg.installedAt?ago(reg.installedAt):'unknown'} by ${reg.installedBy||'unknown'}</div>
+          <div style="font-size:16px;font-weight:700;color:var(--red);margin-top:4px">${fixName} (${esc(reg.installedIn)})</div>
+          <div class="dim" style="margin-top:2px">Installed ${reg.installedAt?ago(reg.installedAt):'unknown'} by ${esc(reg.installedBy||'unknown')}</div>
         </div>
         <div style="font-size:12px;color:var(--red);margin-top:10px;font-weight:700">❌ This bulb is in use. Scan a different bulb.</div>
         <button class="btn bgh bsm" style="margin-top:8px" onclick="document.getElementById('rbulbid').value='';onBulbIdInput('')">✕ Scan Different Bulb</button>`;
@@ -453,7 +455,7 @@ function onBulbIdInput(code){
       banner.style.border='1px solid rgba(224,60,60,.4)';
       banner.innerHTML=`<div style="color:var(--red);font-size:15px;font-weight:900">🚫 HARD BLOCK — Bulb Disposed</div>
         <div style="margin-top:8px;background:rgba(224,60,60,.1);border-radius:6px;padding:10px">
-          <div class="dim">Bulb <strong>${code}</strong> (${reg.bulbType}) has been disposed of.</div>
+          <div class="dim">Bulb <strong>${code}</strong> (${esc(reg.bulbType)}) has been disposed of.</div>
         </div>
         <div style="font-size:12px;color:var(--red);margin-top:10px;font-weight:700">❌ This bulb cannot be used. Scan a different bulb.</div>`;
       document.getElementById('rbulbcond').value='blown';
@@ -469,8 +471,8 @@ function onBulbIdInput(code){
         banner.style.background='var(--gglow)';
         banner.style.border='1px solid rgba(40,201,122,.3)';
         banner.innerHTML=`<div style="color:var(--green);font-weight:700">✅ Registered Bulb — Correct Type</div>
-          <div class="dim" style="margin-top:4px">ID: <strong>${code}</strong> · Type: ${reg.bulbType}${reg.status==='pulled'?' · Previously pulled':''}
-          ${inv?' · '+inv.inStock+' of this type in stock':''}</div>
+          <div class="dim" style="margin-top:4px">ID: <strong>${code}</strong> · Type: ${esc(reg.bulbType)}${reg.status==='pulled'?' · Previously pulled':''}
+          ${inv?' · '+esc(inv.inStock)+' of this type in stock':''}</div>
           <div class="dim">Created ${ago(reg.createdAt)} · ${reg.history.length} prior installation${reg.history.length!==1?'s':''}</div>`;
         document.getElementById('rbulbcond').value=reg.status==='pulled'?'reused':'new';
         document.getElementById('rdeduct').checked=true;
@@ -480,7 +482,7 @@ function onBulbIdInput(code){
         banner.style.background='var(--aglow)';
         banner.style.border='1px solid rgba(240,165,0,.3)';
         banner.innerHTML=`<div style="color:var(--amber);font-weight:700">⚠️ Registered Bulb — Type Mismatch</div>
-          <div class="dim" style="margin-top:4px">Scanned: <strong>${reg.bulbType}</strong> · Fixture needs: <strong>${f.bulbType}</strong></div>
+          <div class="dim" style="margin-top:4px">Scanned: <strong>${esc(reg.bulbType)}</strong> · Fixture needs: <strong>${esc(f.bulbType)}</strong></div>
           <div style="font-size:11px;color:var(--amber);margin-top:4px">Mismatch will be logged. You can still proceed.</div>`;
         document.getElementById('rbulbcond').value='new';
         return;
@@ -500,7 +502,7 @@ function onBulbIdInput(code){
       bg='var(--rglow)';border='rgba(224,60,60,.4)';
       html=`<div style="color:var(--red);font-size:15px;font-weight:900">🚫 HARD BLOCK — This Bulb is Blown!</div>
             <div style="margin-top:8px;background:rgba(224,60,60,.1);border-radius:6px;padding:10px">
-              <div class="dim">Bulb ID: <strong>${usedMatch.bulbId}</strong> · Type: ${usedMatch.bulbType}</div>
+              <div class="dim">Bulb ID: <strong>${esc(usedMatch.bulbId)}</strong> · Type: ${esc(usedMatch.bulbType)}</div>
               <div class="dim">Pulled from: ${usedMatch.fixtureName||usedMatch.pulledFrom} · ${timePulled}</div>
             </div>
             <div style="font-size:12px;color:var(--red);margin-top:10px;font-weight:700">❌ This bulb cannot be used. Scan a different bulb.</div>`;
@@ -510,20 +512,20 @@ function onBulbIdInput(code){
       // Used bulb found but wrong type — warn and block, allow override
       bg='var(--aglow)';border='rgba(240,165,0,.4)';
       html=`<div style="color:var(--amber);font-size:14px;font-weight:700">⚠️ Used Bulb — Type Mismatch!</div>
-            <div class="dim" style="margin-top:4px">Scanned: <strong>${usedMatch.bulbType}</strong> · Fixture needs: <strong>${f.bulbType}</strong></div>
+            <div class="dim" style="margin-top:4px">Scanned: <strong>${esc(usedMatch.bulbType)}</strong> · Fixture needs: <strong>${esc(f.bulbType)}</strong></div>
             <div class="dim">Condition: ${condLabel} · Pulled ${timePulled} from ${usedMatch.fixtureName||usedMatch.pulledFrom}</div>
             <div style="font-size:11px;color:var(--amber);margin-top:6px">Wrong bulb type — mismatch will be logged.</div>
-            <button class="btn ba bsm" style="margin-top:8px" onclick="forceUsedBulb('${usedMatch.id}')">Proceed Anyway</button>`;
+            <button class="btn ba bsm" style="margin-top:8px" onclick="forceUsedBulb('${esc(usedMatch.id)}')">Proceed Anyway</button>`;
       document.getElementById('rbulbcond').value='new';
     } else {
       // Used bulb, correct type — warn but allow
       bg='var(--aglow)';border='rgba(240,165,0,.3)';
       html=`<div style="color:var(--amber);font-size:14px;font-weight:700">♻️ Previously Used Bulb</div>
-            <div class="dim" style="margin-top:4px">Type: <strong>${usedMatch.bulbType}</strong> ✓ matches fixture</div>
+            <div class="dim" style="margin-top:4px">Type: <strong>${esc(usedMatch.bulbType)}</strong> ✓ matches fixture</div>
             <div class="dim">Condition: ${condLabel} · Pulled ${timePulled} from ${usedMatch.fixtureName||usedMatch.pulledFrom}</div>
-            <div style="font-size:11px;color:var(--amber);margin-top:4px">${usedMatch.notes||''}</div>
+            <div style="font-size:11px;color:var(--amber);margin-top:4px">${esc(usedMatch.notes||'')}</div>
             <div style="margin-top:8px;display:flex;gap:8px">
-              <button class="btn bg bsm" onclick="forceUsedBulb('${usedMatch.id}')">✅ Use This Bulb</button>
+              <button class="btn bg bsm" onclick="forceUsedBulb('${esc(usedMatch.id)}')">✅ Use This Bulb</button>
               <button class="btn bgh bsm" onclick="document.getElementById('rbulbid').value='';onBulbIdInput('')">✕ Cancel</button>
             </div>`;
       document.getElementById('rbulbcond').value='new';
@@ -547,14 +549,14 @@ function onBulbIdInput(code){
     document.getElementById('rbulbcond').value='new';
   } else if(isMatch){
     bg='var(--gglow)';border='rgba(40,201,122,.3)';
-    html=`<div style="color:var(--green)">✅ New stock — correct type: <strong>${inv.bulbType}</strong></div>
+    html=`<div style="color:var(--green)">✅ New stock — correct type: <strong>${esc(inv.bulbType)}</strong></div>
           <div class="dim" style="margin-top:4px">${inStock} in stock · Will deduct 1 on confirm</div>`;
     document.getElementById('rbulbcond').value='new';
     document.getElementById('rdeduct').checked=true;
   } else {
     bg='var(--aglow)';border='rgba(240,165,0,.3)';
     html=`<div style="color:var(--amber)">⚠️ Type mismatch — new stock</div>
-          <div class="dim" style="margin-top:4px">Scanned: <strong>${inv.bulbType}</strong> · Fixture needs: <strong>${f.bulbType}</strong></div>
+          <div class="dim" style="margin-top:4px">Scanned: <strong>${esc(inv.bulbType)}</strong> · Fixture needs: <strong>${esc(f.bulbType)}</strong></div>
           <div style="font-size:11px;color:var(--amber);margin-top:4px">Logged as mismatch — you can still proceed</div>`;
     document.getElementById('rbulbcond').value='new';
   }
@@ -588,7 +590,7 @@ function forceUsedBulb(usedBulbId){
   banner.style.background='var(--gglow)';
   banner.style.border='1px solid rgba(40,201,122,.3)';
   banner.innerHTML=`<div style="color:var(--green)">✅ Used bulb accepted</div>
-    <div class="dim" style="margin-top:4px">ID: ${ub.bulbId||'unlabelled'} · Type: ${ub.bulbType} · Will be marked as reinstalled</div>`;
+    <div class="dim" style="margin-top:4px">ID: ${esc(ub.bulbId||'unlabelled')} · Type: ${esc(ub.bulbType)} · Will be marked as reinstalled</div>`;
   document.getElementById('rbulbcond').value='new';
   document.getElementById('rdeduct').checked=false;
 }
