@@ -1344,7 +1344,7 @@ initFirebase();
     <div class="panel" data-perm="master">
       <div class="ph"><span class="pt">💾 Backup &amp; Restore</span></div>
       <div class="pb">
-        <p class="dim" style="margin-bottom:10px">Download a copy of everything in the app (crew, fixtures, stock, gear, schedules, history). Do this before any reset or big clean-up. The file includes crew password hashes and the YouTube key, so keep it somewhere private.</p>
+        <p class="dim" style="margin-bottom:10px">Download a copy of everything in the app (crew, fixtures, stock, gear, schedules, history). Do this before any reset or big clean-up. Crew accounts and passwords are kept on the server, so a restore does not change them. The file still holds your crew's contact details, so keep it somewhere private.</p>
         <div class="row gap8" style="flex-wrap:wrap">
           <button class="btn ba" onclick="downloadBackup()">Download backup</button>
           <label class="btn bgh" style="cursor:pointer">Restore from file<input type="file" accept="application/json,.json" style="display:none" onchange="restoreBackup(this)"></label>

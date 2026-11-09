@@ -403,7 +403,9 @@ function restoreBackup(input){
     const when=new Date(b.savedAt||0).toLocaleString();
     requirePin(()=>{
       if(!confirm('Replace ALL current data on every device with the backup from '+when+'?\n\nThis cannot be undone. Download a backup of the current data first if unsure.')) return;
-      db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{}},d);
+      // Crew accounts, roles and passwords live on the server and are not changed by a restore. Old backups may carry password hashes or the YouTube key: drop them.
+      const keepCrew=db.technicians; delete d.technicians; if(d.settings) delete d.settings.ytKey;
+      db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:keepCrew,settings:{}},d);
       lsave(); try{ localStorage.removeItem(SYNC_BASE_KEY); }catch(e){}
       save(); toast('Backup restored','success'); refreshPage();
     });
