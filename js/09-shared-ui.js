@@ -43,13 +43,15 @@ function whoBack(){
 function submitLogin(){
   const t=db.technicians.find(x=>x.id===_whoSelectedId);if(!t)return;
   const pw=document.getElementById('whoPassword').value;
-  const hash=simpleHash(pw);
-  if(hash!==t.passwordHash){
+  const lk=loginLocked(t.id);if(lk){toast('Too many tries — wait '+lk+'s','error');return;}
+  if(!pwMatch(pw,t.passwordHash)){
+    loginFailed(t.id);
     document.getElementById('whoLoginErr').style.display='';
     document.getElementById('whoPassword').value='';
     document.getElementById('whoPassword').focus();
     return;
   }
+  loginOk(t.id,pw);
   setTech(t.id);
   whoBack();
 }
@@ -58,10 +60,40 @@ function whoForgot(){
   toast('Ask the admin to reset your password on the Crew page','info');
 }
 // Simple hash — not cryptographic but sufficient for this use case
-function simpleHash(str){
-  let hash=0;
-  for(let i=0;i<str.length;i++){hash=((hash<<5)-hash)+str.charCodeAt(i);hash|=0;}
-  return hash.toString(36);
+// Password hashing: salted SHA-256 (sync). Old accounts with the legacy hash still log in
+// and are upgraded the first time they sign in.
+const _PW_PEPPER='kcc-technical|2027|';
+function _sha256(s){
+  const K=[];let p=2;while(K.length<64){let ok=1;for(let d=2;d*d<=p;d++)if(p%d==0){ok=0;break;}if(ok)K.push((Math.pow(p,1/3)%1)*4294967296|0);p++;}
+  let H=[],q=2;while(H.length<8){let ok=1;for(let d=2;d*d<=q;d++)if(q%d==0){ok=0;break;}if(ok)H.push((Math.pow(q,.5)%1)*4294967296|0);q++;}
+  const b=unescape(encodeURIComponent(s)),l=b.length,w=new Array((((l+8)>>6)+1)*16).fill(0);
+  for(let i=0;i<l;i++)w[i>>2]|=b.charCodeAt(i)<<(24-(i%4)*8);
+  w[l>>2]|=0x80<<(24-(l%4)*8);w[(((l+8)>>6)<<4)+15]=l*8;
+  const r=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let o=0;o<w.length;o+=16){const m=w.slice(o,o+16),a=H.slice();
+    for(let i=0;i<64;i++){if(i>=16){const s0=r(m[i-15],7)^r(m[i-15],18)^(m[i-15]>>>3),s1=r(m[i-2],17)^r(m[i-2],19)^(m[i-2]>>>10);m[i]=(m[i-16]+s0+m[i-7]+s1)|0;}
+      const S1=r(a[4],6)^r(a[4],11)^r(a[4],25),ch=(a[4]&a[5])^(~a[4]&a[6]),t1=(a[7]+S1+ch+K[i]+m[i])|0,
+      S0=r(a[0],2)^r(a[0],13)^r(a[0],22),mj=(a[0]&a[1])^(a[0]&a[2])^(a[1]&a[2]),t2=(S0+mj)|0;
+      a[7]=a[6];a[6]=a[5];a[5]=a[4];a[4]=(a[3]+t1)|0;a[3]=a[2];a[2]=a[1];a[1]=a[0];a[0]=(t1+t2)|0;}
+    for(let i=0;i<8;i++)H[i]=(H[i]+a[i])|0;}
+  return H.map(x=>('00000000'+(x>>>0).toString(16)).slice(-8)).join('');
+}
+function _legacyHash(str){let h=0;for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0;}return h.toString(36);}
+function simpleHash(str){ return 's2:'+_sha256(_PW_PEPPER+str); }
+// True if the typed password matches the stored hash (new or legacy format).
+function pwMatch(pw,stored){
+  if(!stored) return false;
+  if(stored.indexOf('s2:')===0) return simpleHash(pw)===stored;
+  return _legacyHash(pw)===stored;
+}
+// Lock the sign-in form for a minute after 5 wrong tries.
+const _loginFails={};
+function loginLocked(id){const f=_loginFails[id];return f&&f.until&&Date.now()<f.until?Math.ceil((f.until-Date.now())/1000):0;}
+function loginFailed(id){const f=_loginFails[id]=_loginFails[id]||{n:0};f.n++;if(f.n>=5){f.until=Date.now()+60000;f.n=0;}}
+function loginOk(id,pw){ // upgrade legacy hash after a good sign-in
+  delete _loginFails[id];
+  const t=db.technicians.find(x=>x.id===id);
+  if(t&&pw&&t.passwordHash&&t.passwordHash.indexOf('s2:')!==0){t.passwordHash=simpleHash(pw);try{save();}catch(e){}}
 }
 
 // ── Stage 2: Department helpers ──
@@ -168,7 +200,7 @@ function changeMyPassword(){
   const nw2=document.getElementById('cmpNew2').value;
   const errEl=document.getElementById('cmpErr');
   errEl.style.display='none';
-  if(t.passwordHash&&simpleHash(cur)!==t.passwordHash){errEl.textContent='❌ Current password is incorrect';errEl.style.display='';return;}
+  if(t.passwordHash&&!pwMatch(cur,t.passwordHash)){errEl.textContent='❌ Current password is incorrect';errEl.style.display='';return;}
   if(!nw){errEl.textContent='❌ New password cannot be empty';errEl.style.display='';return;}
   if(nw!==nw2){errEl.textContent='❌ Passwords do not match';errEl.style.display='';return;}
   t.passwordHash=simpleHash(nw);

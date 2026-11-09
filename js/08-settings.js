@@ -271,13 +271,15 @@ function setUserRole(techId, role){
   toast(t.name+' is now '+role,'success');
 }
 
+// Device PIN is kept hashed; a plain 4-digit value from an older version still works.
+function _pinMatch(p,stored){return stored&&(stored.indexOf('s2:')===0?simpleHash('pin'+p)===stored:p===stored);}
 function savePin(){
   const cur=document.getElementById('currentPin').value;
   const nw=document.getElementById('newPin').value;
   const stored=localStorage.getItem(PIN_KEY)||'';
-  if(stored&&cur!==stored){toast('Current PIN incorrect','error');return;}
+  if(stored&&!_pinMatch(cur,stored)){toast('Current PIN incorrect','error');return;}
   if(nw&&nw.length!==4){toast('PIN must be exactly 4 digits','error');return;}
-  if(nw) localStorage.setItem(PIN_KEY,nw);
+  if(nw) localStorage.setItem(PIN_KEY,simpleHash('pin'+nw));
   else localStorage.removeItem(PIN_KEY);
   document.getElementById('currentPin').value='';document.getElementById('newPin').value='';
   toast(nw?'PIN saved':'PIN removed','success');
@@ -303,7 +305,7 @@ function pinKey(k){
 }
 function checkPin(){
   const stored=localStorage.getItem(PIN_KEY);
-  if(_pinEntry===stored){
+  if(_pinMatch(_pinEntry,stored)){
     document.getElementById('pinOverlay').style.display='none';
     if(_pinCallback){_pinCallback();_pinCallback=null;}
   } else {

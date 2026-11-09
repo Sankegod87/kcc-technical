@@ -115,7 +115,10 @@ function lsSubmit(){
   }
   if(!isTechActive(t)){ toast('This account is inactive','error'); lsBack(); return; }
   const pw = document.getElementById('ls-pw').value;
-  if(simpleHash(pw) !== t.passwordHash){
+  const _lk=loginLocked(t.id);
+  if(_lk){ document.getElementById('ls-pw').value=''; toast('Too many tries — wait '+_lk+'s','error'); return; }
+  if(!pwMatch(pw,t.passwordHash)){
+    loginFailed(t.id);
     document.getElementById('ls-err').style.display = '';
     document.getElementById('ls-pw').value = '';
     document.getElementById('ls-pw').focus();
@@ -128,6 +131,7 @@ function lsSubmit(){
     setTimeout(()=>{ card.style.transform='translateX(0)'; card.style.transition=''; },240);
     return;
   }
+  loginOk(t.id,pw);
   lsLogin(t.id);
 }
 
