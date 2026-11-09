@@ -1,24 +1,104 @@
-const CACHE_VERSION = 'v' + Date.now();
-const CACHE_NAME = 'slt-cache-v2';
-const ASSETS = [
-  '/stage-light/',
-  '/stage-light/index.html',
-  '/stage-light/manifest.json',
-  '/stage-light/icon-192.png',
-  '/stage-light/icon-512.png'
+// KCC Technical service worker.
+// Bump CACHE_VERSION on every deploy so every device drops old files.
+const CACHE_VERSION = '2027-01-v1';
+const SHELL_CACHE = 'kcc-shell-' + CACHE_VERSION;
+const LIB_CACHE = 'kcc-libs-v1'; // third-party scripts and fonts, kept between deploys
+
+const SHELL = [
+  './',
+  'index.html',
+  'manifest.json',
+  'css/app.css',
+  'js/01-core.js',
+  'js/02-login.js',
+  'js/03-permissions.js',
+  'js/04-dashboard.js',
+  'js/05-fixtures.js',
+  'js/06-inventory.js',
+  'js/07-crew.js',
+  'js/08-settings.js',
+  'js/09-shared-ui.js',
+  'js/10-scan-import.js',
+  'js/11-schedule.js',
+  'js/12-admin-ops.js',
+  'js/13-changelog.js',
+  'js/14-checklist-nfc.js',
+  'js/15-availability-email.js',
+  'js/16-fixture-map.js',
+  'js/17-gear-training.js',
+  'js/18-sidebar.js',
+  'js/19-pwa.js',
+  'icon-192.png',
+  'icon-512.png'
 ];
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
+
+// Hosts whose files are safe to keep for offline use. Firestore and YouTube API calls are never cached.
+const LIB_HOSTS = [
+  'cdn.jsdelivr.net',
+  'cdnjs.cloudflare.com',
+  'www.gstatic.com',
+  'fonts.googleapis.com',
+  'fonts.gstatic.com'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(SHELL_CACHE).then(cache =>
+      // One missing file must not block the whole install.
+      Promise.all(SHELL.map(path => cache.add(path).catch(() => null)))
+    )
+  );
   self.skipWaiting();
 });
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-  ));
-  self.clients.claim();
-});
-self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys
+        .filter(k => k !== SHELL_CACHE && k !== LIB_CACHE)
+        .map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+
+  // Our own files: network first so a deploy shows up immediately; cache when offline.
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      fetch(req)
+        .then(res => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(SHELL_CACHE).then(c => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() =>
+          caches.match(req, { ignoreSearch: true }).then(hit =>
+            hit || (req.mode === 'navigate' ? caches.match('index.html') : undefined)
+          )
+        )
+    );
+    return;
+  }
+
+  // Libraries and fonts: cached copy first, refreshed in the background.
+  if (LIB_HOSTS.includes(url.hostname)) {
+    event.respondWith(
+      caches.open(LIB_CACHE).then(cache =>
+        cache.match(req).then(hit => {
+          const fresh = fetch(req).then(res => {
+            if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+            return res;
+          }).catch(() => hit);
+          return hit || fresh;
+        })
+      )
+    );
+  }
+  // Everything else (Firestore, YouTube, EmailJS) goes straight to the network.
 });

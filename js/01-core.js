@@ -1,0 +1,105 @@
+const LS_KEY   = 'slt_db_v6';
+const TECH_KEY = 'slt_tech_id';
+const PIN_KEY  = 'slt_pin';
+const EJSID      = 'service_pjzebxk';
+const EJTPL      = 'template_ebt36uu';  // Alerts (low stock + outage)
+const EJTPL_SCHED = 'template_ondy8ll'; // Schedule notifications
+
+let db = { fixtures:[], outages:[], inventory:[], orders:[], usageLog:[], technicians:[], settings:{} };
+let _techId=null, _selTech={}, _curFix=null, _curPage='dashboard';
+let _camScanner=null, _camRunning=false;
+let _pinCallback=null, _pinEntry='';
+
+// ── Storage ──
+function lsave(){try{localStorage.setItem(LS_KEY,JSON.stringify(db));}catch(e){}}
+function lload(){
+  try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};if(!db.trainingModules)db.trainingModules=[];if(!db.feedbackItems)db.feedbackItems=[];if(!db.incidentReports)db.incidentReports=[];if(!db.rehearsals)db.rehearsals=[];if(!db.swapRequests)db.swapRequests=[];if(!db.auditLog)db.auditLog=[];if(!db.vendors)db.vendors=[];if(!db.specialEvents)db.specialEvents=[];if(!db.serviceNotes)db.serviceNotes=[];}}catch(e){}
+}
+window._onRemoteData=function(r){
+  // Only overwrite technicians if Firebase has data; never wipe with empty (protects login)
+  if(r.technicians && r.technicians.length > 0) db.technicians=r.technicians;
+  db.fixtures=r.fixtures||[];db.outages=r.outages||[];
+  db.inventory=r.inventory||[];db.orders=r.orders||[];db.usageLog=r.usageLog||[];
+  db.settings=r.settings||{};db.usedBulbs=r.usedBulbs||[];db.bulbRegistry=r.bulbRegistry||[];db.schedules=r.schedules||{};db.availability=r.availability||{};db.checklistState=r.checklistState||{};db.shows=r.shows||[];
+  // Stage 3-5 collections — restore from Firebase if present, else keep existing or default
+  db.gearItems=r.gearItems||db.gearItems||[];
+  db.checkouts=r.checkouts||db.checkouts||[];
+  // Deduplicate: for each gear item, keep only the newest active checkout
+  (function dedupeCheckouts(){
+    const seen={};
+    db.checkouts.forEach(c=>{
+      if(c.returnedAt) return;
+      if(!seen[c.gearId]||c.checkedOutAt>seen[c.gearId].checkedOutAt){
+        if(seen[c.gearId]){seen[c.gearId].returnedAt=Date.now();seen[c.gearId].returnNotes='[auto-closed: duplicate checkout record]';}
+        seen[c.gearId]=c;
+      } else {
+        c.returnedAt=Date.now();c.returnNotes='[auto-closed: duplicate checkout record]';
+      }
+    });
+  })();
+  db.maintLogs=r.maintLogs||db.maintLogs||[];
+  db.techRequests=r.techRequests||db.techRequests||[];
+  db.announcements=r.announcements||db.announcements||[];
+  db.signoffs=r.signoffs||db.signoffs||{};
+  db.trainingModules=r.trainingModules||db.trainingModules||[];
+  db.feedbackItems=r.feedbackItems||db.feedbackItems||[];
+  db.incidentReports=r.incidentReports||db.incidentReports||[];
+  db.rehearsals=r.rehearsals||db.rehearsals||[];
+  db.specialEvents=r.specialEvents||db.specialEvents||[];
+  db.swapRequests=r.swapRequests||db.swapRequests||[];
+  db.auditLog=r.auditLog||db.auditLog||[];
+  db.vendors=r.vendors||db.vendors||[];
+  db.serviceNotes=r.serviceNotes||db.serviceNotes||[];
+  // Schedule templates
+  if(r.settings&&r.settings.scheduleTemplates) db.settings.scheduleTemplates=r.settings.scheduleTemplates;
+  lsave();
+  applyCustomisation();
+  // Try to resume a saved session now that Firebase has loaded real crew data
+  const loginVisible = document.getElementById('loginScreen')?.style.display === 'flex';
+  const onExternalRequest = location.hash==='#request'||location.hash==='#external-request';
+  if(!_techId && !onExternalRequest){
+    // Check if there's a saved session we can now validate against real crew data
+    const savedId = (()=>{ try{ return localStorage.getItem(TECH_KEY); }catch(e){ return null; } })();
+    const savedTech = savedId ? db.technicians.find(t=>t.id===savedId) : null;
+    if(savedTech && isTechActive(savedTech)){
+      // Valid session found — auto log in, skip login screen
+      _techId = savedId;
+      updTechUI();
+      applyPermissions();
+      const ls=document.getElementById('loginScreen');
+      const hs=document.getElementById('homeScreen');
+      if(ls) ls.style.display='none';
+      if(hs) hs.style.display='none';
+      go(homePage());
+      checkScheduleEmails();
+      return;
+    }
+    if(savedTech && !isTechActive(savedTech)){
+      try{localStorage.removeItem(TECH_KEY);}catch(e){}
+    }
+    // No valid session — rebuild grid with fresh crew and stay on login
+    if(loginVisible) buildLsGrid();
+    else { buildLsGrid(); showLoginScreen(); }
+    return;
+  }
+  // Someone is already logged in — verify they still exist and are active
+  const curTechRec = db.technicians.find(t=>t.id===_techId);
+  const stillExists = !!curTechRec && isTechActive(curTechRec);
+  if(!stillExists){
+    _techId=null;
+    try{localStorage.removeItem(TECH_KEY);}catch(e){}
+    buildLsGrid();showLoginScreen();return;
+  }
+  updTechUI();applyPermissions();
+  if(loginVisible) buildLsGrid();
+  else { refreshPage();checkScheduleEmails(); }
+};
+async function save(){
+  lsave();
+  if(window._syncMode==='firebase'){
+    setSyncState('syncing','Saving…');
+    const ok=await window._saveToFirebase(db);
+    if(ok){setSyncState('ok','Saved ✓');updSyncTime();}
+    else{setSyncState('error','Save failed');toast('Cloud save failed','error');}
+  }
+}
