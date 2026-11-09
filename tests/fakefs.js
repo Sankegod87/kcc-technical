@@ -8,7 +8,7 @@ function makeFake() {
       const staged = new Map(); let wrote = false;
       const tx = {
         get: async d => { if (wrote) throw new Error('Firestore transactions require all reads to be executed before all writes'); return snap(d.path); },
-        set: (d, v) => { wrote = true; staged.set(d.path, { v: JSON.parse(JSON.stringify(v)) }); },
+        set: (d, v, o) => { wrote = true; const base = o && o.merge ? Object.assign({}, (staged.get(d.path) || {}).v || store.get(d.path) || {}) : {}; staged.set(d.path, { v: Object.assign(base, JSON.parse(JSON.stringify(v))) }); },
         delete: d => { wrote = true; staged.set(d.path, { del: true }); }
       };
       const r = await fn(tx);

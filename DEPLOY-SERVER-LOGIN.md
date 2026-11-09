@@ -32,6 +32,9 @@ Do none of this before the 2027 launch. Once the new rules go live, the old app 
 7. **Check:** sign in as the master, an admin and a crew member. Add a test crew member. Open `#request` in a private window and send a test request.
 8. **After a week:** delete the old document `stage-light-tracker/main` in the console (it still holds the old password hashes). Until then you can roll back by restoring the old rules and the old app.
 
+## Confirmations (call sheets)
+Confirm links in call-sheet emails are signed by the server (`?confirm=DATE&tech=ID&sig=...`) so one tap works with no sign-in and cannot be forged. The signing key is created automatically in `private/secrets` the first time it is needed. Emails sent by the server's `autoCallSheets` also include the link when `APP_URL` is set.
+
 ## Optional: App Check
 Blocks requests that do not come from your site. Firebase console > App Check > register the web app with reCAPTCHA v3, paste the site key into `APP_CHECK_SITE_KEY` in `index.html`, add `https://www.google.com` and `https://www.recaptcha.net` to the `script-src` in the page's security policy, then turn on enforcement for Firestore and Functions.
 

@@ -127,5 +127,24 @@ let n = 0; const ok = name => console.log('  ok', ++n, name);
   f.store.set('rl/all', { start: T, n: 60 }); await rejects(sub({}, '9.9.9.9'), 'resource-exhausted'); f.store.delete('rl/all'); ok('global hourly cap');
   const big = Array.from({ length: 150 }, (_, i) => ({ id: 'q' + i, source: 'external', status: 'open' })); f.store.set('data/techRequests', { p: JSON.stringify(big), n: 'x', t: 'ts' });
   await rejects(sub({}, '3.3.3.3'), 'resource-exhausted'); ok('open-request cap of 150');
+  // ── schedule confirmations
+  const day = new Date(T + 3 * 86400000), dk = day.toISOString().slice(0, 10);
+  const techsNow = JSON.parse(f.store.get('data/technicians').p);
+  f.store.set('data/schedules', { p: JSON.stringify({ [dk]: { crew: ['m', 'a', 'n'], roles: {} }, '2001-01-07': { crew: ['m'] } }), n: 's', t: 'ts' });
+  f.store.set('private/secrets', { ytKey: 'KEEP-ME' });
+  r = await core.confirmSelf({ key: dk }, ctx('a', 'admin')); assert.ok(r.ok);
+  let sc = JSON.parse(f.store.get('data/schedules').p); assert.ok(sc[dk].confirmed.a); assert.ok(!sc[dk].confirmed.m); ok('signed-in person confirms themselves');
+  await rejects(core.confirmSelf({ key: dk }, ctx('u', 'user')), 'permission-denied'); ok('cannot confirm for a service you are not rostered on');
+  await rejects(core.confirmSelf({ key: dk }, {}), 'unauthenticated'); ok('confirming needs sign-in (or a signed link)');
+  await rejects(core.confirmSelf({ key: '2001-01-07' }, ctx('m', 'master')), 'failed-precondition'); ok('past services cannot be confirmed');
+  await rejects(core.confirmSelf({ key: '2030-13-99x' }, ctx('m', 'master')), 'invalid-argument'); await rejects(core.confirmSelf({ key: '2031-01-07' }, ctx('m', 'master')), 'not-found'); ok('bad or unknown dates refused');
+  const sig = await core.linkSig(dk, 'm'); assert.match(sig, /^[0-9a-f]{32}$/); assert.strictEqual(sig, await core.linkSig(dk, 'm')); assert.notStrictEqual(sig, await core.linkSig(dk, 'a'));
+  assert.strictEqual(f.store.get('private/secrets').ytKey, 'KEEP-ME', 'creating the link key must not erase other secrets'); assert.ok(f.store.get('private/secrets').linkKey); ok('link signatures are stable per person and date; the YouTube key survives');
+  r = await core.confirmLink({ key: dk, tech: 'm', sig }); assert.ok(r.ok && r.name); sc = JSON.parse(f.store.get('data/schedules').p); assert.ok(sc[dk].confirmed.m); ok('one-tap link confirms without signing in');
+  await rejects(core.confirmLink({ key: dk, tech: 'n', sig }), 'permission-denied'); await rejects(core.confirmLink({ key: dk, tech: 'm', sig: 'f'.repeat(32) }), 'permission-denied'); await rejects(core.confirmLink({ key: dk, tech: 'm' }), 'permission-denied'); ok('a link cannot be reused for another person or forged');
+  const sigU = await core.linkSig(dk, 'u'); await rejects(core.confirmLink({ key: dk, tech: 'u', sig: sigU }), 'permission-denied'); ok('a valid signature still needs the person to be on the roster');
+  const lk2 = makeCore({ fs: f.fs, auth: f.auth, now: () => T, stamp: () => 'ts' }); assert.strictEqual(await lk2.linkSig(dk, 'm'), sig); ok('another server instance produces the same signatures');
+  await rejects(core.makeLinks({ key: dk, techIds: ['m'] }, ctx('u', 'user')), 'permission-denied'); const ml = await core.makeLinks({ key: dk, techIds: ['m', 'a'] }, ctx('a', 'admin')); assert.strictEqual(ml.sigs.m, sig); ok('only admins can mint links');
+
   console.log('\nALL ' + n + ' CHECKS PASSED');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

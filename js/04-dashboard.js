@@ -259,38 +259,45 @@ window._sdPending=(function(){
     const q=new URLSearchParams(location.search);
     const act=q.get('confirm')?'confirm':q.get('swap')?'swap':null;
     if(!act) return null;
-    const o={act:act,key:q.get(act),tech:q.get('tech')};
+    const o={act:act,key:q.get(act),tech:q.get('tech'),sig:q.get('sig')};
     history.replaceState(null,'',location.pathname+location.hash);
     return o;
   }catch(e){return null;}
 })();
-function sdApplyPending(){
+async function sdApplyPending(){
   const pnd=window._sdPending; if(!pnd||!_techId) return;
   window._sdPending=null;
   if(pnd.act==='confirm'){
-    const e=db.schedules[pnd.key]; if(!e){toast('That service was not found','error');return;}
-    e.confirmed=e.confirmed||{}; e.confirmed[_techId]=Date.now();
-    save(); toast('Thanks, you are confirmed','success');
+    await sdConfirmKey(pnd.key);
     setTimeout(()=>go('sunday'),300);
   } else if(pnd.act==='swap'){
     toast('Open the service and request a swap','info');
     setTimeout(()=>go('schedule'),300);
   }
 }
-function sdConfirmMe(){
-  const me=getCurTech(); if(!me) return;
-  const key=schedKey(sdNextSunday()); const e=db.schedules[key]; if(!e) return;
-  e.confirmed=e.confirmed||{}; e.confirmed[me.id]=Date.now();
-  save(); toast('Confirmed. See you Sunday','success'); renderSunday();
+// Confirming is done by the server (crew cannot edit the schedule document themselves).
+async function sdConfirmKey(key){
+  if(window._syncMode!=='firebase'||!window._kccConfirm){ toast('Confirming needs the internet connection','error'); return false; }
+  try{
+    await window._kccConfirm(key);
+    await refreshKey('schedules');
+    toast('Thanks, you are confirmed. See you Sunday','success');
+    return true;
+  }catch(e){ toast(srvErr(e),'error'); return false; }
 }
-function sdBuildCallSheet(key,t,sun){
+async function sdConfirmMe(){
+  const me=getCurTech(); if(!me) return;
+  const key=schedKey(sdNextSunday()); if(!db.schedules[key]) return;
+  if(await sdConfirmKey(key)) renderSunday();
+}
+function sdBuildCallSheet(key,t,sun,sig){
   const e=db.schedules[key]||{}; const role=e.roles&&e.roles[t.id];
   const {call,svc}=sdTimes(sun);
   const fmtT=d=>d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
   const tasks=(role&&getChecklistTasks()[role])||[];
   const run=(e.rundown||'').split(/\n|·/).map(x=>x.trim()).filter(Boolean);
   const base=location.origin==='null'||location.protocol==='file:'?location.href.split(/[?#]/)[0]:location.origin+location.pathname;
-  const link=k=>base+'?'+k+'='+encodeURIComponent(key)+'&tech='+encodeURIComponent(t.id);
+  const link=k=>base+'?'+k+'='+encodeURIComponent(key)+'&tech='+encodeURIComponent(t.id)+(k==='confirm'&&sig?'&sig='+encodeURIComponent(sig):'');
   const crew=(e.crew||[]).map(id=>{const x=db.technicians.find(y=>y.id===id);return x?x.name+(e.roles&&e.roles[id]?' ('+e.roles[id]+')':''):'';}).filter(Boolean);
   return ['Hi '+t.name+',','',
     'You are scheduled for '+sun.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+'.',
@@ -300,27 +307,30 @@ function sdBuildCallSheet(key,t,sun){
     run.length?'Run of show:\n'+run.map((x,i)=>(i+1)+'. '+x).join('\n')+'\n':'',
     e.briefing?'Briefing: '+e.briefing+'\n':'',
     crew.length?'Team: '+crew.join(', ')+'\n':'',
-    'Confirm you are coming: '+link('confirm'),
+    'Confirm you are coming'+(sig?' (one tap, no sign-in)':'')+': '+link('confirm'),
     'Need a swap: '+link('swap'),'','KCC Technical'].filter(x=>x!==null).join('\n');
 }
-async function sendCallSheets(force){
+async function sendCallSheets(force,onlyUnconfirmed){
   if(!isAdmin()){toast('Admin permission required','error');return 0;}
   const sun=sdNextSunday(), key=schedKey(sun), e=db.schedules[key];
   if(!e||!(e.crew||[]).length){toast('Nobody is scheduled for '+key,'error');return 0;}
   e.callSheetSent=e.callSheetSent||{};
   let sent=0,skipped=0,missing=0;
+  // The server signs each person's confirm link so one tap works without signing in.
+  let sigs={}; try{ if(window._kccLinks) sigs=(await window._kccLinks(key,e.crew)).sigs||{}; }catch(err){ console.warn('could not sign links',err); }
   const dateStr=sun.toLocaleDateString(undefined,{month:'long',day:'numeric'});
   for(const id of e.crew){
     const t=db.technicians.find(x=>x.id===id); if(!t) continue;
     if(!t.email){missing++;continue;}
+    if(onlyUnconfirmed&&e.confirmed&&e.confirmed[id]){skipped++;continue;}
     if(e.callSheetSent[id]&&!force){skipped++;continue;}
     try{
-      await emailjs.send(EJSID,EJTPL,{to_email:t.email,to_name:t.name,subject:'Call sheet: '+dateStr,message:sdBuildCallSheet(key,t,sun),fixture_name:'Call sheet for '+dateStr,fixture_id:key,bulb_type:dateStr,reported_by:'KCC Technical'});
+      await emailjs.send(EJSID,EJTPL,{to_email:t.email,to_name:t.name,subject:'Call sheet: '+dateStr,message:sdBuildCallSheet(key,t,sun,sigs[id]),fixture_name:'Call sheet for '+dateStr,fixture_id:key,bulb_type:dateStr,reported_by:'KCC Technical'});
       e.callSheetSent[id]=Date.now(); sent++;
     }catch(err){console.warn('call sheet failed',t.name,err);}
   }
   if(sent) save();
-  toast(sent+' sent'+(skipped?', '+skipped+' already sent':'')+(missing?', '+missing+' without email':''),sent?'success':'info');
+  toast(sent+' sent'+(skipped?', '+skipped+(onlyUnconfirmed?' already confirmed or skipped':' already sent'):'')+(missing?', '+missing+' without email':''),sent?'success':'info');
   if(_curPage==='sunday') renderSunday();
   return sent;
 }
@@ -557,8 +567,10 @@ function renderSunday(){
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <button class="btn ba" onclick="sendCallSheets(false)">Email call sheets now</button>
         <button class="btn bgh" onclick="if(confirm('Resend to everyone, including people already emailed?'))sendCallSheets(true)">Resend to all</button>
+        ${(()=>{const w=(entry.crew||[]).filter(id=>!(entry.confirmed&&entry.confirmed[id]));return w.length?`<button class="btn bgh" onclick="sendCallSheets(true,true)">Remind ${w.length} unconfirmed</button>`:'';})()}
         <label style="display:flex;gap:8px;align-items:center;font-size:13px;text-transform:none;letter-spacing:0"><input type="checkbox" ${db.settings.autoCallSheets?'checked':''} onchange="sdToggleAuto(this.checked)" style="width:20px;height:20px"> Auto-send 48 hours before call time</label>
       </div>
+      ${(()=>{const w=(entry.crew||[]).filter(id=>!(entry.confirmed&&entry.confirmed[id])).map(id=>{const x=db.technicians.find(y=>y.id===id);return x?esc(x.name.split(' ')[0]):'';}).filter(Boolean);return w.length?`<div class="dim" style="font-size:13px;margin-top:10px">Waiting on: ${w.join(', ')}</div>`:((entry.crew||[]).length?'<div class="dim" style="font-size:13px;margin-top:10px">Everyone has confirmed.</div>':'');})()}
       <div class="dim" style="font-size:12px;margin-top:10px">Auto-send runs when an admin opens the app inside that window. People with no email on their profile are skipped.</div>
     </div>`:''}
     <div class="sd-card">

@@ -26,6 +26,9 @@ const wrap = (fn) => async (data, context) => {
 };
 
 exports.kccLogin = functions.https.onCall(wrap((d, c) => core.login(d)));
+exports.kccConfirm = functions.https.onCall(wrap((d, c) => core.confirmSelf(d, c)));
+exports.kccConfirmLink = functions.https.onCall(wrap((d) => core.confirmLink(d)));
+exports.kccLinks = functions.https.onCall(wrap((d, c) => core.makeLinks(d, c)));
 exports.kccBootstrap = functions.https.onCall(wrap((d, c) => core.bootstrap(d)));
 exports.kccTechOp = functions.https.onCall(wrap((d, c) => core.techOp(d, c)));
 exports.kccSetSecret = functions.https.onCall(wrap((d, c) => core.setSecret(d, c)));

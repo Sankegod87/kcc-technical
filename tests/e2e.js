@@ -66,7 +66,7 @@ export const runTransaction=async(d,fn)=>{const w=[];await fn({get:async r=>mk(a
     await p.exposeFunction('__tokenInfo', async t => tokens.get(t) || null);
     await p.exposeFunction('__call', async (name, data, auth) => {
       const a = JSON.parse(auth), d = JSON.parse(data), ctxo = a ? { auth: { uid: a.uid, token: a.claims } } : {};
-      const map = { kccLogin: () => core.login(d), kccBootstrap: () => core.bootstrap(d), kccTechOp: () => core.techOp(d, ctxo), kccSetSecret: () => core.setSecret(d, ctxo), kccHasSecret: () => core.hasSecret(d, ctxo), kccYtLive: () => core.ytLive(d, ctxo), kccSubmitRequest: () => core.submitExternalRequest(d, ctxo, '5.5.5.' + (opts && opts.ip || 1)) };
+      const map = { kccLogin: () => core.login(d), kccBootstrap: () => core.bootstrap(d), kccTechOp: () => core.techOp(d, ctxo), kccConfirm: () => core.confirmSelf(d, ctxo), kccConfirmLink: () => core.confirmLink(d), kccLinks: () => core.makeLinks(d, ctxo), kccSetSecret: () => core.setSecret(d, ctxo), kccHasSecret: () => core.hasSecret(d, ctxo), kccYtLive: () => core.ytLive(d, ctxo), kccSubmitRequest: () => core.submitExternalRequest(d, ctxo, '5.5.5.' + (opts && opts.ip || 1)) };
       try { const r = await map[name](); setTimeout(notify, 5); return { data: r }; } catch (e) { return { error: { code: e.code || 'internal', message: e.message, details: e.details } }; }
     });
     await p.exposeFunction('__fsGet', async (pth, auth) => { const a = JSON.parse(auth); if (!canRead(pth, a)) return { error: 'permission-denied' }; const s = await F.fs.doc(pth).get(); return { exists: s.exists, data: s.data() }; });
@@ -174,6 +174,29 @@ export const runTransaction=async(d,fn)=>{const w=[];await fn({get:async r=>mk(a
   await p.evaluate(() => window.__release()); await pa.evaluate(() => window.__release()); await sleep(900);
   const ids = docs('fixtures').map(f => f.id).sort().join(','); assert.ok(ids.includes('FA') && ids.includes('FC'), 'merged list: ' + ids); ok('two devices adding at the same time both survive (' + ids + ')');
   assert.ok((await p.evaluate(() => db.fixtures.map(f => f.id))).includes('FA') && (await pa.evaluate(() => db.fixtures.map(f => f.id))).includes('FC')); ok('both devices converge on the merged list');
+
+  // ── 5b. schedule confirmations
+  const skey = await p.evaluate(() => schedKey(sdNextSunday()));
+  F.store.set('data/schedules', { p: JSON.stringify({ [skey]: { crew: ['t1', 't2', 't3'], roles: { t3: 'Cameras', t2: 'Audio', t1: 'Lights' } } }), n: 'seed', t: 'ts' }); await notify(); await sleep(700);
+  await p.evaluate(() => go('sunday')); await sleep(400);
+  assert.ok(await p.evaluate(() => /Can you make this Sunday/.test(document.body.innerText))); await p.evaluate(() => sdConfirmMe()); await sleep(900);
+  assert.ok(docs('schedules')[skey].confirmed.t3, 'confirmation saved by the server'); ok('crew member confirms in the app (crew cannot write schedules directly; the server does it)');
+  assert.ok(await p.evaluate(() => /You are confirmed/.test(document.body.innerText))); ok('their screen shows confirmed');
+  await sleep(500); await pa.evaluate(() => go('sunday')); await sleep(500);
+  const adminTxt = await pa.evaluate(() => document.body.innerText); assert.match(adminTxt, /1 confirmed/); assert.match(adminTxt, /Waiting on: .*(Jordan|Priya)/); assert.match(adminTxt, /remind 2 unconfirmed/i); ok('admin sees 1 confirmed, who is still waiting, and a Remind button');
+  await pa.evaluate(() => { window.__mail = []; emailjs.send = async (a, b, params) => { window.__mail.push(params); return {}; }; });
+  await pa.evaluate(() => sendCallSheets(true, true)); await sleep(1200);
+  const mail = await pa.evaluate(() => window.__mail); assert.deepStrictEqual(mail.map(m => m.to_email).sort(), ['t1@example.org', 't2@example.org']); ok('Remind sends only to the people who have not confirmed');
+  const link = id => { const m = mail.find(x => x.to_email === id + '@example.org').message.match(/(\?confirm=[^\s]+)/); return m && m[1]; };
+  const l2 = link('t2'); assert.match(l2, /&sig=[0-9a-f]{32}/); ok('each call sheet carries a personal signed confirm link');
+  const one = await device({ hash: l2, ip: 21 }); await sleep(900);
+  assert.match(await one.textContent('#confirmOverlay'), /You're confirmed, Priya/); assert.ok(docs('schedules')[skey].confirmed.t2); ok('one-tap link confirms with no sign-in');
+  assert.ok(!(await one.evaluate(() => location.search))); ok('the signature is removed from the address bar');
+  const badp = await device({ hash: l2.replace(/sig=[0-9a-f]/, 'sig=0'), ip: 22 }); await sleep(900);
+  assert.match(await badp.textContent('#confirmOverlay'), /not valid/); ok('a tampered link is refused');
+  const other = await device({ hash: l2.replace('tech=t2', 'tech=t1'), ip: 23 }); await sleep(900);
+  assert.match(await other.textContent('#confirmOverlay'), /not valid/); assert.ok(!docs('schedules')[skey].confirmed.t1); ok('a link cannot confirm someone else');
+  await one.context().close(); await badp.context().close(); await other.context().close();
 
   // ── 6. public request form (not signed in)
   const pub = await device({ hash: '#request', ip: 9 });

@@ -179,7 +179,8 @@ exports.autoCallSheets = functions.pubsub.schedule("every 60 minutes").timeZone(
     const mark = `${key}_${id}`;
     if (!t || !t.email || sent[mark] || (entry.callSheetSent && entry.callSheetSent[id])) continue;
     const role = entry.roles && entry.roles[id];
-    const link = process.env.APP_URL ? `\nConfirm you are coming: ${process.env.APP_URL}?confirm=${encodeURIComponent(key)}&tech=${encodeURIComponent(id)}` : "";
+    const sig = process.env.APP_URL ? await kcc._core.linkSig(key, id) : "";
+    const link = process.env.APP_URL ? `\nConfirm you are coming (one tap, no sign-in): ${process.env.APP_URL}?confirm=${encodeURIComponent(key)}&tech=${encodeURIComponent(id)}&sig=${sig}` : "";
     const message = [`Hi ${t.name},`, "", `You are scheduled for ${dateStr}.`, `Station: ${role || "Not assigned yet"}`,
       `Call time: ${fmtT(ch || 0, cm || 0)}   Service: ${fmtT(vh || 0, vm || 0)}`, "",
       run.length ? "Run of show:\n" + run.map((x, i) => `${i + 1}. ${x}`).join("\n") + "\n" : "",

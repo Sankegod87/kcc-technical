@@ -211,6 +211,53 @@ function makeCore(deps) {
     return Object.assign({ ok: true }, out.result);
   }
 
+  // ── schedule confirmations ──
+  // A person can confirm from the app (signed in) or from the link in their call-sheet email (no sign-in).
+  // Email links carry a signature only the server can make, so a link cannot be forged or used for someone else.
+  let lk = null;
+  async function linkKey() {
+    if (lk) return lk;
+    lk = await fs.runTransaction(async tx => {
+      const s = await tx.get(fs.doc('private/secrets'));
+      const k = s.exists && s.data().linkKey;
+      if (k) return k;
+      const n = crypto.randomBytes(32).toString('hex');
+      tx.set(fs.doc('private/secrets'), { linkKey: n }, { merge: true });
+      return n;
+    });
+    return lk;
+  }
+  async function linkSig(key, techId) { return crypto.createHmac('sha256', await linkKey()).update('confirm|' + key + '|' + techId).digest('hex').slice(0, 32); }
+  async function applyConfirm(key, techId) {
+    if (typeof key !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(key)) throw new Fail('invalid-argument', 'That link is not valid');
+    const y = +key.slice(0, 4), m = +key.slice(5, 7), d = +key.slice(8, 10);
+    if (now() > Date.UTC(y, m - 1, d) + 2 * 86400000) throw new Fail('failed-precondition', 'That service has already passed');
+    return fs.runTransaction(async tx => {
+      const sch = await readData(tx, 'schedules', {}), techs = await readData(tx, 'technicians', []);
+      const e = sch && sch[key];
+      if (!e) throw new Fail('not-found', 'That service was not found');
+      if (!(e.crew || []).includes(techId)) throw new Fail('permission-denied', 'You are not on the roster for that service');
+      const t = techs.find(x => x.id === techId);
+      if (!t || t.active === false) throw new Fail('permission-denied', 'That account is not active');
+      e.confirmed = Object.assign({}, e.confirmed, { [techId]: now() });
+      writeData(tx, 'schedules', sch);
+      return { ok: true, name: String(t.name || '').split(' ')[0] };
+    });
+  }
+  const confirmSelf = async (data, ctx) => { const c = callerOf(ctx); return applyConfirm(data && data.key, c.id); };
+  async function confirmLink(data) {
+    const key = data && data.key, id = data && data.tech, sig = data && data.sig;
+    if (typeof id !== 'string' || typeof sig !== 'string' || !safeEq(await linkSig(String(key), id), sig)) throw new Fail('permission-denied', 'That link is not valid');
+    return applyConfirm(key, id);
+  }
+  async function makeLinks(data, ctx) {
+    const c = callerOf(ctx); needAdmin(c);
+    const ids = Array.isArray(data && data.techIds) ? data.techIds.slice(0, 200) : [];
+    const sigs = {};
+    for (const id of ids) if (typeof id === 'string') sigs[id] = await linkSig(String(data.key), id);
+    return { sigs };
+  }
+
   // ── very first account on a brand-new system ──
   async function bootstrap(data) {
     const name = str(data && data.name, 80);
@@ -312,7 +359,7 @@ function makeCore(deps) {
     return { ok: true };
   }
 
-  return { login, bootstrap, techOp, setSecret, hasSecret, ytLive, submitExternalRequest, Fail, scryptHash, pwMatches, writeRoster, readData, writeData };
+  return { login, bootstrap, confirmSelf, confirmLink, makeLinks, linkSig, techOp, setSecret, hasSecret, ytLive, submitExternalRequest, Fail, scryptHash, pwMatches, writeRoster, readData, writeData };
 }
 
 module.exports = { makeCore, Fail, scryptHash, pwMatches, legacyHash, MIN_PW };
