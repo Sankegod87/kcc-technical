@@ -382,3 +382,33 @@ function buildTechGrid(cid,key){
 }
 function pickTech(key,id,cid){_selTech[key]=id;buildTechGrid(cid,key);}
 function getTech(key){const id=_selTech[key];return id?db.technicians.find(t=>t.id===id)||null:null;}
+
+
+// ── Backup and restore (master admin) ──
+function downloadBackup(){
+  if(!isMaster()){toast('Master admin only','error');return;}
+  const stamp=new Date().toISOString().slice(0,10);
+  const blob=new Blob([JSON.stringify({kcc_backup:1,savedAt:Date.now(),data:db},null,1)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kcc-technical-backup-'+stamp+'.json';
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  toast('Backup downloaded','success');
+}
+function restoreBackup(input){
+  const f=input.files&&input.files[0]; input.value='';
+  if(!f) return;
+  if(!isMaster()){toast('Master admin only','error');return;}
+  const r=new FileReader();
+  r.onload=()=>{
+    let b; try{ b=JSON.parse(r.result); }catch(e){ toast('That file is not a valid backup','error'); return; }
+    const d=b&&b.kcc_backup&&b.data;
+    if(!d||!Array.isArray(d.technicians)||!d.technicians.some(t=>t.userRole==='master')){ toast('That file is not a KCC Technical backup','error'); return; }
+    const when=new Date(b.savedAt||0).toLocaleString();
+    requirePin(()=>{
+      if(!confirm('Replace ALL current data on every device with the backup from '+when+'?\n\nThis cannot be undone. Download a backup of the current data first if unsure.')) return;
+      db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{}},d);
+      lsave(); try{ localStorage.removeItem(SYNC_BASE_KEY); }catch(e){}
+      save(); toast('Backup restored','success'); refreshPage();
+    });
+  };
+  r.readAsText(f);
+}
