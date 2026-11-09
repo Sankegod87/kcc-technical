@@ -142,8 +142,7 @@ function lsLogin(id){
   applyPermissions();
   hideLoginScreen();
   const t = db.technicians.find(x=>x.id===id);
-  go(homePage()); // pre-render behind home screen
-  showHomeScreen();
+  go(homePage()); // role-based landing page (the old welcome screen never actually showed: its Sunday panel had no id)
   // Check master admin claim
   setTimeout(()=>{
     const hasMaster=db.technicians.some(t=>t.userRole==='master');
@@ -152,56 +151,8 @@ function lsLogin(id){
 }
 
 // ── Home Screen ──
-function showHomeScreen(){
-  const t = getCurTech();
-  if(!t){ showLoginScreen(); return; }
-
-  // Populate greeting
-  document.getElementById('hs-avatar').textContent = t.avatar||'👤';
-  document.getElementById('hs-name').textContent = t.name;
-  const roleLabel = t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User';
-  document.getElementById('hs-role').textContent = (t.role||'Crew')+' · '+roleLabel;
-
-  // Show this Sunday's schedule if it exists
-  const now = new Date();
-  const daysUntilSun = (7 - now.getDay()) % 7 || 7;
-  const sun = new Date(now); sun.setDate(now.getDate() + daysUntilSun);
-  const key = schedKey(sun);
-  const entry = db.schedules[key];
-  const sundayEl = document.getElementById('hs-sunday');
-  const sundayContent = document.getElementById('hs-sunday-content');
-
-  if(entry && entry.crew && entry.crew.length){
-    sundayEl.style.display = '';
-    const myEntry = entry.crew.includes(t.id);
-    const myRole = entry.roles?.[t.id];
-    const dateStr = sun.toLocaleDateString('en-CA',{month:'long',day:'numeric'});
-    const stationIcon = Object.fromEntries(getScheduleRoles().map(r=>[r.name,r.icon]));
-    sundayContent.innerHTML =
-      '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8);margin-bottom:6px">'+dateStr+'</div>' +
-      (myEntry
-        ? '<div style="color:#5DCAA5;font-size:13px;margin-bottom:8px">✅ You are on the roster · <strong>'+(stationIcon[myRole]||'')+(myRole||'No station set')+'</strong></div>'
-        : '<div style="color:#F09595;font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">🚫</span> You are <strong>not scheduled</strong> this week</div>') +
-      '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
-      entry.crew.map(id=>{
-        const cr=db.technicians.find(x=>x.id===id);
-        if(!cr) return '';
-        const role=entry.roles?.[id]||'';
-        const isMe = id === t.id;
-        return '<div style="background:rgba(255,255,255,.06);border:1px solid '+(isMe?'rgba(15,110,86,.6)':'rgba(255,255,255,.1)')+';border-radius:20px;padding:3px 10px;font-size:11px;font-family:var(--mono);color:'+(isMe?'#9FE1CB':'rgba(255,255,255,.5)')+(isMe?';font-weight:700':'')+'">'+
-          (cr.avatar||'👤')+' '+cr.name.split(' ')[0]+(role?' · '+(stationIcon[role]||role):'')+'</div>';
-      }).join('') + '</div>';
-  } else {
-    sundayEl.style.display = '';
-    const dateStr = sun.toLocaleDateString('en-CA',{month:'long',day:'numeric'});
-    sundayContent.innerHTML =
-      '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8);margin-bottom:6px">'+dateStr+'</div>' +
-      '<div style="color:rgba(255,255,255,.35);font-size:12px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">📋</span> No roster set yet for this Sunday</div>';
-  }
-
-  document.getElementById('homeScreen').style.display = 'flex';
-  document.getElementById('homeScreen').style.animation = 'fadeIn .25s';
-}
+// The old welcome screen is retired: after sign-in everyone goes straight to their role's landing page.
+function showHomeScreen(){ const hs=document.getElementById('homeScreen'); if(hs) hs.style.display='none'; if(getCurTech()) go(homePage()); else showLoginScreen(); }
 
 function hideHomeScreen(){
   const el = document.getElementById('homeScreen');
