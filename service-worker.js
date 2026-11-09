@@ -1,6 +1,6 @@
 // KCC Technical service worker.
 // Bump CACHE_VERSION on every deploy so every device drops old files.
-const CACHE_VERSION = '2027-01-v3';
+const CACHE_VERSION = '2027-01-v4';
 const SHELL_CACHE = 'kcc-shell-' + CACHE_VERSION;
 const LIB_CACHE = 'kcc-libs-v1'; // third-party scripts and fonts, kept between deploys
 
@@ -9,6 +9,7 @@ const SHELL = [
   'index.html',
   'manifest.json',
   'css/app.css',
+  'js/00-offline-sync.js',
   'js/01-core.js',
   'js/02-login.js',
   'js/03-permissions.js',

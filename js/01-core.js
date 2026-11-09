@@ -16,6 +16,10 @@ function lload(){
   try{const s=localStorage.getItem(LS_KEY);if(s){const p=JSON.parse(s);db=Object.assign({fixtures:[],outages:[],inventory:[],orders:[],usageLog:[],technicians:[],settings:{},usedBulbs:[],bulbRegistry:[],schedules:{},availability:{},checklistState:{},shows:[]},p);if(!db.settings)db.settings={};if(!db.usedBulbs)db.usedBulbs=[];if(!db.bulbRegistry)db.bulbRegistry=[];if(!db.schedules)db.schedules={};if(!db.availability)db.availability={};if(!db.checklistState)db.checklistState={};if(!db.shows)db.shows=[];if(!db.gearItems)db.gearItems=[];if(!db.checkouts)db.checkouts=[];if(!db.maintLogs)db.maintLogs=[];if(!db.techRequests)db.techRequests=[];if(!db.announcements)db.announcements=[];if(!db.signoffs)db.signoffs={};if(!db.trainingModules)db.trainingModules=[];if(!db.feedbackItems)db.feedbackItems=[];if(!db.incidentReports)db.incidentReports=[];if(!db.rehearsals)db.rehearsals=[];if(!db.swapRequests)db.swapRequests=[];if(!db.auditLog)db.auditLog=[];if(!db.vendors)db.vendors=[];if(!db.specialEvents)db.specialEvents=[];if(!db.serviceNotes)db.serviceNotes=[];}}catch(e){}
 }
 window._onRemoteData=function(r){
+  // Unsent edits on this device? Merge them with the cloud copy instead of losing them.
+  let _merged=false;
+  if(typeof syncIsDirty==='function'&&syncIsDirty()){ try{ r=syncMergeRemote(r); _merged=true; }catch(e){ console.warn('merge failed',e); } }
+  else if(typeof syncSetBase==='function'){ syncSetBase(r); }
   // Only overwrite technicians if Firebase has data; never wipe with empty (protects login)
   if(r.technicians && r.technicians.length > 0) db.technicians=r.technicians;
   db.fixtures=r.fixtures||[];db.outages=r.outages||[];
@@ -53,6 +57,7 @@ window._onRemoteData=function(r){
   // Schedule templates
   if(r.settings&&r.settings.scheduleTemplates) db.settings.scheduleTemplates=r.settings.scheduleTemplates;
   lsave();
+  if(_merged) setTimeout(()=>save(),0); // push the merged result so everyone converges
   applyCustomisation();
   // Try to resume a saved session now that Firebase has loaded real crew data
   const loginVisible = document.getElementById('loginScreen')?.style.display === 'flex';
@@ -97,9 +102,11 @@ window._onRemoteData=function(r){
 async function save(){
   lsave();
   if(window._syncMode==='firebase'){
+    syncMarkDirty(true);
+    if(navigator.onLine===false){setSyncState('error','Offline — saved on this device');return;}
     setSyncState('syncing','Saving…');
     const ok=await window._saveToFirebase(db);
-    if(ok){setSyncState('ok','Saved ✓');updSyncTime();}
-    else{setSyncState('error','Save failed');toast('Cloud save failed','error');}
+    if(ok){syncMarkDirty(false);syncSetBase(db);setSyncState('ok','Saved ✓');updSyncTime();}
+    else{setSyncState('error','Save failed — will retry');toast('Cloud save failed — kept on this device','error');}
   }
 }

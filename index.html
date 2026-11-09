@@ -25,7 +25,7 @@
 <!-- Firebase v10 -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, serverTimestamp }
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getFunctions, httpsCallable }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
@@ -69,6 +69,7 @@ function initFirebase() {
     window._sendScheduleSMS = httpsCallable(fns, 'manualSendScheduleSMS');
     window._syncMode = "firebase";
     window._fbDoc = () => doc(fsdb, DB_DOC);
+    window._fetchRemote = async () => { const s = await getDoc(doc(fsdb, DB_DOC)); const d = s.exists() ? s.data() : null; return d && d.payload ? JSON.parse(d.payload) : null; };
     syncUI("syncing", "Connecting…");
     // If Firebase hasn't connected in 8 seconds, warn the user
     const _connTimeout = setTimeout(()=>{
@@ -123,6 +124,7 @@ function initFirebase() {
 let _lastSaveNonce = null;
 window._saveToFirebase = async (data) => {
   if (!_firebaseReady || !window._fbDoc) return false;
+  if (navigator.onLine === false) return false; // never queue a blind overwrite for later
   try {
     const nonce = Date.now() + '_' + Math.random().toString(36).slice(2);
     _lastSaveNonce = nonce;
@@ -1854,6 +1856,7 @@ initFirebase();
   </div>
 </div>
 
+<script src="js/00-offline-sync.js"></script>
 <script src="js/01-core.js"></script>
 <script src="js/02-login.js"></script>
 <script src="js/03-permissions.js"></script>
