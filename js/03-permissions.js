@@ -11,7 +11,11 @@ function curRole(){
 }
 function isMaster(){ return curRole()==='master'; }
 // Admins land on the Control Room; everyone else lands on Service Day.
-function homePage(){ return isAdmin()?'dashboard':'sunday'; }
+function homePage(){
+  const c=window._authClaims&&window._authClaims().r;
+  if(!getCurTech()&&c) return c==='user'?'sunday':'dashboard'; // crew data not here yet: trust the sign-in token
+  return isAdmin()?'dashboard':'sunday';
+}
 function isAdmin(){  return curRole()==='admin' || isMaster(); }
 function isUser(){   return true; } // everyone can do basic actions
 
@@ -36,7 +40,7 @@ function applyPermissions(){
   setInterval(()=>{
     try{
       if(!_techId||!isAdmin()) return;
-      if(Date.now()-last>LIMIT){ last=Date.now(); if(typeof lsLogout==='function'){ lsLogout(); toast('Signed out after 45 minutes of no activity','info'); } }
+      if(Date.now()-last>LIMIT){ last=Date.now(); if(typeof lsLogout==='function'){ lsLogout('Signed out after 45 minutes of no activity'); } }
     }catch(e){}
   },30000);
 })();

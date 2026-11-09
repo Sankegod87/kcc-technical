@@ -251,23 +251,23 @@ function applyCustomisation(){
   if(s.accentColour)applyAccentColour(s.accentColour);
   applyBranding();
 }
-function claimMasterAdmin(){
+async function claimMasterAdmin(){
   const t=getCurTech();
   if(!t){toast('Log in first','error');return;}
-  const hasMaster=db.technicians.some(x=>x.userRole==='master');
+  const hasMaster=db.technicians.some(x=>x.userRole==='master'&&x.active!==false);
   if(hasMaster){toast('A master admin already exists','error');return;}
   if(!confirm('Make '+t.name+' the Master Admin?\n\nThis gives full system access including data reset and deletion.'))return;
-  t.userRole='master';
-  save();applyPermissions();renderSettings();updTechUI();
-  toast('👑 '+t.name+' is now Master Admin','success');
+  const r=await techCall({op:'claimMaster'}); if(!r) return;
+  toast('👑 '+t.name+' is now Master Admin. Please sign in again.','success');
+  setTimeout(()=>lsLogout(),1500);
 }
 
-function setUserRole(techId, role){
+async function setUserRole(techId, role){
   if(!isMaster()){toast('Master admin only','error');return;}
   const t=db.technicians.find(x=>x.id===techId);
   if(!t||t.userRole==='master')return;
-  t.userRole=role;
-  save();renderSettings();
+  const r=await techCall({op:'edit',id:techId,fields:{userRole:role}}); if(!r){renderSettings();return;}
+  renderSettings();
   toast(t.name+' is now '+role,'success');
 }
 
@@ -333,24 +333,22 @@ function sendNotif(title,body){
 // ── Tech helpers ──
 function getCurTech(){return _techId?db.technicians.find(t=>t.id===_techId)||null:null;}
 function isTechActive(t){ return !!t && t.active !== false; }
-function toggleTechActive(id){
+async function toggleTechActive(id){
   if(!isAdmin()){ toast('Admin permission required','error'); return; }
   const t = db.technicians.find(x=>x.id===id); if(!t) return;
-  const master = db.technicians.find(x=>x.userRole==='master');
-  if(master && master.id===t.id && isTechActive(t)){ toast("Can't deactivate the Master Admin","error"); return; }
+  if(t.userRole==='master' && isTechActive(t)){ toast("Can't deactivate the Master Admin","error"); return; }
   const goingInactive = isTechActive(t);
   if(goingInactive && !confirm('Mark '+t.name+' as inactive? They will be blocked from logging in and from being added to the schedule.')) return;
-  t.active = goingInactive ? false : true;
-  logAudit(t.active===false?'Crew Deactivated':'Crew Reactivated', t.name);
-  // Force-logout if they're currently signed in and just got deactivated
-  if(t.active===false && _techId===t.id){ lsLogout(); }
+  const r=await techCall({op:'setActive',id,active:!goingInactive}); if(!r) return;
+  logAudit(goingInactive?'Crew Deactivated':'Crew Reactivated', t.name);
   save(); renderCrew();
-  toast(t.name+(t.active===false?' marked inactive':' reactivated'),'success');
+  toast(t.name+(goingInactive?' marked inactive':' reactivated'),'success');
 }
 function loadTech(){try{_techId=localStorage.getItem(TECH_KEY)||null;}catch(e){}updTechUI();}
 function setTech(id){
   const t0=db.technicians.find(x=>x.id===id);
   if(t0 && !isTechActive(t0)){ toast('This account is inactive','error'); return; }
+  if(window._syncMode==='firebase'&&window._authUid&&window._authUid()!==id){ toast('Sign out and sign in as that person first','error'); return; }
   _techId=id;try{localStorage.setItem(TECH_KEY,id);}catch(e){}
   updTechUI();closeM('whoAmI');applyPermissions();
   const t=db.technicians.find(x=>x.id===id);if(t)toast('Welcome, '+t.name+'! 👋','success');

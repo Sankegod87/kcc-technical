@@ -4,13 +4,16 @@ const twilio = require("twilio");
 
 admin.initializeApp();
 
+// Server-side sign-in, account management, request form and YouTube proxy.
+const kcc = require("./kcc-auth.js");
+Object.keys(kcc).filter((k) => k[0] !== "_").forEach((k) => (exports[k] = kcc[k]));
+const SCHEMA = require("./kcc-schema.js");
+
 const accountSid = process.env.TWILIO_SID;
 const authToken = process.env.TWILIO_TOKEN;
 const twilioNumber = process.env.TWILIO_NUMBER;
 const client = twilio(accountSid, authToken);
 
-// Matches DB_DOC in your app: "stage-light-tracker/main"
-const DB_DOC_PATH = "stage-light-tracker/main";
 
 // Same key format as schedKey() in your app: YYYY-MM-DD, local date
 function schedKey(date) {
@@ -33,15 +36,15 @@ function normalizePhone(phone) {
 // can report back how many texts went out.
 async function sendUpcomingScheduleSMS() {
   const db = admin.firestore();
-  const docRef = db.doc(DB_DOC_PATH);
-  const snap = await docRef.get();
-
-  if (!snap.exists) {
-    return { sent: 0, skipped: 0, message: "No data document found." };
+  const read = async (key, dflt) => {
+    const s = await db.doc("data/" + key).get();
+    if (!s.exists) return dflt;
+    try { return JSON.parse(s.data().p); } catch (e) { return dflt; }
+  };
+  const appData = { schedules: await read("schedules", null), technicians: await read("technicians", []) };
+  if (!appData.schedules) {
+    return { sent: 0, skipped: 0, message: "No schedule data found." };
   }
-
-  const raw = snap.data();
-  const appData = JSON.parse(raw.payload);
 
   const today = new Date();
   const sunday = new Date(today);
@@ -101,8 +104,9 @@ exports.weeklyScheduleSMS = functions.pubsub
 // Callable version: triggered by the "Send SMS" button in your app.
 // Mirrors manualSendScheduleEmail() but runs server-side so Twilio creds stay hidden.
 exports.manualSendScheduleSMS = functions.https.onCall(async (data, context) => {
-  // Optional: restrict to signed-in/admin users if you wire up Firebase Auth.
-  // if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Sign in required.");
+  // Only admins (signed in through kccLogin) may send texts.
+  const r = context.auth && context.auth.token && context.auth.token.r;
+  if (r !== "admin" && r !== "master") throw new functions.https.HttpsError("permission-denied", "Admin permission required.");
 
   const result = await sendUpcomingScheduleSMS();
   return result;
@@ -115,7 +119,7 @@ exports.manualSendScheduleSMS = functions.https.onCall(async (data, context) => 
 //   2. Set env/secrets: EMAILJS_PUBLIC_KEY, EMAILJS_PRIVATE_KEY, APP_URL (the site address, optional).
 //   3. Turn OFF "auto-send call sheets" inside the app so the browser and the server don't both send.
 // It honours the same "autoCallSheets" setting, sends 48h before call time, and records what it sent in
-// its own document (stage-light-tracker/server-sent) so it never overwrites the app's data.
+// its own document (private/server-sent) so it never overwrites the app's data.
 // ─────────────────────────────────────────────────────────────────────────────
 const TZ = "America/Edmonton";
 const EJ_SERVICE = "service_pjzebxk";
@@ -138,11 +142,14 @@ function tzEpoch(y, m, d, h, min) {
 const pad2 = (n) => String(n).padStart(2, "0");
 
 exports.autoCallSheets = functions.pubsub.schedule("every 60 minutes").timeZone(TZ).onRun(async () => {
-  const snap = await admin.firestore().doc(DB_DOC_PATH).get();
-  if (!snap.exists) return null;
-  const appData = JSON.parse(snap.data().payload || "{}");
-  const settings = appData.settings || {};
+  const readKey = async (key, dflt) => {
+    const s = await admin.firestore().doc("data/" + key).get();
+    if (!s.exists) return dflt;
+    try { return JSON.parse(s.data().p); } catch (e) { return dflt; }
+  };
+  const settings = await readKey("settings", {});
   if (!settings.autoCallSheets) return null;
+  const appData = { settings, schedules: await readKey("schedules", {}), technicians: await readKey("technicians", []) };
 
   // Next service Sunday (today counts until 2pm), in Edmonton time.
   const now = Date.now(), p = tzParts(now);
@@ -159,7 +166,7 @@ exports.autoCallSheets = functions.pubsub.schedule("every 60 minutes").timeZone(
   const entry = (appData.schedules || {})[key];
   if (!entry || !(entry.crew || []).length) return null;
 
-  const sentRef = admin.firestore().doc("stage-light-tracker/server-sent");
+  const sentRef = admin.firestore().doc("private/server-sent");
   const sent = ((await sentRef.get()).data() || {});
   const fmtT = (h, m) => new Date(Date.UTC(2000, 0, 1, h, m)).toLocaleTimeString("en-US", { timeZone: "UTC", hour: "numeric", minute: "2-digit" });
   const dateStr = new Date(Date.UTC(sy, sm - 1, sd)).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", month: "long", day: "numeric" });

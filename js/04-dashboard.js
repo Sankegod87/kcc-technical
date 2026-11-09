@@ -402,31 +402,17 @@ function psnDelete(id){
 // ══ YouTube stream tile ══
 window._yt={state:'idle',title:'',viewers:null,when:null,err:'',ts:0};
 window._ytEdit=false;
-function ytCfg(){ const st=db.settings||{}; return {key:(st.ytKey||'').trim(),ch:(st.ytChannelId||'').trim()}; }
+function ytCfg(){ const st=db.settings||{}; return {ch:(st.ytChannelId||'').trim()}; }
+// The YouTube key lives on the server only. The server asks YouTube and sends back just the stream status.
 async function ytPoll(force){
-  const {key,ch}=ytCfg();
-  if(!key||!ch){ window._yt={state:'unset',ts:Date.now()}; ytPaint(); return; }
   if(!force&&Date.now()-window._yt.ts<45000) return;
   window._yt.ts=Date.now();
+  if(window._syncMode!=='firebase'||!window._kccYtLive||!(window._authUid&&window._authUid())){ window._yt={state:'unset',ts:Date.now()}; ytPaint(); return; }
   try{
-    // Uploads playlist id = channel id with UC replaced by UU. 2 quota units per check.
-    const pl='UU'+ch.slice(2);
-    const r1=await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=6&playlistId='+encodeURIComponent(pl)+'&key='+encodeURIComponent(key));
-    const j1=await r1.json();
-    if(j1.error) throw new Error(j1.error.message||'YouTube API error');
-    const ids=(j1.items||[]).map(x=>x.contentDetails.videoId).filter(Boolean);
-    if(!ids.length){ window._yt={state:'offline',ts:Date.now()}; ytPaint(); return; }
-    const r2=await fetch('https://www.googleapis.com/youtube/v3/videos?part=snippet,liveStreamingDetails&id='+ids.join(',')+'&key='+encodeURIComponent(key));
-    const j2=await r2.json();
-    if(j2.error) throw new Error(j2.error.message||'YouTube API error');
-    const vids=(j2.items||[]).filter(v=>v.liveStreamingDetails);
-    const live=vids.find(v=>v.liveStreamingDetails.actualStartTime&&!v.liveStreamingDetails.actualEndTime);
-    const sched=vids.filter(v=>!v.liveStreamingDetails.actualStartTime&&v.liveStreamingDetails.scheduledStartTime)
-      .sort((a,b)=>new Date(a.liveStreamingDetails.scheduledStartTime)-new Date(b.liveStreamingDetails.scheduledStartTime))[0];
-    if(live) window._yt={state:'live',title:live.snippet.title,viewers:live.liveStreamingDetails.concurrentViewers!=null?+live.liveStreamingDetails.concurrentViewers:null,videoId:live.id,since:live.liveStreamingDetails.actualStartTime,ts:Date.now()};
-    else if(sched) window._yt={state:'sched',title:sched.snippet.title,when:sched.liveStreamingDetails.scheduledStartTime,videoId:sched.id,ts:Date.now()};
-    else window._yt={state:'offline',ts:Date.now()};
-  }catch(e){ window._yt={state:'error',err:String(e.message||e),ts:Date.now()}; }
+    if(isAdmin()&&window._ytKeySet===undefined){ try{ window._ytKeySet=!!(await window._kccHasSecret('ytKey')).set; }catch(e){ window._ytKeySet=false; } }
+    const v=await window._kccYtLive(!!force);
+    window._yt=Object.assign({},v,{ts:Date.now()});
+  }catch(e){ window._yt={state:'error',err:srvErr(e),ts:Date.now()}; }
   ytPaint();
 }
 function ytBodyHtml(){
@@ -434,10 +420,10 @@ function ytBodyHtml(){
   const admin=isAdmin();
   const setup=`<div class="yt-form">
       <div class="fg"><label for="yt-ch">Channel ID</label><input id="yt-ch" value="${esc(c.ch)}" placeholder="UC…"></div>
-      <div class="fg"><label for="yt-key">API key</label><input id="yt-key" type="password" value="${esc(c.key)}" placeholder="YouTube Data API key" autocomplete="off"></div>
+      <div class="fg"><label for="yt-key">API key</label><input id="yt-key" type="password" value="" placeholder="${window._ytKeySet?'Saved — type a new key to replace it':'YouTube Data API key'}" autocomplete="off"></div>
       <button class="btn ba" onclick="ytSaveCfg()">Save</button>
     </div>
-    <div class="dim" style="font-size:12px;margin-top:8px">Use a key limited to the YouTube Data API and to this site's address. It is stored with the app's data, so crew with app access could see it.</div>`;
+    <div class="dim" style="font-size:12px;margin-top:8px">Use a key limited to the YouTube Data API. The key is kept on the server and is never sent to anyone's device.</div>`;
   if(window._ytEdit&&admin) return setup;
   if(y.state==='unset') return admin?`<div class="dim" style="font-size:13px">Add your channel ID and API key to see live status.</div>${setup}`:'<div class="dim" style="font-size:13px">Stream status is not set up yet.</div>';
   const link=c.ch?`<a href="https://www.youtube.com/channel/${esc(c.ch)}/live" target="_blank" rel="noopener" class="btn bgh bsm">Open stream</a>`:'';
@@ -452,12 +438,15 @@ function ytCardHtml(){
 }
 function ytPaint(){ document.querySelectorAll('.yt-body').forEach(el=>{ el.innerHTML=ytBodyHtml(); }); }
 function ytToggleEdit(){ window._ytEdit=!window._ytEdit; ytPaint(); }
-function ytSaveCfg(){
+async function ytSaveCfg(){
   if(!isAdmin()){toast('Admin permission required','error');return;}
   const ch=(document.getElementById('yt-ch').value||'').trim(), key=(document.getElementById('yt-key').value||'').trim();
   if(!/^UC[\w-]{22}$/.test(ch)){toast('Channel ID should start with UC and be 24 characters','error');return;}
-  if(!key){toast('Enter the API key','error');return;}
-  db.settings.ytChannelId=ch; db.settings.ytKey=key; save();
+  if(!key&&!window._ytKeySet){toast('Enter the API key','error');return;}
+  try{
+    if(key){ await window._kccSetSecret('ytKey',key); window._ytKeySet=true; }
+  }catch(e){ toast(srvErr(e),'error'); return; }
+  db.settings.ytChannelId=ch; save();
   window._ytEdit=false; window._yt.ts=0; ytPoll(true); toast('Saved. Checking YouTube…','success');
 }
 function ytStart(){

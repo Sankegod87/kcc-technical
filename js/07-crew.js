@@ -36,7 +36,7 @@ function renderCrew(){
             <div class="dim" style="color:${t.email?'var(--blue)':'var(--red)'}">${esc(t.email||'No email set')}</div>
             ${t.phone?`<div class="dim">📱 ${esc(t.phone)}</div>`:''}
             ${t.emergency?`<div class="dim" style="color:var(--amber)">🆘 ${esc(t.emergency)}</div>`:''}
-            <div class="dim" style="color:${t.passwordHash?'var(--green)':'var(--red)'}">${t.passwordHash?'🔒 Password set':'⚠️ No password'}</div>
+            <div class="dim" style="color:${t.pwSet?'var(--green)':'var(--red)'}">${t.pwSet?'🔒 Password set':'⚠️ No password — they cannot sign in yet'}</div>
             <div class="dim" style="color:${t.userRole==='master'?'var(--amber)':t.userRole==='admin'?'var(--blue)':'var(--dim2)'}">
               ${t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User'}
             </div>

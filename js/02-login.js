@@ -11,7 +11,7 @@ window.addEventListener('syncStatus',e=>{const{state,msg}=e.detail;setSyncState(
 let _lsSelectedId = null;
 
 function showLoginScreen(){
-  if(location.hash==='#request'||location.hash==='#external-request'){showExternalRequestScreen();return;}
+  if(location.hash==='#request'||location.hash==='#external-request'){ if(typeof showExternalRequestScreen==='function') showExternalRequestScreen(); return; }
   const screen = document.getElementById('loginScreen');
   screen.style.display = 'flex';
   // Reset to step 1
@@ -33,40 +33,49 @@ function hideLoginScreen(){
   setTimeout(()=>{ screen.style.display='none'; screen.style.opacity=''; screen.style.transition=''; },250);
 }
 
+// Who can appear on the sign-in screen: the public roster from the server (names only), or the local list in offline/local mode.
+function _rosterList(){
+  if(window._syncMode==='firebase') return window._rosterReady?(window._roster||[]):null;
+  return db.technicians.map(t=>({id:t.id,name:t.name,avatar:t.avatar,dept:t.dept,active:t.active!==false,pw:!!t.passwordHash}));
+}
 function buildLsGrid(){
   const grid = document.getElementById('ls-userGrid');
   const noUsers = document.getElementById('ls-noUsers');
   const firstRun = document.getElementById('ls-firstRun');
-  if(!db.technicians.length){
-    if(grid) grid.innerHTML = '';
+  if(!grid) return;
+  const list=_rosterList();
+  if(list===null){ // still connecting
+    grid.innerHTML='<p class="dim" style="padding:20px 0;text-align:center">Connecting…</p>';
+    if(noUsers) noUsers.style.display='none'; if(firstRun) firstRun.style.display='none';
+    return;
+  }
+  if(!list.length){
+    grid.innerHTML = '';
     if(noUsers) noUsers.style.display = 'none';
     if(firstRun) firstRun.style.display = '';
     return;
   }
   if(noUsers) noUsers.style.display = 'none';
   if(firstRun) firstRun.style.display = 'none';
-  const activeTechs = db.technicians.filter(isTechActive);
+  const activeTechs = list.filter(t=>t.active!==false);
   if(!activeTechs.length){
-    if(grid) grid.innerHTML = '<p class="dim" style="padding:20px 0;text-align:center">All crew accounts are inactive. Contact an admin.</p>';
+    grid.innerHTML = '<p class="dim" style="padding:20px 0;text-align:center">All crew accounts are inactive. Contact an admin.</p>';
     return;
   }
   grid.innerHTML = activeTechs.map(t=>{
-    const roleLabel = t.userRole==='master'?'👑 Master':t.userRole==='admin'?'🔑 Admin':'';
-    const deptColor = {Lighting:'#5DCAA5',Audio:'#85B7EB',Cameras:'#EF9F27',IT:'#B4B2A9'}[t.dept]||'rgba(255,255,255,.3)';
     return `<div class="ls-user-btn" data-id="${esc(t.id)}" onclick="lsSelectUser('${esc(t.id)}')">
       <div class="ls-av">${esc(t.avatar||'👤')}</div>
-      <div class="ls-uname">${esc(t.name.split(' ')[0])}</div>
+      <div class="ls-uname">${esc((t.name||'').split(' ')[0])}</div>
       ${t.dept?`<div class="ls-dept-tag">${esc(t.dept)}</div>`:''}
-      ${roleLabel?`<div class="ls-role-tag" style="font-size:8px;background:rgba(15,110,86,.2);color:#5DCAA5;padding:1px 5px;border-radius:6px">${roleLabel}</div>`:''}
     </div>`;
   }).join('');
 }
 
 function lsSelectUser(id){
-  const t0=db.technicians.find(x=>x.id===id);
-  if(t0 && !isTechActive(t0)){ toast('This account is inactive','error'); return; }
+  const t=(_rosterList()||[]).find(x=>x.id===id);if(!t)return;
+  if(t.active===false){ toast('This account is inactive','error'); return; }
+  if(!t.pw){ toast('No password has been set for this account yet — ask an admin to set one','info'); return; }
   _lsSelectedId=id;
-  const t=db.technicians.find(x=>x.id===id);if(!t)return;
   // Highlight selected tile
   document.querySelectorAll('.ls-user-btn').forEach(b=>b.classList.remove('selected'));
   const tile=document.querySelector('.ls-user-btn[data-id="'+id+'"]');
@@ -81,8 +90,7 @@ function lsSelectUser(id){
   if(sl) sl.textContent='Step 2 of 2 — Enter password';
   document.getElementById('ls-avatar').textContent = t.avatar||'👤';
   document.getElementById('ls-name').textContent = t.name;
-  const roleLabel = t.userRole==='master'?'👑 Master Admin':t.userRole==='admin'?'🔑 User Admin':'👤 Regular User';
-  document.getElementById('ls-role').textContent = (t.role||'Technician')+' · '+roleLabel;
+  document.getElementById('ls-role').textContent = t.dept||'Crew';
   document.getElementById('ls-pw').value = '';
   document.getElementById('ls-err').style.display = 'none';
   // Focus only on non-touch devices — on iOS, programmatic focus in setTimeout is blocked
@@ -105,34 +113,39 @@ function lsBack(){
   document.querySelectorAll('.ls-user-btn').forEach(b=>b.classList.remove('selected'));
 }
 
-function lsSubmit(){
-  const t = db.technicians.find(x=>x.id===_lsSelectedId);
-  if(!t){
-    // Tech not found — could be a Firebase sync timing issue; go back to step 1
-    lsBack();
-    toast('Please select your name again','info');
-    return;
-  }
-  if(!isTechActive(t)){ toast('This account is inactive','error'); lsBack(); return; }
+// The password is checked on the server. After five wrong tries the server locks that account (longer each time).
+function lsShowError(e){
+  const el=document.getElementById('ls-err'); if(!el) return;
+  const c=String((e&&e.code)||'').replace('functions/','');
+  let msg;
+  if(c==='permission-denied'){ const left=e.details&&e.details.left; msg='Incorrect password — try again.'+((left!=null&&left<=2&&left>0)?' '+left+(left===1?' try':' tries')+' left.':''); }
+  else msg=srvErr(e);
+  el.textContent=msg; el.style.display='block';
+}
+let _lsBusy=false;
+async function lsSubmit(){
+  if(_lsBusy) return;
+  const id=_lsSelectedId;
+  if(!id){ lsBack(); toast('Please select your name again','info'); return; }
   const pw = document.getElementById('ls-pw').value;
-  const _lk=loginLocked(t.id);
-  if(_lk){ document.getElementById('ls-pw').value=''; toast('Too many tries — wait '+_lk+'s','error'); return; }
-  if(!pwMatch(pw,t.passwordHash)){
-    loginFailed(t.id);
-    document.getElementById('ls-err').style.display = '';
-    document.getElementById('ls-pw').value = '';
-    document.getElementById('ls-pw').focus();
-    // Shake animation
+  if(!pw) return;
+  if(window._syncMode!=='firebase'||!window._kccLogin){ lsShowError({message:'Sign-in needs the internet connection'}); return; }
+  _lsBusy=true;
+  try{
+    const r=await window._kccLogin(id,pw);
+    document.getElementById('ls-pw').value='';
+    lsLogin(id,r&&r.role);
+  }catch(e){
+    document.getElementById('ls-pw').value='';
+    lsShowError(e);
     const card = document.getElementById('ls-step2');
     card.style.animation = 'none';
     card.style.transform = 'translateX(-8px)';
     setTimeout(()=>{ card.style.transition='transform .1s'; card.style.transform='translateX(8px)'; },80);
     setTimeout(()=>{ card.style.transform='translateX(-4px)'; },160);
     setTimeout(()=>{ card.style.transform='translateX(0)'; card.style.transition=''; },240);
-    return;
-  }
-  loginOk(t.id,pw);
-  lsLogin(t.id);
+    try{ document.getElementById('ls-pw').focus(); }catch(_){}
+  }finally{ _lsBusy=false; }
 }
 
 function lsLogin(id){
@@ -141,13 +154,15 @@ function lsLogin(id){
   updTechUI();
   applyPermissions();
   hideLoginScreen();
-  const t = db.technicians.find(x=>x.id===id);
-  go(homePage()); // role-based landing page (the old welcome screen never actually showed: its Sunday panel had no id)
-  // Check master admin claim
-  setTimeout(()=>{
-    const hasMaster=db.technicians.some(t=>t.userRole==='master');
-    if(!hasMaster&&getCurTech()) toast('💡 No master admin set — go to Settings','info');
-  },1200);
+  go(homePage()); // role-based landing page; the role comes from the sign-in token until crew data arrives
+}
+// Pick up an existing signed-in session (page reloaded, app reopened).
+function resumeSession(id){
+  _techId=id; try{localStorage.setItem(TECH_KEY,id);}catch(e){}
+  updTechUI(); applyPermissions();
+  const ls=document.getElementById('loginScreen'), hs=document.getElementById('homeScreen');
+  if(ls) ls.style.display='none'; if(hs) hs.style.display='none';
+  go(homePage());
 }
 
 // ── Home Screen ──
@@ -170,16 +185,14 @@ function lsForgot(){
   alert('Ask your Master Admin or User Admin to reset your password on the Crew page.');
 }
 
-function lsLogout(){
-  _techId = null;
-  try{ localStorage.removeItem(TECH_KEY); }catch(e){}
-  updTechUI();
-  applyPermissions();
-  // Hide home screen if visible
-  const hs=document.getElementById('homeScreen');
-  if(hs) hs.style.display='none';
-  buildLsGrid();
-  showLoginScreen();
+// Sign out for real: end the server session, wipe this device's copy of the data, and start the page fresh.
+async function lsLogout(msg){
+  try{ if(typeof syncIsDirty==='function'&&syncIsDirty()&&window._syncMode==='firebase'&&navigator.onLine) await save(); }catch(e){}
+  if(typeof syncIsDirty==='function'&&syncIsDirty()&&!confirm('Some changes have not reached the cloud yet and will be lost if you sign out. Sign out anyway?')) return;
+  if(window._kccSignOut) await window._kccSignOut();
+  try{ [TECH_KEY,LS_KEY,'slt_sync_base','slt_sync_dirty'].forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  try{ if(typeof msg==='string'&&msg) sessionStorage.setItem('kcc_msg',msg); }catch(e){}
+  location.reload();
 }
 
 // Update login screen sync status

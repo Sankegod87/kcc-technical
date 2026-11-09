@@ -69,7 +69,7 @@ window._onRemoteData=function(r){
   const onExternalRequest = location.hash==='#request'||location.hash==='#external-request';
   if(!_techId && !onExternalRequest){
     // Check if there's a saved session we can now validate against real crew data
-    const savedId = (()=>{ try{ return localStorage.getItem(TECH_KEY); }catch(e){ return null; } })();
+    const savedId = (window._authUid&&window._authUid())||null; // the server says who is signed in
     const savedTech = savedId ? db.technicians.find(t=>t.id===savedId) : null;
     if(savedTech && isTechActive(savedTech)){
       // Valid session found — auto log in, skip login screen
@@ -101,17 +101,23 @@ window._onRemoteData=function(r){
     buildLsGrid();showLoginScreen();return;
   }
   updTechUI();applyPermissions();
-  if(loginVisible) buildLsGrid();
+  if(loginVisible){
+    // Signed in on the server but this device had no saved crew list yet: now that it has arrived, leave the sign-in screen.
+    if(window._authUid&&window._authUid()===_techId&&typeof resumeSession==='function'){ resumeSession(_techId); checkScheduleEmails(); }
+    else buildLsGrid();
+  }
   else { refreshPage();checkScheduleEmails(); }
 };
 async function save(){
   lsave();
+  if(window._syncMode==='firebase'&&!(window._authUid&&window._authUid())){ return; } // not signed in: nothing can be sent
   if(window._syncMode==='firebase'){
     syncMarkDirty(true);
     if(navigator.onLine===false){setSyncState('error','Offline — saved on this device');return;}
     setSyncState('syncing','Saving…');
     const ok=await window._saveToFirebase(db);
-    if(ok){syncMarkDirty(false);syncSetBase(db);setSyncState('ok','Saved ✓');updSyncTime();}
+    if(ok){syncMarkDirty(false);syncSetBase(db);setSyncState('ok','Saved ✓');updSyncTime();
+      const dn=window._lastDenied||[]; if(dn.length){ toast("You don't have permission to change: "+dn.join(', ')+'. That part was not saved.','error'); }}
     else{setSyncState('error','Save failed — will retry');toast('Cloud save failed — kept on this device','error');}
   }
 }

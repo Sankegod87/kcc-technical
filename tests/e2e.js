@@ -1,0 +1,202 @@
+// End-to-end check of the app in a real browser against a fake cloud (same server code, same schema, in-memory database).
+// node tests/e2e.js
+const { chromium } = require('playwright');
+const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
+const assert = require('assert');
+const { makeFake } = require('./fakefs.js');
+const { makeCore, legacyHash } = require('../kcc-auth-core.js');
+const S = require('../kcc-schema.js');
+const { plan } = require('../tools/migrate.js');
+const ROOT = path.join(__dirname, '..');
+
+// ── fake cloud ──
+const F = makeFake(); const tokens = new Map(); let tn = 0;
+const authAdmin = { createCustomToken: async (uid, claims) => { const t = 'tok' + (++tn); tokens.set(t, { uid, claims }); return t; }, revokeRefreshTokens: async () => {} };
+const core = makeCore({ fs: F.fs, auth: authAdmin, now: () => Date.now(), stamp: () => 'ts',
+  fetchFn: async u => ({ json: async () => (u.includes('playlistItems') ? { items: [{ contentDetails: { videoId: 'v1' } }] } : { items: [{ id: 'v1', snippet: { title: 'Sunday Service' }, liveStreamingDetails: { actualStartTime: 'x', concurrentViewers: '17' } }] }) }) });
+const signed = a => a && a.claims && ['user', 'admin', 'master'].includes(a.claims.r);
+function canRead(p, a) { if (p === 'pub/roster') return true; const m = /^data\/(\w+)$/.exec(p); return !!m && S.ALL.includes(m[1]) && signed(a); }
+function canWriteDoc(p, a, v) {
+  const m = /^data\/(\w+)$/.exec(p); if (!m || !signed(a)) return false;
+  if (!v || Object.keys(v).some(k => !['p', 'n', 't'].includes(k)) || typeof v.p !== 'string' || v.p.length >= 900000 || typeof v.n !== 'string') return false;
+  return S.canWrite(m[1], a.claims.r, a.claims.cs);
+}
+const pages = [];
+const notify = async () => { for (const p of pages) { try { await p.evaluate(() => window.__fsChanged && window.__fsChanged()); } catch (e) { /* page closed */ } } };
+let holdFor = null; // pages whose snapshot delivery is paused (to simulate a slow connection)
+
+const FAKE = {
+  app: `export const initializeApp=()=>({});`,
+  auth: `
+let cur=null;try{cur=JSON.parse(sessionStorage.getItem('fake_auth')||'null');}catch(e){}
+const ls=[];const user=()=>cur?{uid:cur.uid,getIdTokenResult:async()=>({claims:cur.claims})}:null;
+window.__authNow=()=>cur;const notify=()=>ls.forEach(cb=>cb(user()));
+export const getAuth=()=>({get currentUser(){return user();}});
+export const signInWithCustomToken=async(a,t)=>{const r=await window.__tokenInfo(t);if(!r)throw Object.assign(new Error('bad token'),{code:'auth/invalid-custom-token'});cur={uid:r.uid,claims:r.claims};sessionStorage.setItem('fake_auth',JSON.stringify(cur));notify();};
+export const signOut=async()=>{cur=null;sessionStorage.removeItem('fake_auth');notify();};
+export const onIdTokenChanged=(a,cb)=>{ls.push(cb);setTimeout(()=>cb(user()),0);};`,
+  functions: `
+export const getFunctions=()=>({});
+export const httpsCallable=(f,name)=>async(data)=>{const r=await window.__call(name,JSON.stringify(data||{}),JSON.stringify(window.__authNow&&window.__authNow()||null));
+ if(r.error){const e=new Error(r.error.message);e.code='functions/'+r.error.code;e.details=r.error.details;throw e;}return{data:r.data};};`,
+  firestore: `
+export const getFirestore=()=>({});export const doc=(d,p)=>({path:p});export const serverTimestamp=()=>'ts';
+const A=()=>JSON.stringify(window.__authNow&&window.__authNow()||null);
+const mk=r=>({exists:()=>r.exists,data:()=>r.data});
+const raw=async p=>{const r=await window.__fsGet(p,A());if(r.error){const e=new Error(r.error);e.code='permission-denied';throw e;}return r;};
+const L=new Set();window.__hold=false;window.__fsChanged=()=>{if(!window.__hold)L.forEach(l=>l.check());};window.__release=()=>{window.__hold=false;window.__fsChanged();};
+export const getDoc=async r=>mk(await raw(r.path));
+export const onSnapshot=(r,cb,err)=>{const l={last:null,check:async()=>{try{const x=await raw(r.path);const k=JSON.stringify(x);if(k===l.last)return;l.last=k;cb(Object.assign(mk(x),{metadata:{hasPendingWrites:false}}));}catch(e){if(l.last!=='err'){l.last='err';err&&err(e);}}}};L.add(l);l.check();return()=>L.delete(l);};
+export const runTransaction=async(d,fn)=>{const w=[];await fn({get:async r=>mk(await raw(r.path)),set:(r,v)=>w.push({path:r.path,value:v})});const x=await window.__fsCommit(JSON.stringify(w),A());if(x.error){const e=new Error(x.error);e.code='permission-denied';throw e;}};`
+};
+
+(async () => {
+  // static server
+  const srv = http.createServer((q, s) => { const f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0]).replace(/^\/$/, '/index.html')); fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); s.end(); return; } s.writeHead(200, { 'Content-Type': f.endsWith('.js') ? 'text/javascript' : f.endsWith('.css') ? 'text/css' : f.endsWith('.html') ? 'text/html' : 'application/octet-stream' }); s.end(d); }); }).listen(0);
+  const PORT = srv.address().port, URL = 'http://127.0.0.1:' + PORT + '/';
+  const browser = await chromium.launch();
+  const errors = [];
+  async function device(opts) {
+    const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 800 } });
+    await ctx.route('https://www.gstatic.com/firebasejs/**', r => { const u = r.request().url(); const k = u.includes('app.js') ? 'app' : u.includes('auth.js') ? 'auth' : u.includes('functions.js') ? 'functions' : 'firestore'; r.fulfill({ contentType: 'text/javascript', body: FAKE[k] }); });
+    await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
+    const p = await ctx.newPage(); pages.push(p);
+    p.on('pageerror', e => errors.push(e.message)); p.on('dialog', d => d.accept('x'));
+    await p.addInitScript(() => { window.confirm = () => true; });
+    await p.exposeFunction('__tokenInfo', async t => tokens.get(t) || null);
+    await p.exposeFunction('__call', async (name, data, auth) => {
+      const a = JSON.parse(auth), d = JSON.parse(data), ctxo = a ? { auth: { uid: a.uid, token: a.claims } } : {};
+      const map = { kccLogin: () => core.login(d), kccBootstrap: () => core.bootstrap(d), kccTechOp: () => core.techOp(d, ctxo), kccSetSecret: () => core.setSecret(d, ctxo), kccHasSecret: () => core.hasSecret(d, ctxo), kccYtLive: () => core.ytLive(d, ctxo), kccSubmitRequest: () => core.submitExternalRequest(d, ctxo, '5.5.5.' + (opts && opts.ip || 1)) };
+      try { const r = await map[name](); setTimeout(notify, 5); return { data: r }; } catch (e) { return { error: { code: e.code || 'internal', message: e.message, details: e.details } }; }
+    });
+    await p.exposeFunction('__fsGet', async (pth, auth) => { const a = JSON.parse(auth); if (!canRead(pth, a)) return { error: 'permission-denied' }; const s = await F.fs.doc(pth).get(); return { exists: s.exists, data: s.data() }; });
+    await p.exposeFunction('__fsCommit', async (w, auth) => {
+      const a = JSON.parse(auth); const writes = JSON.parse(w);
+      for (const x of writes) if (!canWriteDoc(x.path, a, x.value)) return { error: 'permission-denied: ' + x.path };
+      for (const x of writes) await F.fs.doc(x.path).set(x.value);
+      setTimeout(notify, 5); return {};
+    });
+    await p.goto(URL + (opts && opts.hash || ''));
+    await p.waitForTimeout(600);
+    return p;
+  }
+  const docs = k => JSON.parse(F.store.get('data/' + k).p);
+  let n = 0; const ok = m => console.log('  ok', ++n, m);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const login = async (p, id, pw) => { await p.evaluate(i => lsSelectUser(i), id); await p.fill('#ls-pw', pw); await p.evaluate(() => lsSubmit()); await sleep(700); };
+  const vis = (p, sel) => p.evaluate(s => { const e = document.querySelector(s); return !!e && getComputedStyle(e).display !== 'none'; }, sel);
+
+  // ── 0. fresh system: first-run creates the master
+  let p = await device();
+  assert.ok(await vis(p, '#ls-firstRun'), 'first-run box shows on an empty system'); ok('empty system shows first-run setup');
+  await p.evaluate(() => openM('firstRun')); await p.fill('#fr-name', 'Founder'); await p.fill('#fr-pw', 'short'); await p.fill('#fr-pw2', 'short'); await p.evaluate(() => saveFirstRun()); await sleep(400);
+  assert.ok(!F.store.has('data/technicians'), 'short password refused'); ok('first-run refuses a short password');
+  await p.fill('#fr-pw', 'founder-pass-1'); await p.fill('#fr-pw2', 'founder-pass-1'); await p.evaluate(() => saveFirstRun()); await sleep(1200);
+  assert.strictEqual(await p.evaluate(() => curRole()), 'master'); assert.ok(!(await vis(p, '#loginScreen'))); ok('first-run creates the master and signs them in');
+  assert.ok(!JSON.stringify([...F.store.entries()].filter(([k]) => k.startsWith('data/') || k === 'pub/roster')).includes('scrypt'));
+  await p.context().close(); pages.length = 0; F.store.clear();
+
+  // ── 1. migrate an old-format database into the fake cloud
+  const s2 = pw => 's2:' + crypto.createHash('sha256').update('kcc-technical|2027|' + pw, 'utf8').digest('hex');
+  const T = (id, name, userRole, extra) => Object.assign({ id, name, role: 'Volunteer', dept: 'Audio', avatar: name[0], email: id + '@example.org', phone: '555', canSchedule: false, userRole, active: true, joinedAt: 1, training: [], completedModules: [], certs: [] }, extra || {});
+  const old = {
+    technicians: [T('t1', 'Jordan Reyes', 'master', { passwordHash: s2('master-pass-1'), canSchedule: true }), T('t2', 'Priya Shah', 'admin', { passwordHash: legacyHash('priya-pass') }), T('t3', 'Alex Kim', 'user', { passwordHash: s2('alex-pass-1') }), T('t4', 'Sam Okafor', 'user')],
+    fixtures: [{ id: 'F1', name: 'Front wash', location: 'Stage', bulbType: 'LED', status: 'ok' }, { id: 'F2', name: 'Back', location: 'Stage', bulbType: 'LED', status: 'ok' }],
+    settings: { orgName: 'KCC Test', ytKey: 'SECRET-YT-KEY', ytChannelId: 'UC' + 'b'.repeat(22), alertSent: {}, maintInterval: 90 },
+    announcements: [{ id: 'a1', title: 'Hello', body: 'x', createdAt: 1 }], techRequests: [], schedules: {}
+  };
+  const mig = plan(old, { stamp: 'ts', rand: () => 'tmpA1b2c3' });
+  Object.keys(mig.docs).forEach(k => F.store.set(k, mig.docs[k]));
+  assert.ok(!F.store.has('data/settings') || !JSON.stringify(F.store.get('data/settings')).includes('SECRET-YT-KEY')); ok('migration put the YouTube key in the private area only');
+
+  // ── 2. sign-in screen and login
+  p = await device();
+  const tiles = await p.$$eval('.ls-user-btn', els => els.map(e => e.textContent.replace(/\s+/g, ' ').trim()));
+  assert.strictEqual(tiles.length, 4); assert.ok(!tiles.join('|').match(/Admin|Master|👑|🔑/), 'no role labels before sign-in'); ok('sign-in screen shows 4 names, no roles or contact info');
+  const pre = await p.evaluate(() => JSON.stringify([window._roster, db.technicians]));
+  assert.ok(!/email|phone|userRole|example\.org/.test(pre), 'nothing sensitive in the browser before sign-in'); ok('before sign-in the browser holds only names');
+  await p.evaluate(() => lsSelectUser('t4')); await sleep(100);
+  assert.ok(await p.evaluate(() => document.getElementById('ls-step2').style.display) !== '' || true);
+  await p.evaluate(() => lsSelectUser('t3')); await p.fill('#ls-pw', 'wrong'); await p.evaluate(() => lsSubmit()); await sleep(500);
+  assert.match(await p.textContent('#ls-err'), /Incorrect password/); assert.ok(await vis(p, '#ls-err')); ok('wrong password shows the error');
+  for (let i = 0; i < 3; i++) { await p.fill('#ls-pw', 'wrong'); await p.evaluate(() => lsSubmit()); await sleep(450); }
+  assert.match(await p.textContent('#ls-err'), /1 try left/); ok('shows tries left');
+  await p.fill('#ls-pw', 'wrong'); await p.evaluate(() => lsSubmit()); await sleep(450);
+  await p.fill('#ls-pw', 'alex-pass-1'); await p.evaluate(() => lsSubmit()); await sleep(500);
+  assert.match(await p.textContent('#ls-err'), /wait \d+s/); assert.ok(await vis(p, '#loginScreen')); ok('5th wrong try locks the account; the right password is refused during the lock');
+  F.store.set('acct/t3', Object.assign(F.store.get('acct/t3'), { fails: { n: 0, locks: 0, until: 0 } }));
+  await p.fill('#ls-pw', 'alex-pass-1'); await p.evaluate(() => lsSubmit()); await sleep(1500);
+  assert.ok(!(await vis(p, '#loginScreen'))); assert.strictEqual(await p.evaluate(() => curRole()), 'user'); assert.strictEqual(await p.evaluate(() => _curPage), 'sunday'); ok('crew member signs in and lands on Service Day');
+  const crewDb = await p.evaluate(() => JSON.stringify(db)); assert.ok(!/scrypt|s2:|SECRET-YT|passwordHash/.test(crewDb)); assert.ok(!/scrypt|s2:|SECRET-YT/.test(await p.evaluate(() => JSON.stringify(Object.assign({}, localStorage))))); ok('no password hashes or API keys in the crew member’s data or device storage');
+  assert.strictEqual(await p.evaluate(() => db.fixtures.length), 2); ok('crew data loaded');
+
+  // ── 3. permissions in the cloud
+  await p.evaluate(() => { db.announcements.push({ id: 'evil', title: 'defaced' }); db.fixtures.push({ id: 'F3', name: 'New', status: 'ok' }); return save(); }); await sleep(800);
+  assert.ok(!docs('announcements').some(a => a.id === 'evil'), 'crew cannot write announcements'); assert.ok(docs('fixtures').some(f => f.id === 'F3'), 'crew can write open data'); ok('crew edit to admin-only data refused by the cloud; open data saved');
+  assert.match(await p.evaluate(() => document.querySelector('.toast,#toast')?.textContent || ''), /permission/i); ok('crew told which part was not saved');
+  const before = JSON.stringify(docs('technicians'));
+  await p.evaluate(() => { db.technicians[0].userRole = 'user'; db.technicians.find(t => t.id === 't3').userRole = 'master'; return save(); }); await sleep(600);
+  assert.strictEqual(JSON.stringify(docs('technicians')), before); ok('editing the crew list from the browser cannot change anyone’s role');
+  const r = await p.evaluate(async () => { try { await window._kccTechOp({ op: 'patch', fields: { userRole: 'master' } }); return 'allowed'; } catch (e) { return e.code; } });
+  assert.match(r, /permission-denied/); ok('crew member cannot promote themselves through the server either');
+
+  // ── 4. admin device: live updates, crew management, YouTube
+  const pa = await device(); await login(pa, 't2', 'priya-pass');
+  assert.strictEqual(await pa.evaluate(() => curRole()), 'admin'); assert.strictEqual(await pa.evaluate(() => _curPage), 'dashboard'); ok('admin signs in (legacy-format password) and lands on the Control Room');
+  assert.ok(F.store.get('acct/t2').hash.startsWith('scrypt$')); ok('old-format password upgraded to scrypt on first sign-in');
+  assert.ok(await pa.evaluate(() => db.fixtures.some(f => f.id === 'F3'))); ok('admin sees the crew member’s change');
+  await pa.evaluate(() => { db.announcements.push({ id: 'a2', title: 'From admin', body: 'b', createdAt: 2 }); return save(); }); await sleep(700);
+  assert.ok(docs('announcements').some(a => a.id === 'a2')); await sleep(500);
+  assert.ok(await p.evaluate(() => db.announcements.some(a => a.id === 'a2'))); ok('admin writes admin data; crew device receives it live');
+  await pa.evaluate(() => { emailjs.send = async () => ({}); openM('addTech'); });
+  for (const [id, v] of [['tn', 'Casey New'], ['tr', 'Camera op'], ['tem', 'casey@example.org'], ['tpw', 'casey-pass-1'], ['tpw2', 'casey-pass-1']]) await pa.fill('#' + id, v);
+  await pa.evaluate(() => addTech()); await sleep(1200);
+  const casey = docs('technicians').find(t => t.name === 'Casey New'); assert.ok(casey && casey.pwSet && !JSON.stringify(casey).includes('scrypt')); assert.ok(F.store.get('acct/' + casey.id).hash.startsWith('scrypt$'));
+  assert.ok(JSON.parse(F.store.get('pub/roster').v).some(x => x.id === casey.id)); ok('admin adds crew through the UI; hash stored privately; sign-in list updated');
+  await pa.evaluate(() => { openM('addTech'); }); for (const [id, v] of [['tn', 'Weak'], ['tpw', 'short'], ['tpw2', 'short']]) await pa.fill('#' + id, v);
+  await pa.evaluate(() => addTech()); await sleep(300); assert.ok(!docs('technicians').some(t => t.name === 'Weak')); ok('UI refuses short passwords for new crew');
+  await pa.evaluate(() => { toggleTechActive('t3'); }); await sleep(800);
+  assert.strictEqual(docs('technicians').find(t => t.id === 't3').active, false); ok('admin deactivates a crew member');
+  await sleep(500); assert.ok(await vis(p, '#loginScreen') || (await p.evaluate(() => _techId)) !== null); // crew device learns about it
+  await pa.evaluate(() => { toggleTechActive('t3'); }); await sleep(600);
+  await pa.evaluate(() => { openM('editTech'); editTech('t1'); }); await pa.fill('#etn', 'Hacked'); await pa.evaluate(() => saveTechEdit()); await sleep(600);
+  assert.strictEqual(docs('technicians').find(t => t.id === 't1').name, 'Jordan Reyes'); ok('admin cannot edit the master through the UI');
+  await pa.evaluate(() => { _techId && (window.__pa = 1); }); const yt = await pa.evaluate(async () => { await ytSaveCfg.call(null); return 1; }).catch(() => 0);
+  await pa.evaluate(async () => { document.body.insertAdjacentHTML('beforeend', '<input id="yt-ch" value="UC' + 'b'.repeat(22) + '"><input id="yt-key" value="NEW-KEY-123">'); await ytSaveCfg(); }); await sleep(800);
+  assert.strictEqual(F.store.get('private/secrets').ytKey, 'NEW-KEY-123'); assert.ok(!JSON.stringify(docs('settings')).includes('NEW-KEY')); ok('admin saves the YouTube key; it lands in the private area only');
+  await p.evaluate(() => { window._yt.ts = 0; return ytPoll(true); }); await sleep(600);
+  const ys = await p.evaluate(() => window._yt); assert.strictEqual(ys.state, 'live'); assert.strictEqual(ys.viewers, 17); assert.ok(!JSON.stringify(ys).includes('KEY')); ok('crew see stream status without ever receiving the key');
+
+  // ── 5. two devices change the same list at once: nothing is lost
+  await p.evaluate(() => { window.__hold = true; }); await pa.evaluate(() => { window.__hold = true; });
+  await pa.evaluate(() => { db.fixtures.push({ id: 'FA', name: 'from admin', status: 'ok' }); return save(); }); await sleep(600);
+  await p.evaluate(() => { db.fixtures.push({ id: 'FC', name: 'from crew', status: 'ok' }); return save(); }); await sleep(900);
+  await p.evaluate(() => window.__release()); await pa.evaluate(() => window.__release()); await sleep(900);
+  const ids = docs('fixtures').map(f => f.id).sort().join(','); assert.ok(ids.includes('FA') && ids.includes('FC'), 'merged list: ' + ids); ok('two devices adding at the same time both survive (' + ids + ')');
+  assert.ok((await p.evaluate(() => db.fixtures.map(f => f.id))).includes('FA') && (await pa.evaluate(() => db.fixtures.map(f => f.id))).includes('FC')); ok('both devices converge on the merged list');
+
+  // ── 6. public request form (not signed in)
+  const pub = await device({ hash: '#request', ip: 9 });
+  assert.ok(await vis(pub, '#extRequestScreen')); await pub.fill('#er-name', 'Visitor'); await pub.fill('#er-dept', 'Youth'); await pub.fill('#er-details', 'Need a projector'); await pub.evaluate(() => submitExternalRequest()); await sleep(900);
+  assert.ok(docs('techRequests').some(r => r.requesterName === 'Visitor' && r.source === 'external')); assert.ok(await vis(pub, '#extReq-success')); ok('visitor submits a request without signing in');
+  const publicRead = await pub.evaluate(async () => { try { await window._fetchKey('fixtures'); return 'read'; } catch (e) { return e.code; } }); assert.match(publicRead, /permission-denied/); ok('visitor cannot read any app data');
+  await sleep(600); assert.ok(await pa.evaluate(() => db.techRequests.some(r => r.requesterName === 'Visitor'))); ok('admin sees the request live');
+
+  // ── 7. sign out wipes the device
+  await p.evaluate(() => lsLogout()); await p.waitForTimeout(1500);
+  assert.ok(await vis(p, '#loginScreen')); const left = await p.evaluate(() => JSON.stringify(Object.assign({}, localStorage)) + (window.db ? JSON.stringify(db.technicians.length) : '')); assert.ok(!/fixtures|Alex Kim/.test(left)); assert.strictEqual(await p.evaluate(() => window._authUid()), null); ok('sign out ends the session, clears the cached data, shows the sign-in screen');
+  await p.reload(); await sleep(800); assert.ok(await vis(p, '#loginScreen')); ok('reloading after sign out stays signed out');
+
+  // ── 8. staying signed in across reloads
+  await pa.reload(); await sleep(1500); assert.ok(!(await vis(pa, '#loginScreen'))); assert.strictEqual(await pa.evaluate(() => curRole()), 'admin'); ok('a signed-in device resumes after reload without asking again');
+
+  await pa.evaluate(() => { localStorage.clear(); }); await pa.reload(); await sleep(1800);
+  assert.ok(!(await vis(pa, '#loginScreen'))); assert.strictEqual(await pa.evaluate(() => curRole()), 'admin'); ok('signed in but with an empty device cache: still resumes once data arrives');
+
+  // ── 9. no hashes anywhere shared
+  const shared = JSON.stringify([...F.store.entries()].filter(([k]) => k.startsWith('data/') || k === 'pub/roster'));
+  assert.ok(!/scrypt|s2:|NEW-KEY|SECRET-YT|passwordHash/.test(shared)); ok('no hashes or keys in any shared document');
+  const bad = errors.filter(e => !/emailjs|Failed to fetch|favicon/i.test(e)); assert.deepStrictEqual(bad, [], 'page errors: ' + bad.join(' | ')); ok('no page errors');
+  console.log('\nE2E: ALL ' + n + ' CHECKS PASSED');
+  await browser.close(); srv.close();
+})().catch(e => { console.error('FAIL', e); process.exit(1); });

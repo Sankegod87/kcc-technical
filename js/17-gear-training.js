@@ -646,44 +646,30 @@ function resetExternalRequestForm(){
   document.getElementById('extReq-form').style.display='';
   document.getElementById('extReq-success').style.display='none';
 }
-function submitExternalRequest(){
+async function submitExternalRequest(){
   const name=(document.getElementById('er-name').value||'').trim();
   const dept=(document.getElementById('er-dept').value||'').trim();
   const details=(document.getElementById('er-details').value||'').trim();
+  const contact=(document.getElementById('er-contact').value||'').trim();
   const cats=Array.from(document.querySelectorAll('#er-cat-group input[type=checkbox]:checked')).map(cb=>cb.value);
   const statusEl=document.getElementById('extReq-status');
-  if(!name||!dept){statusEl.textContent='Name and ministry/department are required.';statusEl.style.color='var(--red)';return;}
-  if(!details){statusEl.textContent='Please describe what you need.';statusEl.style.color='var(--red)';return;}
-  // Public form: keep submissions small and slow so it cannot be used to flood the shared database.
-  if(name.length>80||dept.length>80||details.length>2000||(document.getElementById('er-contact').value||'').length>120){statusEl.textContent='One of the answers is too long. Please shorten it.';statusEl.style.color='var(--red)';return;}
-  try{ const last=+localStorage.getItem('kcc_ext_last')||0; if(Date.now()-last<60000){statusEl.textContent='Please wait a minute before sending another request.';statusEl.style.color='var(--red)';return;} }catch(e){}
-  if((db.techRequests||[]).filter(r=>r.source==='external'&&r.status==='open').length>=150){statusEl.textContent='The request queue is full. Please contact the tech team directly.';statusEl.style.color='var(--red)';return;}
-  const req={
-    id:'req_'+Date.now(),
-    title:dept+' — '+(cats.length?cats.join(', '):'Other'),
-    category:cats.length?cats.join(', '):'Other',
-    priority:'normal',
-    neededBy:document.getElementById('er-eventdate').value?new Date(document.getElementById('er-eventdate').value+'T12:00:00').getTime():null,
-    requestedBy:'',
-    details,
-    status:'open',
-    assignedTo:'',
-    adminNotes:'',
-    createdAt:Date.now(),
-    source:'external',
-    requesterName:name,
-    requesterDept:dept,
-    requesterContact:(document.getElementById('er-contact').value||'').trim(),
-    photos:_erMediaList.slice(0,3).filter(safeImg)
-  };
-  if(!db.techRequests)db.techRequests=[];
-  db.techRequests.unshift(req);
+  const fail=m=>{statusEl.textContent=m;statusEl.style.color='var(--red)';};
+  if(!name||!dept){fail('Name and ministry/department are required.');return;}
+  if(!details){fail('Please describe what you need.');return;}
+  if(name.length>80||dept.length>80||details.length>2000||contact.length>120){fail('One of the answers is too long. Please shorten it.');return;}
+  if(!window._kccSubmitRequest){fail('Cannot reach the server. Please try again in a moment.');return;}
+  // The server checks length, images and rate limits again; this device only blocks quick repeats.
+  try{ const last=+localStorage.getItem('kcc_ext_last')||0; if(Date.now()-last<60000){fail('Please wait a minute before sending another request.');return;} }catch(e){}
+  const dateVal=document.getElementById('er-eventdate').value;
   statusEl.textContent='Submitting…';statusEl.style.color='';
-  try{localStorage.setItem('kcc_ext_last',String(Date.now()));}catch(e){}
-  save().then(()=>{
+  try{
+    await window._kccSubmitRequest({name,dept,contact,details,cats,
+      neededBy:dateVal?new Date(dateVal+'T12:00:00').getTime():null,
+      photos:_erMediaList.slice(0,3).filter(safeImg)});
+    try{localStorage.setItem('kcc_ext_last',String(Date.now()));}catch(e){}
     document.getElementById('extReq-form').style.display='none';
     document.getElementById('extReq-success').style.display='block';
-  }).catch(()=>{statusEl.textContent='Something went wrong — please try again.';statusEl.style.color='var(--red)';});
+  }catch(e){ fail(srvErr(e)); }
 }
 function copyExternalRequestLink(){
   const url=location.origin+location.pathname+'#request';
@@ -1113,16 +1099,14 @@ function toggleTmBody(id){
   const el=document.getElementById('tmb-'+id);
   if(el)el.classList.toggle('open');
 }
-function markModuleComplete(techId,modId){
+async function markModuleComplete(techId,modId){
   const t=db.technicians.find(x=>x.id===techId);if(!t)return;
-  if(!t.completedModules)t.completedModules=[];
-  if(t.completedModules.includes(modId)){
-    t.completedModules=t.completedModules.filter(x=>x!==modId);
-  } else {
-    t.completedModules.push(modId);
-  }
-  save();renderTraining();
-  toast((t.completedModules.includes(modId)?'Marked complete':'Unmarked'),'success');
+  const cur=(t.completedModules||[]).slice();
+  const done=cur.includes(modId);
+  const next=done?cur.filter(x=>x!==modId):cur.concat([modId]);
+  const r=await techPatch(techId,{completedModules:next}); if(!r) return;
+  renderTraining();
+  toast(done?'Unmarked':'Marked complete','success');
 }
 function renderTraining(){
   if(!db.trainingModules)db.trainingModules=[];
@@ -1181,27 +1165,27 @@ function renderTraining(){
 }
 
 // ── CREW PROFILES ─────────────────────────────────────────
-function saveCert(){
+async function saveCert(){
   const techId=document.getElementById('cert-techId').value;
   const t=db.technicians.find(x=>x.id===techId);if(!t)return;
   const name=(document.getElementById('cert-name').value||'').trim();
   if(!name){toast('Certification name required','error');return;}
-  if(!t.certs)t.certs=[];
-  t.certs.push({
+  const certs=(t.certs||[]).concat([{
     id:'cert_'+Date.now(),
     name,
     issuer:(document.getElementById('cert-issuer').value||'').trim(),
     date:document.getElementById('cert-date').value||'',
     expiry:document.getElementById('cert-expiry').value||'',
     notes:(document.getElementById('cert-notes').value||'').trim()
-  });
-  save();closeM('addCert');openProfile(techId);
+  }]);
+  const r=await techPatch(techId,{certs}); if(!r) return;
+  closeM('addCert');openProfile(techId);
   toast('Certification added','success');
 }
-function removeCert(techId,certId){
+async function removeCert(techId,certId){
   const t=db.technicians.find(x=>x.id===techId);if(!t)return;
-  t.certs=(t.certs||[]).filter(c=>c.id!==certId);
-  save();openProfile(techId);
+  const r=await techPatch(techId,{certs:(t.certs||[]).filter(c=>c.id!==certId)}); if(!r) return;
+  openProfile(techId);
 }
 function openProfile(techId){
   window._openProfileId=techId;
@@ -1404,11 +1388,11 @@ function renderProfiles(){
     '</div>'+
   '</div>';
   applyPermissions();
-}function toggleOnboarding(techId, stepId){
+}async function toggleOnboarding(techId, stepId){
   const t=db.technicians.find(x=>x.id===techId);if(!t)return;
-  if(!t.onboarding)t.onboarding={};
-  t.onboarding[stepId] = !t.onboarding[stepId];
-  save();openProfile(techId);
+  const onb=Object.assign({},t.onboarding||{}); onb[stepId]=!onb[stepId];
+  const r=await techPatch(techId,{onboarding:onb}); if(!r) return;
+  openProfile(techId);
 }
 
 function openLogHoursModal(techId){
@@ -1421,7 +1405,7 @@ function openLogHoursModal(techId){
   document.getElementById('m-logHours').style.display='flex';
 }
 
-function saveLogHours(){
+async function saveLogHours(){
   const techId=document.getElementById('lh-techId').value;
   const t=db.technicians.find(x=>x.id===techId);if(!t)return;
   const hrs=parseFloat(document.getElementById('lh-hours').value);
@@ -1429,10 +1413,8 @@ function saveLogHours(){
   const note=(document.getElementById('lh-note').value||'').trim();
   const dateVal=document.getElementById('lh-date').value;
   const date=dateVal?new Date(dateVal+'T12:00:00').getTime():Date.now();
-  if(!t.hoursLog)t.hoursLog=[];
-  t.hoursLog.push({hours:hrs,note,date,loggedBy:getCurTech()?.name||'Admin',loggedAt:Date.now()});
-  t.volunteerHours=(t.volunteerHours||0)+hrs;
-  save();
+  const hoursLog=(t.hoursLog||[]).concat([{hours:hrs,note,date,loggedBy:getCurTech()?.name||'Admin',loggedAt:Date.now()}]);
+  const r=await techPatch(techId,{hoursLog,volunteerHours:(t.volunteerHours||0)+hrs}); if(!r) return;
   document.getElementById('m-logHours').style.display='none';
   openProfile(techId);
   toast('+'+hrs+'h logged for '+t.name,'success');
@@ -1451,36 +1433,25 @@ function openFirstRunSetup(){
   const av=document.getElementById('fr-avatar');if(av)av.value='👑';
   openM('firstRun');
 }
-function saveFirstRun(){
+async function saveFirstRun(){
   const name=(document.getElementById('fr-name').value||'').trim();
   const pw=document.getElementById('fr-pw').value;
   const pw2=document.getElementById('fr-pw2').value;
   if(!name){toast('Name required','error');return;}
   if(!pw){toast('Password required','error');return;}
+  if(pw.length<8){toast('Password must be at least 8 characters','error');return;}
   if(pw!==pw2){toast('Passwords do not match','error');return;}
-  if(db.technicians.length>0){toast('Crew already exists — use normal Add Technician','error');closeM('firstRun');return;}
-  const newMaster={
-    id:'t'+Date.now(),
-    name,
-    role:(document.getElementById('fr-role').value||'Technical Director').trim(),
-    avatar:(document.getElementById('fr-avatar').value||'👑').trim(),
-    email:(document.getElementById('fr-email').value||'').trim(),
-    passwordHash:simpleHash(pw),
-    canSchedule:true,
-    userRole:'master',
-    dept:'',notes:'',training:[],completedModules:[],certs:[]
-  };
-  db.technicians.push(newMaster);
-  save();
+  if(!window._kccBootstrap){toast('This needs the cloud connection','error');return;}
+  let r;
+  try{
+    r=await window._kccBootstrap({name,password:pw,
+      role:(document.getElementById('fr-role').value||'Technical Director').trim(),
+      avatar:(document.getElementById('fr-avatar').value||'👑').trim(),
+      email:(document.getElementById('fr-email').value||'').trim()});
+  }catch(e){ toast(srvErr(e),'error'); return; }
   closeM('firstRun');
-  // Auto log in as the new master
-  _techId=newMaster.id;
-  try{localStorage.setItem(TECH_KEY,newMaster.id);}catch(e){}
-  updTechUI();applyPermissions();
-  hideLoginScreen();
-  showHomeScreen();
+  lsLogin(r.id);
   toast('Welcome '+name+'! You are now the Master Admin.','success');
-  buildLsGrid();
 }
 
 

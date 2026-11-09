@@ -21,16 +21,15 @@ function buildWhoGrid(){
 }
 let _whoSelectedId=null;
 function whoSelectTech(id){
-  const t=db.technicians.find(x=>x.id===id);if(!t)return;
-  if(!isTechActive(t)){ toast('This account is inactive','error'); return; }
-  // If technician has no password set, log in directly
-  if(!t.passwordHash){setTech(id);return;}
+  const t=(typeof _rosterList==='function'&&_rosterList()||[]).find(x=>x.id===id);if(!t)return;
+  if(t.active===false){ toast('This account is inactive','error'); return; }
+  if(!t.pw){ toast('No password set yet — ask an admin to set one','info'); return; }
   _whoSelectedId=id;
   document.getElementById('whoStep1').style.display='none';
   document.getElementById('whoStep2').style.display='';
   document.getElementById('whoLoginAv').textContent=t.avatar||'👤';
   document.getElementById('whoLoginName').textContent=t.name;
-  document.getElementById('whoLoginRole').textContent=t.role||'Technician';
+  document.getElementById('whoLoginRole').textContent=t.dept||'Crew';
   document.getElementById('whoPassword').value='';
   document.getElementById('whoLoginErr').style.display='none';
   setTimeout(()=>document.getElementById('whoPassword').focus(),100);
@@ -40,28 +39,29 @@ function whoBack(){
   document.getElementById('whoStep2').style.display='none';
   _whoSelectedId=null;
 }
-function submitLogin(){
-  const t=db.technicians.find(x=>x.id===_whoSelectedId);if(!t)return;
+// Switching person = a fresh sign-in on the server, then a clean page load so nothing from the last person is left over.
+async function submitLogin(){
+  const id=_whoSelectedId;if(!id)return;
   const pw=document.getElementById('whoPassword').value;
-  const lk=loginLocked(t.id);if(lk){toast('Too many tries — wait '+lk+'s','error');return;}
-  if(!pwMatch(pw,t.passwordHash)){
-    loginFailed(t.id);
-    document.getElementById('whoLoginErr').style.display='';
+  const err=document.getElementById('whoLoginErr');
+  try{
+    await window._kccLogin(id,pw);
+    try{localStorage.setItem(TECH_KEY,id);}catch(e){}
+    location.reload();
+  }catch(e){
+    const c=String((e&&e.code)||'').replace('functions/','');
+    err.textContent=c==='permission-denied'?'❌ Incorrect password':'❌ '+srvErr(e);
+    err.style.display='';
     document.getElementById('whoPassword').value='';
     document.getElementById('whoPassword').focus();
-    return;
   }
-  loginOk(t.id,pw);
-  setTech(t.id);
-  whoBack();
 }
 function whoForgot(){
   closeM('whoAmI');
   toast('Ask the admin to reset your password on the Crew page','info');
 }
-// Simple hash — not cryptographic but sufficient for this use case
-// Password hashing: salted SHA-256 (sync). Old accounts with the legacy hash still log in
-// and are upgraded the first time they sign in.
+
+// Salted SHA-256, used for the device PIN (kept on this device only). Account passwords are checked on the server.
 const _PW_PEPPER='kcc-technical|2027|';
 function _sha256(s){
   const K=[];let p=2;while(K.length<64){let ok=1;for(let d=2;d*d<=p;d++)if(p%d==0){ok=0;break;}if(ok)K.push((Math.pow(p,1/3)%1)*4294967296|0);p++;}
@@ -80,23 +80,6 @@ function _sha256(s){
 }
 function _legacyHash(str){let h=0;for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0;}return h.toString(36);}
 function simpleHash(str){ return 's2:'+_sha256(_PW_PEPPER+str); }
-// True if the typed password matches the stored hash (new or legacy format).
-function pwMatch(pw,stored){
-  if(!stored) return false;
-  if(stored.indexOf('s2:')===0) return simpleHash(pw)===stored;
-  return _legacyHash(pw)===stored;
-}
-// Lock the sign-in form for a minute after 5 wrong tries.
-const _LF_KEY='kcc_login_fails';
-function _lfLoad(){try{return JSON.parse(localStorage.getItem(_LF_KEY)||'{}');}catch(e){return {};}}
-function _lfSave(o){try{localStorage.setItem(_LF_KEY,JSON.stringify(o));}catch(e){}}
-function loginLocked(id){const f=_lfLoad()[id];return f&&f.until&&Date.now()<f.until?Math.ceil((f.until-Date.now())/1000):0;}
-function loginFailed(id){const a=_lfLoad(),f=a[id]=a[id]||{n:0};f.n++;if(f.n>=5){f.until=Date.now()+60000*Math.min(30,Math.pow(2,f.locks||0));f.locks=(f.locks||0)+1;f.n=0;}_lfSave(a);}
-function loginOk(id,pw){ // upgrade legacy hash after a good sign-in
-  const _a=_lfLoad(); delete _a[id]; _lfSave(_a);
-  const t=db.technicians.find(x=>x.id===id);
-  if(t&&pw&&t.passwordHash&&t.passwordHash.indexOf('s2:')!==0){t.passwordHash=simpleHash(pw);try{save();}catch(e){}}
-}
 
 // ── Stage 2: Department helpers ──
 const DEPT_COLORS = {
@@ -125,7 +108,7 @@ function setDeptFilter(containerId, dept, btn, cb){
 window._crewDeptFilter='all';
 window._schedDeptFilter='all';
 
-function addTech(){
+async function addTech(){
   if(!isAdmin()){toast('Admin permission required','error');return;}
   const name=document.getElementById('tn').value.trim();
   const role=document.getElementById('tr').value.trim();
@@ -135,15 +118,13 @@ function addTech(){
   const pw2=document.getElementById('tpw2').value;
   if(!name){toast('Name required','error');return;}
   if(!pw){toast('Password is required','error');return;}
+  if(pw.length<8){toast('Password must be at least 8 characters','error');return;}
   if(pw!==pw2){toast('Passwords do not match','error');return;}
-  const canSched=document.getElementById('tcanschedule').checked;
-  const userRole=document.getElementById('tuserrole').value;
-  const techNotes=document.getElementById('tnotes').value.trim();
-  const techTraining=getSelectedTraining('t');
-  const techDept=document.getElementById('tdept').value||'';
-  const newTech = {id:'t'+Date.now(),name,role,dept:techDept,avatar:av,email,phone:document.getElementById('tphone').value.trim(),emergency:document.getElementById('temergency').value.trim(),passwordHash:simpleHash(pw),canSchedule:canSched,userRole,notes:techNotes,training:techTraining,joinedAt:Date.now(),volunteerHours:0,onboarding:{},active:true};
-  db.technicians.push(newTech);
-  logAudit('Crew Added', newTech.name+' ('+newTech.role+')');
+  const fields={name,role,dept:document.getElementById('tdept').value||'',avatar:av,email,phone:document.getElementById('tphone').value.trim(),emergency:document.getElementById('temergency').value.trim(),canSchedule:document.getElementById('tcanschedule').checked,userRole:document.getElementById('tuserrole').value,notes:document.getElementById('tnotes').value.trim(),training:getSelectedTraining('t')};
+  const r=await techCall({op:'add',fields,password:pw});
+  if(!r) return;
+  const newTech=db.technicians.find(x=>x.id===r.id)||Object.assign({id:r.id},fields);
+  logAudit('Crew Added', newTech.name+' ('+(newTech.role||'')+')');
   save();closeM('addTech');renderCrew();
   ['tn','tr','ta','tem','tphone','temergency','tpw','tpw2'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('tcanschedule').checked=false;
@@ -168,46 +149,51 @@ function editTech(id){
   document.getElementById('etdept').value=t.dept||'';
   openM('editTech');
 }
-function saveTechEdit(){
+async function saveTechEdit(){
   if(!isAdmin()){toast('Admin permission required','error');return;}
   const id=document.getElementById('etech-id').value;
   const t=db.technicians.find(x=>x.id===id);if(!t)return;
   if(!canManageTech(t)){toast('Only the master admin can edit the master admin','error');return;}
-  t.name=document.getElementById('etn').value.trim()||t.name;
-  t.role=document.getElementById('etr').value.trim();
-  t.avatar=document.getElementById('eta').value.trim()||'👤';
-  t.email=document.getElementById('etem').value.trim();
-  t.phone=document.getElementById('etphone').value.trim();
-  t.emergency=document.getElementById('etemergency').value.trim();
-  t.canSchedule=document.getElementById('etcanschedule').checked;
-  t.notes=document.getElementById('etnotes').value.trim();
-  t.dept=document.getElementById('etdept').value||'';
-  t.training=getSelectedTraining('et');
-  const newUserRole=document.getElementById('etuserrole').value;
-  // Prevent changing master admin role
-  if(t.userRole!=='master') t.userRole=newUserRole;
   const newPw=document.getElementById('etpw').value;
   const newPw2=document.getElementById('etpw2').value;
   if(newPw){
+    if(newPw.length<8){toast('Password must be at least 8 characters','error');return;}
     if(newPw!==newPw2){toast('Passwords do not match','error');return;}
-    t.passwordHash=simpleHash(newPw);
-    toast('Password updated for '+t.name,'success');
   }
-  ['etpw','etpw2'].forEach(id=>document.getElementById(id).value='');
-  save();closeM('editTech');renderCrew();updTechUI();toast('Technician updated','success');
+  const fields={
+    name:document.getElementById('etn').value.trim()||t.name,
+    role:document.getElementById('etr').value.trim(),
+    avatar:document.getElementById('eta').value.trim()||'👤',
+    email:document.getElementById('etem').value.trim(),
+    phone:document.getElementById('etphone').value.trim(),
+    emergency:document.getElementById('etemergency').value.trim(),
+    canSchedule:document.getElementById('etcanschedule').checked,
+    notes:document.getElementById('etnotes').value.trim(),
+    dept:document.getElementById('etdept').value||'',
+    training:getSelectedTraining('et')
+  };
+  if(t.userRole!=='master') fields.userRole=document.getElementById('etuserrole').value;
+  const payload={op:'edit',id,fields}; if(newPw) payload.password=newPw;
+  const r=await techCall(payload); if(!r) return;
+  ['etpw','etpw2'].forEach(i=>document.getElementById(i).value='');
+  if(newPw) toast('Password updated for '+fields.name,'success');
+  closeM('editTech');renderCrew();updTechUI();applyPermissions();toast('Technician updated','success');
 }
-function changeMyPassword(){
+async function changeMyPassword(){
   const t=getCurTech();if(!t){toast('Not logged in','error');return;}
   const cur=document.getElementById('cmpCur').value;
   const nw=document.getElementById('cmpNew').value;
   const nw2=document.getElementById('cmpNew2').value;
   const errEl=document.getElementById('cmpErr');
   errEl.style.display='none';
-  if(t.passwordHash&&!pwMatch(cur,t.passwordHash)){errEl.textContent='❌ Current password is incorrect';errEl.style.display='';return;}
-  if(!nw){errEl.textContent='❌ New password cannot be empty';errEl.style.display='';return;}
-  if(nw!==nw2){errEl.textContent='❌ Passwords do not match';errEl.style.display='';return;}
-  t.passwordHash=simpleHash(nw);
-  save();closeM('changeMyPw');
+  const bad=m=>{errEl.textContent='❌ '+m;errEl.style.display='';};
+  if(!nw){bad('New password cannot be empty');return;}
+  if(nw.length<8){bad('New password must be at least 8 characters');return;}
+  if(nw!==nw2){bad('Passwords do not match');return;}
+  if(!needCloud()) return;
+  try{ await window._kccTechOp({op:'setPassword',current:cur,password:nw}); }
+  catch(e){ bad(srvErr(e)); return; }
+  closeM('changeMyPw');
   ['cmpCur','cmpNew','cmpNew2'].forEach(id=>document.getElementById(id).value='');
   toast('Password updated successfully!','success');
 }
@@ -217,21 +203,22 @@ function canManageTech(t){ return !!t && (isMaster() || t.userRole!=='master'); 
 function adminResetPassword(id){
   const t=db.technicians.find(x=>x.id===id);if(!t)return;
   if(!canManageTech(t)){toast('Only the master admin can do that','error');return;}
-  requirePin(()=>{
-    const newPw=prompt('Set new password for '+t.name+':');
+  requirePin(async()=>{
+    const newPw=prompt('Set new password for '+t.name+' (at least 8 characters):');
     if(!newPw){toast('Cancelled','info');return;}
+    if(newPw.length<8){toast('Password must be at least 8 characters','error');return;}
     const confirm=prompt('Confirm new password:');
     if(newPw!==confirm){toast('Passwords do not match','error');return;}
-    t.passwordHash=simpleHash(newPw);
-    save();renderCrew();toast('Password reset for '+t.name,'success');
+    const r=await techCall({op:'setPassword',id,password:newPw});
+    if(r){renderCrew();toast('Password reset for '+t.name+'. They will need to sign in again.','success');}
   });
 }
-function removeTech(id){
+async function removeTech(id){
   if(!canManageTech(db.technicians.find(x=>x.id===id))){toast('Only the master admin can do that','error');return;}
   if(!confirm('Remove this technician?'))return;
-  db.technicians=db.technicians.filter(t=>t.id!==id);
-  if(_techId===id){_techId=null;try{localStorage.removeItem(TECH_KEY);}catch(e){}updTechUI();}
-  save();renderCrew();
+  const r=await techCall({op:'remove',id}); if(!r) return;
+  if(_techId===id){ lsLogout(); return; }
+  renderCrew();
 }
 function editFixture(id){
   const f=db.fixtures.find(x=>x.id===id);if(!f)return;

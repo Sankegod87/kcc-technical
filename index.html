@@ -24,14 +24,17 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 
 <!-- Firebase v10 -->
+<script src="kcc-schema.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, serverTimestamp }
+import { getFirestore, doc, getDoc, onSnapshot, runTransaction, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getFunctions, httpsCallable }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
+import { getAuth, signInWithCustomToken, signOut, onIdTokenChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 // ═══════════════════════════════════════════════════
-// 🔧 PASTE YOUR FIREBASE CONFIG HERE
+// 🔧 FIREBASE CONFIG
 // ═══════════════════════════════════════════════════
 const firebaseConfig = {
   apiKey:            "AIzaSyCWuthng40k55iBrQAccYE4zCg012Pt2fA",
@@ -41,98 +44,184 @@ const firebaseConfig = {
   messagingSenderId: "268758980349",
   appId:             "1:268758980349:web:111d497335e8bbefb65094"
 };
+// Optional: paste a reCAPTCHA v3 site key here to turn on App Check (blocks requests that do not come from this app).
+const APP_CHECK_SITE_KEY = "";
 // ═══════════════════════════════════════════════════
-const DB_DOC = "stage-light-tracker/main";
-let app, fsdb;
+// Data layout: one Firestore document per kind of data (data/<key>), see kcc-schema.js.
+// Sign-in goes through the "kccLogin" Cloud Function, which returns a token carrying the person's role.
+// ═══════════════════════════════════════════════════
+const S = window.KCC_SCHEMA;
+let app, fsdb, auth, fns;
 let _firebaseReady = false;
+const cache = {};          // key -> { val, n }  latest cloud copy of each document
+const lastNonce = {};      // key -> id of our own most recent save (so we ignore its echo)
+let got = new Set(), unsubs = [], firstDone = false, applyTimer = null;
+let claims = { r: null, cs: false };
+
 function syncUI(state, msg) {
-  // Call setSyncState directly if ready, otherwise dispatch event
   if (typeof window.setSyncState === 'function') {
     window.setSyncState(state, msg);
     if (state === 'ok') { try { window.updSyncTime && window.updSyncTime(); } catch(e){} }
   } else {
     window.dispatchEvent(new CustomEvent("syncStatus", { detail: { state, msg } }));
   }
-  // Also update login screen status text
   const el = document.getElementById('ls-syncStatus');
   if (el) el.textContent = msg;
 }
-function initFirebase() {
-  try {
-    if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-      window._syncMode = "local";
-      syncUI("local", "Local mode — no Firebase config");
-      return;
-    }
-    app = initializeApp(firebaseConfig);
-    fsdb = getFirestore(app);
-    const fns = getFunctions(app);
-    window._sendScheduleSMS = httpsCallable(fns, 'manualSendScheduleSMS');
-    window._syncMode = "firebase";
-    window._fbDoc = () => doc(fsdb, DB_DOC);
-    window._fetchRemote = async () => { const s = await getDoc(doc(fsdb, DB_DOC)); const d = s.exists() ? s.data() : null; return d && d.payload ? JSON.parse(d.payload) : null; };
-    syncUI("syncing", "Connecting…");
-    // If Firebase hasn't connected in 8 seconds, warn the user
-    const _connTimeout = setTimeout(()=>{
-      if(_firebaseReady) return;
-      syncUI("error", "Check internet connection");
-    }, 8000);
-    onSnapshot(doc(fsdb, DB_DOC), (snap) => {
-      if (snap.exists()) {
-        const remote = snap.data();
-        if (remote && remote.payload) {
-          // Skip echo snapshots fired from our own save (nonce match = our write bouncing back)
-          if (remote.nonce && remote.nonce === _lastSaveNonce) {
-            syncUI("ok", "Live sync ✓"); clearTimeout(_connTimeout);
-            const _lsDot=document.getElementById('ls-sync-dot');if(_lsDot)_lsDot.style.background='#5DCAA5';
-            return;
-          }
-          // Wait for _onRemoteData to be ready (timing fix)
-          const applyData = () => {
-            try { window._onRemoteData(JSON.parse(remote.payload)); } catch(e) { console.warn('Firebase data parse error', e); }
-          };
-          if (typeof window._onRemoteData === 'function') {
-            applyData();
-          } else {
-            // Poll until ready (max 5s)
-            let attempts = 0;
-            const wait = setInterval(() => {
-              attempts++;
-              if (typeof window._onRemoteData === 'function') {
-                clearInterval(wait);
-                applyData();
-              } else if (attempts > 50) {
-                clearInterval(wait);
-                console.warn('Firebase: _onRemoteData never became available');
-              }
-            }, 100);
-          }
-        }
-      }
-      syncUI("ok", "Live sync ✓");
-      clearTimeout(_connTimeout);
-      const _lsDot=document.getElementById('ls-sync-dot');if(_lsDot)_lsDot.style.background='#5DCAA5';
-    }, (err) => {
-      console.error('Firebase snapshot error:', err);
-      syncUI("error", "Sync error: " + err.code);
-    });
-    _firebaseReady = true;
-  } catch(e) {
-    window._syncMode = "local";
-    syncUI("error", "Firebase init failed");
+const parse = (d) => { try { return JSON.parse(d.p); } catch (e) { return undefined; } };
+const localDb = () => (window._localDb ? window._localDb() : {});
+const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));  // the app mutates its data in place, so never hand it our cached copy
+
+// Put the per-document copies back together into the single object the app works with.
+function assemble() {
+  const local = localDb(), r = {};
+  S.APP_KEYS.forEach((k) => {
+    if (k === 'settings') return;
+    const c = cache[k];
+    r[k] = (c && c.val !== undefined) ? clone(c.val) : (got.has(k) ? undefined : local[k]);
+  });
+  const a = cache.settings, b = cache.settingsRt;
+  r.settings = clone(S.joinSettings(a && a.val, b && b.val));
+  // keep this device's copy of anything we could not read
+  S.APP_KEYS.forEach((k) => { if (k !== 'settings' && r[k] === undefined && unreadable.has(k)) r[k] = local[k]; });
+  if (unreadable.has('settings')) r.settings = local.settings;
+  return r;
+}
+const unreadable = new Set();
+
+function apply() {
+  const run = () => { try { window._onRemoteData(assemble()); } catch (e) { console.warn('Firebase data error', e); } };
+  if (typeof window._onRemoteData === 'function') { run(); return; }
+  let n = 0; const wait = setInterval(() => { n++; if (typeof window._onRemoteData === 'function') { clearInterval(wait); run(); } else if (n > 50) clearInterval(wait); }, 100);
+}
+function scheduleApply() { if (!firstDone) return; clearTimeout(applyTimer); applyTimer = setTimeout(apply, 30); }
+
+function markGot(k) {
+  got.add(k);
+  if (!firstDone && got.size >= S.ALL.length) {
+    firstDone = true; apply();
+    syncUI("ok", "Live sync ✓");
+    const dot = document.getElementById('ls-sync-dot'); if (dot) dot.style.background = '#5DCAA5';
   }
 }
-let _lastSaveNonce = null;
-window._saveToFirebase = async (data) => {
-  if (!_firebaseReady || !window._fbDoc) return false;
-  if (navigator.onLine === false) return false; // never queue a blind overwrite for later
+function startData() {
+  stopData();
+  S.ALL.forEach((k) => {
+    unsubs.push(onSnapshot(doc(fsdb, 'data/' + k), (snap) => {
+      const d = snap.exists() ? snap.data() : null;
+      unreadable.delete(k);
+      if (d && d.n && d.n === lastNonce[k]) { markGot(k); return; }  // our own save coming back
+      cache[k] = d ? { val: parse(d), n: d.n } : { val: undefined, n: null };
+      markGot(k); scheduleApply();
+    }, (err) => {
+      console.warn('Cannot read', k, err.code);
+      unreadable.add(k); markGot(k);
+    }));
+  });
+}
+function stopData() { unsubs.forEach((u) => { try { u(); } catch (e) {} }); unsubs = []; got = new Set(); firstDone = false; }
+
+async function initFirebase() {
   try {
-    const nonce = Date.now() + '_' + Math.random().toString(36).slice(2);
-    _lastSaveNonce = nonce;
-    await setDoc(window._fbDoc(), { payload: JSON.stringify(data), nonce, updatedAt: serverTimestamp() });
-    return true;
+    if (firebaseConfig.apiKey === "YOUR_API_KEY") { window._syncMode = "local"; syncUI("local", "Local mode — no Firebase config"); return; }
+    app = initializeApp(firebaseConfig);
+    if (APP_CHECK_SITE_KEY) {
+      const ac = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js");
+      ac.initializeAppCheck(app, { provider: new ac.ReCaptchaV3Provider(APP_CHECK_SITE_KEY), isTokenAutoRefreshEnabled: true });
+    }
+    fsdb = getFirestore(app); auth = getAuth(app); fns = getFunctions(app);
+    window._syncMode = "firebase";
+    syncUI("syncing", "Connecting…");
+    const connTimeout = setTimeout(() => { if (!_firebaseReady) syncUI("error", "Check internet connection"); }, 8000);
+
+    // Names for the sign-in screen (public, no secrets).
+    onSnapshot(doc(fsdb, 'pub/roster'), (s) => {
+      try { window._roster = s.exists() ? JSON.parse(s.data().v) : []; } catch (e) { window._roster = []; }
+      window._rosterReady = true; _firebaseReady = true; clearTimeout(connTimeout);
+      window.dispatchEvent(new Event('rosterChanged'));
+      if (!auth.currentUser) syncUI("ok", "Ready — sign in");
+    }, (err) => { console.error('Roster error', err); syncUI("error", "Sync error: " + err.code); });
+
+    // Role claims travel inside the sign-in token; keep them current when it refreshes.
+    let first = true;
+    window._authReady = new Promise((res) => {
+      onIdTokenChanged(auth, async (user) => {
+        if (!user) { claims = { r: null, cs: false }; stopData(); }
+        else {
+          const t = await user.getIdTokenResult();
+          const wasIn = !!claims.r; claims = { r: t.claims.r || null, cs: !!t.claims.cs };
+          if (!wasIn) startData();
+        }
+        window.dispatchEvent(new Event('authChanged'));
+        if (first) { first = false; res(); }
+      });
+    });
+    window._authUid = () => (auth.currentUser ? auth.currentUser.uid : null);
+    window._authClaims = () => claims;
+    _firebaseReady = true;
+  } catch (e) {
+    console.error(e); window._syncMode = "local"; syncUI("error", "Firebase init failed");
   }
-  catch(e) { return false; }
+}
+
+// ── sign in / out and server actions ──
+const call = (name) => async (payload) => (await httpsCallable(fns, name)(payload || {})).data;
+window._kccLogin = async (techId, password) => { const r = await call('kccLogin')({ techId, password }); await signInWithCustomToken(auth, r.token); return r; };
+window._kccBootstrap = async (p) => { const r = await call('kccBootstrap')(p); await signInWithCustomToken(auth, r.token); return r; };
+window._kccSignOut = async () => { try { await signOut(auth); } catch (e) {} };
+window._kccTechOp = (p) => call('kccTechOp')(p);
+window._kccSetSecret = (name, value) => call('kccSetSecret')({ name, value });
+window._kccHasSecret = (name) => call('kccHasSecret')({ name });
+window._kccYtLive = (force) => call('kccYtLive')({ force: !!force });
+window._kccSubmitRequest = (p) => call('kccSubmitRequest')(p);
+window._fetchKey = async (k) => { const s = await getDoc(doc(fsdb, 'data/' + k)); const d = s.exists() ? s.data() : null; if (d) cache[k] = { val: parse(d), n: d.n }; return d ? parse(d) : null; };
+window._fetchRemote = async () => {
+  await Promise.all(S.ALL.map((k) => window._fetchKey(k).catch(() => { unreadable.add(k); })));
+  return assemble();
+};
+
+// ── saving: only documents that changed, only ones this role may write, merged if someone else saved first ──
+function baseFor(k, base) {
+  if (k === 'settings') return S.splitSettings(base.settings).settings;
+  if (k === 'settingsRt') return S.splitSettings(base.settings).settingsRt;
+  return base[k];
+}
+async function writeKey(k, val) {
+  const ref = doc(fsdb, 'data/' + k);
+  const nonce = Date.now() + '_' + Math.random().toString(36).slice(2);
+  let finalVal = val;
+  await runTransaction(fsdb, async (tx) => {
+    const s = await tx.get(ref);
+    finalVal = val;
+    if (s.exists()) {
+      const d = s.data(), remote = parse(d), known = cache[k] ? cache[k].n : null;
+      if (d.n !== known && remote !== undefined && typeof window.mergeVal === 'function') {
+        const base = (typeof window.syncGetBase === 'function' && window.syncGetBase()) || {};
+        finalVal = window.mergeVal(baseFor(k, base), val, remote);
+      }
+    }
+    tx.set(ref, { p: JSON.stringify(finalVal), n: nonce, t: serverTimestamp() });
+  });
+  lastNonce[k] = nonce; cache[k] = { val: clone(finalVal), n: nonce };
+  if (JSON.stringify(finalVal) !== JSON.stringify(val)) { firstDone && scheduleApply(); }
+}
+window._lastDenied = [];
+window._saveToFirebase = async (data) => {
+  if (!_firebaseReady || !auth || !auth.currentUser || !firstDone) return false;
+  if (navigator.onLine === false) return false; // never queue a blind overwrite for later
+  const parts = S.splitSettings(data.settings);
+  const out = Object.assign({}, data, { settings: parts.settings, settingsRt: parts.settingsRt });
+  let failed = false; const denied = [];
+  for (const k of S.ALL) {
+    if (S.tierOf(k) === 'server' || out[k] === undefined) continue;
+    const c = cache[k], cur = c && c.val !== undefined ? JSON.stringify(c.val) : null;
+    if (JSON.stringify(out[k]) === cur) continue;
+    if (cur === null && JSON.stringify(out[k]) === (Array.isArray(out[k]) ? '[]' : '{}')) continue; // nothing to create
+    if (!S.canWrite(k, claims.r, claims.cs)) { denied.push(k); continue; }
+    try { await writeKey(k, out[k]); } catch (e) { console.warn('Save failed for', k, e.code || e); failed = true; }
+  }
+  window._lastDenied = denied;
+  return !failed;
 };
 initFirebase();
 </script>
@@ -1881,6 +1970,7 @@ initFirebase();
 <script src="js/19-pwa.js"></script>
 <script src="js/20-icons.js"></script>
 <script src="js/21-vmix.js"></script>
+<script src="js/22-server.js"></script>
 <script src="js/17-gear-training.js"></script>
 
 <script src="js/18-sidebar.js"></script>
