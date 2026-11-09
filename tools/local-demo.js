@@ -23,6 +23,7 @@ const now = new Date(), d = new Date(now.getFullYear(), now.getMonth(), now.getD
 let add = (7 - d.getDay()) % 7; if (add === 0 && now.getHours() >= 14) add = 7; d.setDate(d.getDate() + add);
 const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const first = Object.keys(old.schedules || {})[0]; if (first && first !== key) { old.schedules[key] = old.schedules[first]; delete old.schedules[first]; }
+old.settings = Object.assign({}, old.settings, { proPresenterHost: 'localhost:' + (PORT + 1000) });
 const mig = plan(old); Object.keys(mig.docs).forEach(k => F.store.set(k, mig.docs[k]));
 
 // ── rules, same as firestore.rules / the browser tests ──
@@ -89,6 +90,19 @@ const server = http.createServer((q, s) => {
     s.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-store' }); s.end(out);
   });
 });
+// pretend ProPresenter (same API shape as the real one) so the tile has something to show
+const slides = [['Welcome', 'Good morning'], ['Song 1 - Verse 1', 'Amazing grace how sweet the sound'], ['Song 1 - Chorus', 'My chains are gone']];
+let si = 0; setInterval(() => { si = (si + 1) % slides.length; }, 8000);
+http.createServer((q, s) => {
+  const j = o => { s.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); s.end(JSON.stringify(o)); };
+  const u = q.url.split('?')[0];
+  if (u === '/v1/version') return j({ name: 'ProPresenter (demo)', host_description: '7.16 demo', api_version: 'v1' });
+  if (u === '/v1/presentation/active') return j({ presentation: { id: { uuid: 'p1', name: 'Sunday Worship (demo)' } } });
+  if (u === '/v1/presentation/slide_index') return j({ presentation_index: { index: si, presentation_id: { uuid: 'p1', name: 'Sunday Worship (demo)' } } });
+  if (u === '/v1/status/slide') return j({ current: { text: slides[si][1], uuid: 'a' }, next: { text: slides[(si + 1) % slides.length][1], uuid: 'b' } });
+  if (u === '/v1/timers/current') return j([{ id: { name: 'Countdown' }, time: '00:04:' + String(10 + si).padStart(2, '0') }]);
+  s.writeHead(404, { 'Access-Control-Allow-Origin': '*' }); s.end();
+}).listen(PORT + 1000, '127.0.0.1');
 server.listen(PORT, '127.0.0.1', () => {
   console.log('\nKCC Technical: LOCAL DEMO is running (pretend cloud, nothing real is touched)\n');
   console.log('  Open:  http://localhost:' + PORT + '\n');
