@@ -9,8 +9,10 @@ const _origGo = typeof go !== 'undefined' ? go : null;
 window.go = function(page) {
   if (_origGo) _origGo(page);
   document.querySelectorAll('.snav-btn').forEach(b => {
-    b.classList.toggle('active', b.id === 'snav-' + page);
+    const rigPage=(page==='inventory'||page==='history')?'fixtures':page;
+    b.classList.toggle('active', b.id === 'snav-' + rigPage);
   });
+  rigTabs(page);
   const tt = document.getElementById('topbarTitle');
   if (tt) tt.textContent = _PAGE_TITLES[page] || page;
   _updateSidebarUser();
@@ -31,3 +33,19 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('#appSidebar .snav-btn').forEach(function(b){if(!b.title)b.title=b.textContent.trim();});});
+
+
+// Rig area: Fixtures, Stock and History share one tab strip under a single sidebar entry.
+function rigTabs(page){
+  const tabs=[['fixtures','Fixtures'],['inventory','Stock'],['history','History']];
+  tabs.forEach(([id])=>{
+    const pg=document.getElementById('pg-'+id); if(!pg) return;
+    let bar=pg.querySelector(':scope > .rig-tabs');
+    if(!bar){
+      bar=document.createElement('div'); bar.className='rig-tabs';
+      bar.innerHTML=tabs.map(([k,l])=>`<button class="rig-tab" data-p="${k}" onclick="go('${k}')">${l}</button>`).join('');
+      pg.insertBefore(bar,pg.firstChild);
+    }
+    bar.querySelectorAll('.rig-tab').forEach(b=>b.classList.toggle('active',b.dataset.p===page));
+  });
+}

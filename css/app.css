@@ -862,3 +862,9 @@ svg.ic{width:1.1em;height:1.1em;vertical-align:-.18em;flex-shrink:0;display:inli
 .gd-acts{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0 2px}
 .gd-row{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border);font-size:13px}
 .gd-d{width:56px;flex-shrink:0;font-family:var(--mono);font-size:11px;color:var(--dim2)}
+
+/* Rig tabs */
+.rig-tabs{display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);}
+.rig-tab{background:none;border:0;color:var(--dim2);font:600 13px var(--mono);padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;text-transform:uppercase;letter-spacing:.5px;}
+.rig-tab.active{color:#5DCAA5;border-bottom-color:#5DCAA5;}
+.rig-tab:hover{color:var(--text);}
