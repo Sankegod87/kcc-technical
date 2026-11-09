@@ -1213,7 +1213,7 @@ initFirebase();
     </div>
 
     <!-- ── Maintenance Defaults ── -->
-    <div class="panel">
+    <div class="panel" data-perm="admin">
       <div class="ph"><span class="pt">🔧 Maintenance Defaults</span></div>
       <div class="pb">
         <p class="dim mb12">Default interval to flag fixtures for maintenance check.</p>
@@ -1233,7 +1233,7 @@ initFirebase();
     </div>
 
     <!-- ── Admin PIN ── -->
-    <div class="panel">
+    <div class="panel" data-perm="admin">
       <div class="ph"><span class="pt">🔒 Admin PIN</span></div>
       <div class="pb">
         <p class="dim mb12">Protect reset and delete actions with a 4-digit PIN. Leave blank to disable.</p>
@@ -1264,6 +1264,7 @@ initFirebase();
       <div class="ph"><span class="pt">👤 Account</span></div>
       <div class="pb">
         <p class="dim mb12">Signed in as: <span id="settingsSignedInAs" style="color:var(--text);font-weight:700">—</span></p>
+        <button class="btn bgh" style="width:100%;justify-content:center;font-size:14px;padding:12px;margin-bottom:10px" onclick="openM('changeMyPw')">Change my password</button>
         <button class="btn" style="background:var(--rglow);border:1px solid rgba(224,60,60,.4);color:var(--red);width:100%;justify-content:center;font-size:14px;padding:12px" onclick="lsLogout()">Sign Out &amp; Return to Login</button>
       </div>
     </div>

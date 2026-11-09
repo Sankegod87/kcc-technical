@@ -274,6 +274,7 @@ function setUserRole(techId, role){
 // Device PIN is kept hashed; a plain 4-digit value from an older version still works.
 function _pinMatch(p,stored){return stored&&(stored.indexOf('s2:')===0?simpleHash('pin'+p)===stored:p===stored);}
 function savePin(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
   const cur=document.getElementById('currentPin').value;
   const nw=document.getElementById('newPin').value;
   const stored=localStorage.getItem(PIN_KEY)||'';
@@ -285,6 +286,7 @@ function savePin(){
   toast(nw?'PIN saved':'PIN removed','success');
 }
 function saveMaintSettings(){
+  if(!isAdmin()){toast('Admin permission required','error');return;}
   const v=parseInt(document.getElementById('maintInterval').value)||90;
   db.settings.maintInterval=v;save();toast('Maintenance interval saved','success');
 }

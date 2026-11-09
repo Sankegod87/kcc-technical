@@ -170,6 +170,7 @@ function saveTechEdit(){
   if(!isAdmin()){toast('Admin permission required','error');return;}
   const id=document.getElementById('etech-id').value;
   const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  if(!canManageTech(t)){toast('Only the master admin can edit the master admin','error');return;}
   t.name=document.getElementById('etn').value.trim()||t.name;
   t.role=document.getElementById('etr').value.trim();
   t.avatar=document.getElementById('eta').value.trim()||'👤';
@@ -209,8 +210,11 @@ function changeMyPassword(){
   toast('Password updated successfully!','success');
 }
 
+// Only the master admin can reset, edit, deactivate or remove the master admin's account.
+function canManageTech(t){ return !!t && (isMaster() || t.userRole!=='master'); }
 function adminResetPassword(id){
   const t=db.technicians.find(x=>x.id===id);if(!t)return;
+  if(!canManageTech(t)){toast('Only the master admin can do that','error');return;}
   requirePin(()=>{
     const newPw=prompt('Set new password for '+t.name+':');
     if(!newPw){toast('Cancelled','info');return;}
@@ -221,6 +225,7 @@ function adminResetPassword(id){
   });
 }
 function removeTech(id){
+  if(!canManageTech(db.technicians.find(x=>x.id===id))){toast('Only the master admin can do that','error');return;}
   if(!confirm('Remove this technician?'))return;
   db.technicians=db.technicians.filter(t=>t.id!==id);
   if(_techId===id){_techId=null;try{localStorage.removeItem(TECH_KEY);}catch(e){}updTechUI();}
