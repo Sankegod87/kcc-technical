@@ -88,7 +88,31 @@ window.KCC_STARTER_MODULES=[
    {text:'Downloads a backup and says where it is stored privately',critical:true},
    {text:'Sets the admin PIN on a device'},
    {text:'Changes someone\'s level in Role Management and explains the delay for signed-in people',critical:true},
-   {text:'Walks through the launch checklist and names three items'}]}}
+   {text:'Walks through the launch checklist and names three items'}]}},
+ {id:'st_station3',title:'Station 3 (Presentation) manual',dept:'',level:'Beginner',duration:'30 min',required:false,
+  desc:'From the Station 3 manual: the XPS computer, Chrome tabs, announcements and sermon files, going live on YouTube, fixing no sound, and fixing a black or wrong screen with the Crestron. Add the manual\'s Google Doc link with Edit module. Crestron and ProPresenter get their own modules later.',
+  quiz:{pass:80,qs:[
+   {q:'How do you shut down the XPS computer?',opts:['Hold the power button every time','Shut down through Windows; use the power button only to force a reset when it is frozen','Unplug it','Close the lid'],a:1},
+   {q:'Which two programs do you open once the computer has loaded?',opts:['Word and Excel','Google Chrome and ProPresenter','Zoom and Teams','Photoshop and vMix'],a:1},
+   {q:'Which three tabs do you open in Chrome?',opts:['Gmail, Google Drive and YouTube','Facebook, Gmail and Maps','Drive, Docs and Calendar','YouTube, Spotify and Gmail'],a:0},
+   {q:'Where do you find the updated announcements and the list of songs?',opts:['In Gmail','On the desktop','In ProPresenter only','On the TV'],a:0},
+   {q:'What do you do with the Sermon Template in Google Drive?',opts:['Edit it directly','Download it and edit your copy; never tamper with the original','Delete it each week','Share it with the choir'],a:1},
+   {q:'There is no sound, and nothing is muted on the PC or the mixer. What is the first fix in the manual?',opts:['Buy a new speaker','Device Manager → Sound, video and game controllers → Realtek Audio → Driver: update, or roll back, then restart','Reinstall Windows','Turn the TVs off'],a:1},
+   {q:'A screen is black or frozen after you routed the Crestron. What is the fastest keyboard fix?',opts:['Win + Ctrl + Shift + B (restarts the graphics driver)','Ctrl + Alt + Delete','Alt + F4','Hold the power button'],a:0},
+   {q:'Win + P should always be set to:',opts:['Duplicate','PC screen only','Extend','Second screen only'],a:2},
+   {q:'What resolution and refresh rate should each display use so the Crestron matrix keeps its signal?',opts:['4K at 30 Hz','1920 x 1080 at 60 Hz','1280 x 720 at 59 Hz','Whatever Windows picks'],a:1},
+   {q:'Who do you contact when every audio fix has failed, or you do not know the sign-in PIN?',opts:['Nobody, wait until Monday','Peace or TL Dami','The YouTube help line','Any visitor'],a:1}]},
+  practical:{pass:80,items:[
+   {text:'Starts the computer, signs in, and explains the right way to shut it down',critical:true},
+   {text:'Opens Chrome with the Gmail, Drive and YouTube tabs, and ProPresenter'},
+   {text:'Finds the latest announcements and song list in Gmail'},
+   {text:'Finds the Starred documents in Drive and downloads the Sermon Template without editing the original',critical:true},
+   {text:'Sets up the YouTube live stream: title, description and thumbnail'},
+   {text:'Tests audio from YouTube and checks the PC and mixer are not muted'},
+   {text:'Shows the Device Manager steps to fix no sound (update or roll back the Realtek driver, restart)'},
+   {text:'Fixes a black screen with Win + Ctrl + Shift + B and sets Win + P to Extend',critical:true},
+   {text:'Re-detects displays and sets 1920 x 1080 at 60 Hz'},
+   {text:'Checks ProPresenter screens are on and Configure Screens targets the right outputs'}]}}
 ];
 (function(){
   // a starter you deleted stays deleted: we remember which ones were already offered
