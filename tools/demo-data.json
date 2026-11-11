@@ -276,6 +276,10 @@
       {
         "name": "Streaming Station",
         "icon": "🖥️"
+      },
+      {
+        "name": "Standby",
+        "icon": "⏳"
       }
     ]
   },
