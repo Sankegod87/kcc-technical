@@ -16,3 +16,6 @@ Things worth trying: sign in as crew vs admin and compare menus; Crew page > add
 - Settings → **Connections**: addresses for vMix, ProPresenter, booth bridge and YouTube, each with a Test button.
 - Asset Checkout: **Rapid scan** (camera, or type a code; try the gear IDs) and **Print QR labels**.
 - The demo has a pretend ProPresenter and a pretend booth bridge. For the real bridge see tools/booth-bridge/README.md; for Fire tablets see android-wrapper/README.md.
+
+## Training manuals and quizzes
+Training → open "Camera framing basics" (links, gear, quiz). Crew pass the quiz to complete it; admins use "Manuals & quiz" to add links, link gear and write questions. Linked gear shows its manuals in the gear detail.

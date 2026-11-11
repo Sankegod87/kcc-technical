@@ -1,6 +1,6 @@
 // KCC Technical service worker.
 // Bump CACHE_VERSION on every deploy so every device drops old files.
-const CACHE_VERSION = '2027-01-v18';
+const CACHE_VERSION = '2027-01-v19';
 const SHELL_CACHE = 'kcc-shell-' + CACHE_VERSION;
 const LIB_CACHE = 'kcc-libs-v1'; // third-party scripts and fonts, kept between deploys
 
@@ -39,6 +39,7 @@ const SHELL = [
   'js/27-qr-gear.js',
   'js/28-bridge.js',
   'js/29-summary.js',
+  'js/30-training-plus.js',
   'kcc-schema.js',
   'js/vendor/emailjs-browser-4.4.1.min.js',
   'js/vendor/html5-qrcode-2.3.8.min.js',
