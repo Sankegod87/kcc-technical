@@ -54,7 +54,7 @@ const BRIDGE = `<script>
 })();
 </script>`;
 
-const MIME = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
+const MIME = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.pdf': 'application/pdf' };
 const server = http.createServer((q, s) => {
   const url = decodeURIComponent(q.url.split('?')[0]);
   const json = (o, c) => { s.writeHead(c || 200, { 'Content-Type': 'application/json' }); s.end(JSON.stringify(o)); };

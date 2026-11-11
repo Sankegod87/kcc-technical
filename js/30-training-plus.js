@@ -4,6 +4,8 @@
 // A module is complete when its quiz (if any) is passed AND its practical (if any) is passed by a trainer.
 (function(){
   const E=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  // links may be https addresses or a PDF shipped with the app in manuals/
+  const lk=u=>{ u=String(u||'').trim(); return /^manuals\/[\w.-]+\.pdf$/i.test(u)?u:safeUrl(u); };
   const mod=id=>(db.trainingModules||[]).find(m=>m.id===id);
   const hasQuiz=m=>!!(m&&m.quiz&&m.quiz.qs&&m.quiz.qs.length);
   const hasPrac=m=>!!(m&&m.practical&&m.practical.items&&m.practical.items.length);
@@ -19,7 +21,7 @@
   // ── what people see inside a module ──
   function extras(m,me){
     const s=st(m,me);
-    const links=(m.links||[]).filter(l=>safeUrl(l.url)).map(l=>`<div class="tm-resource"><span style="font-size:18px">📘</span><a href="${E(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);font-size:13px">${E(l.label||'Manual')} →</a></div>`).join('');
+    const links=(m.links||[]).filter(l=>lk(l.url)).map(l=>`<div class="tm-resource"><span style="font-size:18px">📘</span><a href="${E(lk(l.url))}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);font-size:13px">${E(l.label||'Manual')} →</a></div>`).join('');
     const gear=(m.gearIds||[]).map(id=>(db.gearItems||[]).find(g=>g.id===id)).filter(Boolean);
     const gearHtml=gear.length?`<div class="dim" style="font-size:12px;margin:8px 0 4px">Covers this gear:</div><div style="display:flex;gap:6px;flex-wrap:wrap">${gear.map(g=>`<span class="badge blow">${E(g.name)}</span>`).join('')}</div>`:'';
     let q='';
@@ -63,8 +65,8 @@
         const ms=(db.trainingModules||[]).filter(m=>(m.gearIds||[]).includes(g.id)); if(!ms.length) return r;
         const me=getCurTech();
         const html='<div class="gd-sec"><div class="gd-k">Manuals &amp; training</div>'+ms.map(m=>{
-          const links=[].concat(m.url?[{label:'Resource',url:m.url}]:[],m.links||[]).filter(l=>safeUrl(l.url));
-          return `<div style="margin:6px 0"><b>${E(m.title)}</b> ${me&&(me.completedModules||[]).includes(m.id)?'<span style="color:#2DD4A0">✓ done</span>':''}<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px">${links.map(l=>`<a href="${E(safeUrl(l.url))}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);font-size:13px">${E(l.label||'Open')} →</a>`).join('')}<a href="#" onclick="closeM('gearDetail');go('training');return false" style="font-size:13px">Open in Training${hasQuiz(m)?' (quiz)':''}${hasPrac(m)?' (practical)':''} →</a></div></div>`;}).join('')+'</div>';
+          const links=[].concat(m.url?[{label:'Resource',url:m.url}]:[],m.links||[]).filter(l=>lk(l.url));
+          return `<div style="margin:6px 0"><b>${E(m.title)}</b> ${me&&(me.completedModules||[]).includes(m.id)?'<span style="color:#2DD4A0">✓ done</span>':''}<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px">${links.map(l=>`<a href="${E(lk(l.url))}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);font-size:13px">${E(l.label||'Open')} →</a>`).join('')}<a href="#" onclick="closeM('gearDetail');go('training');return false" style="font-size:13px">Open in Training${hasQuiz(m)?' (quiz)':''}${hasPrac(m)?' (practical)':''} →</a></div></div>`;}).join('')+'</div>';
         const acts=body.querySelector('.gd-acts'); if(acts) acts.insertAdjacentHTML('beforebegin',html); else body.insertAdjacentHTML('beforeend',html);
       }catch(e){console.warn(e);}
       return r;
@@ -131,6 +133,7 @@
       ${H('Manuals')}
       ${field('tq-url','Main link (optional)',m.url||'','https://…')}
       <div class="fg"><label>More manual links (one per line: <i>Label | https://…</i>)</label><textarea id="tq-links" style="min-height:70px" placeholder="X32 manual | https://drive.google.com/…">${E(links)}</textarea></div>
+      <div class="fg"><label>Stations this is the manual for (shows on that station\'s Service Day card)</label><div style="display:flex;gap:12px;flex-wrap:wrap">${getScheduleRoles().map(r=>`<label style="display:flex;gap:6px;align-items:center;font-size:13px;text-transform:none;letter-spacing:0"><input type="checkbox" class="tq-s" value="${E(r.name)}" ${(m.stations||[]).includes(r.name)?'checked':''} style="width:auto"> ${E(r.name)}</label>`).join('')}</div></div>
       <div class="fg"><label>Gear this module covers</label><div style="max-height:110px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:6px 10px">${gear}</div></div>
       ${H('Practical (driving test)')}<div class="dim" style="font-size:12px;margin-bottom:8px">Skills a trainer watches and ticks off. Mark the ones that automatically fail the test if missed as “must pass”.</div>
       <div id="tq-items"></div><button class="btn bgh bsm" onclick="tqAddItem()">+ Add skill</button>
@@ -164,10 +167,10 @@
     const links=[], bad=[];
     document.getElementById('tq-links').value.split('\n').map(s=>s.trim()).filter(Boolean).forEach(line=>{
       const p=line.split('|'), url=(p.length>1?p.slice(1).join('|'):p[0]).trim(), label=p.length>1?p[0].trim():'';
-      if(/^https?:\/\//i.test(url)&&safeUrl(url)) links.push({label:label.slice(0,60),url}); else bad.push(line);
+      if(lk(url)&&(/^https?:\/\//i.test(url)||/^manuals\//i.test(url))) links.push({label:label.slice(0,60),url}); else bad.push(line);
     });
     if(bad.length){ toast('Link not recognised: '+bad[0].slice(0,50)+' (must start with https://)','error'); return; }
-    const main=document.getElementById('tq-url').value.trim(); if(main&&!(/^https?:\/\//i.test(main)&&safeUrl(main))){ toast('Main link must start with https://','error'); return; }
+    const main=document.getElementById('tq-url').value.trim(); if(main&&!(lk(main)&&(/^https?:\/\//i.test(main)||/^manuals\//i.test(main)))){ toast('Main link must start with https://','error'); return; }
     const items=ED.items.filter(i=>i.text);
     const qs=[]; for(let i=0;i<ED.qs.length;i++){
       const q=ED.qs[i]; if(!q.q&&!q.opts.some(Boolean)) continue;
@@ -178,7 +181,7 @@
     const clamp=v=>Math.max(50,Math.min(100,parseInt(v)||80));
     m.title=title; m.desc=document.getElementById('tq-desc').value.trim(); m.dept=document.getElementById('tq-dept').value; m.level=document.getElementById('tq-level').value;
     m.duration=document.getElementById('tq-dur').value.trim(); m.required=document.getElementById('tq-req').checked; m.url=main;
-    m.links=links; m.gearIds=[...document.querySelectorAll('.tq-g:checked')].map(c=>c.value);
+    m.links=links; m.stations=[...document.querySelectorAll('.tq-s:checked')].map(c=>c.value); m.gearIds=[...document.querySelectorAll('.tq-g:checked')].map(c=>c.value);
     if(qs.length) m.quiz={pass:clamp(document.getElementById('tq-pass').value),qs}; else delete m.quiz;
     if(items.length) m.practical={pass:clamp(document.getElementById('tq-ppass').value),items}; else delete m.practical;
     save(); closeOv('tq-ed'); renderTraining(); toast('Saved','success');

@@ -89,8 +89,8 @@ window.KCC_STARTER_MODULES=[
    {text:'Sets the admin PIN on a device'},
    {text:'Changes someone\'s level in Role Management and explains the delay for signed-in people',critical:true},
    {text:'Walks through the launch checklist and names three items'}]}},
- {id:'st_station3',title:'Station 3 (Presentation) manual',dept:'',level:'Beginner',duration:'30 min',required:false,
-  desc:'From the Station 3 manual: the XPS computer, Chrome tabs, announcements and sermon files, going live on YouTube, fixing no sound, and fixing a black or wrong screen with the Crestron. Add the manual\'s Google Doc link with Edit module. Crestron and ProPresenter get their own modules later.',
+ {id:'st_station3',title:'Station 3 (Presentation) manual',dept:'',stations:['Presentation Station'],links:[{label:'Station 3 manual (PDF)',url:'manuals/station-3-presentation.pdf'}],level:'Beginner',duration:'30 min',required:false,
+  desc:'From the Station 3 manual: the XPS computer, Chrome tabs, announcements and sermon files, going live on YouTube, fixing no sound, and fixing a black or wrong screen with the Crestron. The manual PDF is attached. Crestron and ProPresenter get their own modules later.',
   quiz:{pass:80,qs:[
    {q:'How do you shut down the XPS computer?',opts:['Hold the power button every time','Shut down through Windows; use the power button only to force a reset when it is frozen','Unplug it','Close the lid'],a:1},
    {q:'Which two programs do you open once the computer has loaded?',opts:['Word and Excel','Google Chrome and ProPresenter','Zoom and Teams','Photoshop and vMix'],a:1},
