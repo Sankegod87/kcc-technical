@@ -10,3 +10,9 @@ It uses a pretend cloud held in memory: nothing touches your real Firebase, Emai
 Stop with Ctrl+C. Restart to reset to the sample crew. Public request form: http://localhost:8080/#request
 
 Things worth trying: sign in as crew vs admin and compare menus; Crew page > add/reset passwords; Service Day call sheet > Send, then open the confirm link; Settings > YouTube; open two tabs as different people and edit.
+
+## New in this version (all work in the demo)
+- Service Day: **Go-live check** card (crew, stations, outages, YouTube, vMix, ProPresenter, X32), **Booth** tile (X32 status + light scene buttons), **Last service** summary with "Log 3h for everyone who served".
+- Settings → **Connections**: addresses for vMix, ProPresenter, booth bridge and YouTube, each with a Test button.
+- Asset Checkout: **Rapid scan** (camera, or type a code; try the gear IDs) and **Print QR labels**.
+- The demo has a pretend ProPresenter and a pretend booth bridge. For the real bridge see tools/booth-bridge/README.md; for Fire tablets see android-wrapper/README.md.

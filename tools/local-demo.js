@@ -23,7 +23,9 @@ const now = new Date(), d = new Date(now.getFullYear(), now.getMonth(), now.getD
 let add = (7 - d.getDay()) % 7; if (add === 0 && now.getHours() >= 14) add = 7; d.setDate(d.getDate() + add);
 const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const first = Object.keys(old.schedules || {})[0]; if (first && first !== key) { old.schedules[key] = old.schedules[first]; delete old.schedules[first]; }
-old.settings = Object.assign({}, old.settings, { proPresenterHost: 'localhost:' + (PORT + 1000) });
+old.settings = Object.assign({}, old.settings, { proPresenterHost: 'localhost:' + (PORT + 1000), bridgeHost: 'localhost:' + (PORT + 1001) });
+// a past service so the Last service summary has something to show
+{ const pd = new Date(); pd.setDate(pd.getDate() - ((pd.getDay() + 7) % 7 || 7)); const pk = pd.getFullYear() + '-' + String(pd.getMonth() + 1).padStart(2, '0') + '-' + String(pd.getDate()).padStart(2, '0'); old.schedules = old.schedules || {}; old.schedules[pk] = { crew: ['t1', 't2', 't3'], roles: { t1: 'Camera Station', t2: 'Streaming Station', t3: 'Camera Station' }, confirmed: {} }; }
 const mig = plan(old); Object.keys(mig.docs).forEach(k => F.store.set(k, mig.docs[k]));
 
 // ── rules, same as firestore.rules / the browser tests ──
@@ -103,6 +105,14 @@ http.createServer((q, s) => {
   if (u === '/v1/timers/current') return j([{ id: { name: 'Countdown' }, time: '00:04:' + String(10 + si).padStart(2, '0') }]);
   s.writeHead(404, { 'Access-Control-Allow-Origin': '*' }); s.end();
 }).listen(PORT + 1000, '127.0.0.1');
+// pretend booth bridge (X32 + lights) with the same API as tools/booth-bridge
+http.createServer((q, s) => {
+  const h = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, X-Booth-Token', 'Content-Type': 'application/json' };
+  if (q.method === 'OPTIONS') { s.writeHead(204, h); return s.end(); }
+  if (q.url === '/status') { s.writeHead(200, h); return s.end(JSON.stringify({ ok: true, x32: { configured: true, ok: true, name: 'DEMO-X32', model: 'X32', mainMuted: false, channels: [{ n: 1, name: 'Pastor', muted: false }, { n: 4, name: 'Piano', muted: true }] }, dmx: { midi: true, scenes: [{ i: 0, name: 'House up' }, { i: 1, name: 'Worship' }, { i: 2, name: 'Message' }, { i: 3, name: 'Blackout' }] } })); }
+  if (q.url === '/dmx/scene') { q.resume(); console.log('  (demo) light scene fired'); s.writeHead(200, h); return s.end('{"ok":true}'); }
+  s.writeHead(404, h); s.end('{}');
+}).listen(PORT + 1001, '127.0.0.1');
 server.listen(PORT, '127.0.0.1', () => {
   console.log('\nKCC Technical: LOCAL DEMO is running (pretend cloud, nothing real is touched)\n');
   console.log('  Open:  http://localhost:' + PORT + '\n');

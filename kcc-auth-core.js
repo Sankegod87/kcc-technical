@@ -171,7 +171,7 @@ function makeCore(deps) {
         const t = find(techs, data.id || c.id);
         const self = t.id === c.id;
         if (!self) { needAdmin(c); if (!canManage(c, t)) throw new Fail('permission-denied', 'Only the master admin can change the master admin'); }
-        Object.assign(t, cleanFields(data.fields, self ? SELF_FIELDS : PROFILE_FIELDS));
+        Object.assign(t, cleanFields(data.fields, self && c.role !== 'admin' && c.role !== 'master' ? SELF_FIELDS : PROFILE_FIELDS)); // admins can also log hours and certs on themselves
       } else if (op === 'setPassword') {
         const t = find(techs, data.id || c.id);
         const aref = fs.doc('acct/' + t.id), a = await tx.get(aref), acct = a.exists ? a.data() : {};

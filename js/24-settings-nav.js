@@ -2,6 +2,7 @@
 (function(){
   const GROUPS=[
     {id:'general',label:'General',   words:['branding','accent','dashboard widgets']},
+    {id:'conn',   label:'Connections',words:['connections']},
     {id:'crew',   label:'Crew & access',words:['schedule roles','training options','admin pin','claim master','role management','account']},
     {id:'gear',   label:'Gear & stock',words:['gear categories','departments','vendors','maintenance defaults']},
     {id:'alerts', label:'Alerts',    words:['push notifications','overdue reminders']},
