@@ -54,11 +54,13 @@ const TECH_FIELDS = {
   canSchedule: v => !!v,
   training: v => jsonArr(v, 20000), completedModules: v => jsonArr(v, 20000), certs: v => jsonArr(v, 60000),
   hoursLog: v => jsonArr(v, 60000), volunteerHours: v => { v = Number(v); if (!isFinite(v) || v < 0 || v > 100000) throw new Fail('invalid-argument', 'Hours out of range'); return v; },
+  quizPassed: v => jsonArr(v, 20000),
+  practicals: v => { if (!v || typeof v !== 'object' || Array.isArray(v) || JSON.stringify(v).length > 60000) throw new Fail('invalid-argument', 'Invalid practical records'); return v; },
   onboarding: v => { if (!v || typeof v !== 'object' || Array.isArray(v) || JSON.stringify(v).length > 5000) throw new Fail('invalid-argument', 'Invalid onboarding data'); return v; }
 };
 function jsonArr(v, max) { if (!Array.isArray(v)) throw new Fail('invalid-argument', 'List expected'); if (JSON.stringify(v).length > max) throw new Fail('invalid-argument', 'List too long'); return v; }
 const ADMIN_EXTRA = { userRole: v => str(v, 12), active: v => !!v };
-const SELF_FIELDS = ['avatar', 'email', 'phone', 'emergency', 'completedModules'];
+const SELF_FIELDS = ['avatar', 'email', 'phone', 'emergency', 'completedModules', 'quizPassed'];
 const ROLES = ['user', 'admin'];
 
 function makeCore(deps) {
@@ -170,6 +172,7 @@ function makeCore(deps) {
       } else if (op === 'patch') { // people updating their own profile bits; admins can patch anyone
         const t = find(techs, data.id || c.id);
         const self = t.id === c.id;
+        if (self && data.fields && data.fields.practicals !== undefined) throw new Fail('permission-denied', 'Nobody can sign off their own practical');
         if (!self) { needAdmin(c); if (!canManage(c, t)) throw new Fail('permission-denied', 'Only the master admin can change the master admin'); }
         Object.assign(t, cleanFields(data.fields, self && c.role !== 'admin' && c.role !== 'master' ? SELF_FIELDS : PROFILE_FIELDS)); // admins can also log hours and certs on themselves
       } else if (op === 'setPassword') {

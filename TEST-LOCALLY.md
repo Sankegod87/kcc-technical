@@ -19,3 +19,6 @@ Things worth trying: sign in as crew vs admin and compare menus; Crew page > add
 
 ## Training manuals and quizzes
 Training → open "Camera framing basics" (links, gear, quiz). Crew pass the quiz to complete it; admins use "Manuals & quiz" to add links, link gear and write questions. Linked gear shows its manuals in the gear detail.
+
+## Practical "driving test" + starter modules
+Training → "Add starter modules" (admin) adds six modules built from the Crew, Admin and Master Admin guides, each with a quiz and a practical. Crew pass the quiz; an admin opens the module → "Evaluate someone" and ticks each skill (some are "must pass"). The module completes when both are passed. "Edit module" changes details, links, gear, skills and questions, or deletes the module.
