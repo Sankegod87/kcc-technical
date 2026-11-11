@@ -11,7 +11,7 @@ if(/light-tracker-d708f/.test(cfgText)){console.error('That config is the LIVE p
 if(!/KCC_REQUIRE_BETA\s*=\s*true/.test(cfgText)){console.error('Config must set window.KCC_REQUIRE_BETA = true');process.exit(1);}
 fs.rmSync(out,{recursive:true,force:true});
 fs.cpSync(old,out,{recursive:true,filter:s=>!/[\\/](\.git|node_modules)([\\/]|$)/.test(s)});
-const SKIP=new Set(['.git','node_modules','tests','tools','android-wrapper','index.js','kcc-auth.js','kcc-auth-core.js','package.json','package-lock.json','firestore.rules','firebase-config.example.js']);
+const SKIP=new Set(['.git','node_modules','tests','tools','android-wrapper','index.js','kcc-auth.js','kcc-auth-core.js','package.json','package-lock.json','firestore.rules','firebase-config.example.js','firebase-config.beta.js']);
 fs.cpSync(ROOT,path.join(out,'v2'),{recursive:true,filter:s=>{const r=path.relative(ROOT,s);return !SKIP.has(r.split(path.sep)[0])&&!/\.(md|command|bat)$/i.test(r);}});
 fs.writeFileSync(path.join(out,'v2','firebase-config.js'),cfgText);
 const hash=crypto.createHash('sha256').update(pw).digest('hex');
