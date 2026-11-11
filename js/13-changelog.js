@@ -185,8 +185,7 @@ const DEFAULT_ROLES=[
   {name:'Streaming Station',icon:'🖥️'},
   {name:'Presentation Station',icon:'📊'},
   {name:'Lighting Station',icon:'💡'},
-  {name:'Sound Mixing',icon:'🎚️'},
-  {name:'Standby',icon:'⏳'}
+  {name:'Sound Mixing',icon:'🎚️',restricted:true,allowed:[]}
 ];
 function getScheduleRoles(){
   return db.settings.scheduleRoles||DEFAULT_ROLES;
