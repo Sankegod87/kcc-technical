@@ -13,7 +13,7 @@ const { scryptHash } = require('../kcc-auth-core.js');
 function plan(old, opts) {
   opts = opts || {};
   const rand = opts.rand || (() => crypto.randomBytes(5).toString('hex'));
-  const docs = {}, notes = [], temp = [];
+  const docs = {}, notes = [], temp = [], privNotes = {};
   const d = JSON.parse(JSON.stringify(old || {}));
   const techs = Array.isArray(d.technicians) ? d.technicians : [];
   // accounts: hashes leave the shared data
@@ -24,6 +24,7 @@ function plan(old, opts) {
       temp.push({ name: t.name, role: t.userRole || 'user', password: pw });
     }
     delete t.passwordHash;
+    if (Array.isArray(t.perfNotes) && t.perfNotes.length) { privNotes[t.id] = t.perfNotes.slice(0, 100); } delete t.perfNotes;
     if (['master', 'admin'].indexOf(t.userRole) < 0) t.userRole = 'user';
   });
   const masters = techs.filter(t => t.userRole === 'master' && t.active !== false);
@@ -33,6 +34,7 @@ function plan(old, opts) {
   const sp = S.splitSettings(d.settings || {});
   d.settings = sp.settings; d.settingsRt = sp.settingsRt;
   if (Object.keys(sp.secret).length) docs['private/secrets'] = sp.secret;
+  if (Object.keys(privNotes).length) docs['private/notes'] = { n: privNotes };
   // one document per key
   S.ALL.forEach(k => {
     const v = d[k];

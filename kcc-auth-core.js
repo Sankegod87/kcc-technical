@@ -293,6 +293,35 @@ function makeCore(deps) {
     return { set: s.exists && !!s.data()[data && data.name] };
   }
 
+  // ── Private admin notes about people (performance notes). Stored in private/notes, only admins can read or write them. ──
+  const NOTE_TYPES = ['positive', 'constructive', 'neutral'];
+  async function notesGet(data, ctx) {
+    const c = callerOf(ctx); needAdmin(c);
+    const s = await fs.doc('private/notes').get(), all = s.exists ? (s.data().n || {}) : {};
+    if (data && data.id) return { notes: all[String(data.id)] || [] };
+    return { all };
+  }
+  async function noteAdd(data, ctx) {
+    const c = callerOf(ctx); needAdmin(c);
+    const id = String(data && data.id || ''), text = str(data && data.text, 500).trim(), type = NOTE_TYPES.indexOf(data && data.type) >= 0 ? data.type : 'neutral';
+    if (!text) throw new Fail('invalid-argument', 'Enter a note');
+    return fs.runTransaction(async tx => {
+      const techs = await readData(tx, 'technicians', []); find(techs, id);
+      const ref = fs.doc('private/notes'), s = await tx.get(ref), all = s.exists ? (s.data().n || {}) : {};
+      const me = techs.find(t => t.id === c.id), note = { id: 'pn_' + rand(), text, type, by: me ? me.name : 'Admin', byId: c.id, at: now() };
+      all[id] = [note].concat(all[id] || []).slice(0, 100);
+      tx.set(ref, { n: all }); return { note };
+    });
+  }
+  async function noteDel(data, ctx) {
+    const c = callerOf(ctx); needAdmin(c);
+    const id = String(data && data.id || ''), nid = String(data && data.noteId || '');
+    return fs.runTransaction(async tx => {
+      const ref = fs.doc('private/notes'), s = await tx.get(ref), all = s.exists ? (s.data().n || {}) : {};
+      all[id] = (all[id] || []).filter(n => n.id !== nid); tx.set(ref, { n: all }); return { ok: true };
+    });
+  }
+
   // ── YouTube status (key stays on the server) ──
   let ytCache = { at: 0, v: null };
   async function ytLive(data, ctx) {
@@ -362,7 +391,7 @@ function makeCore(deps) {
     return { ok: true };
   }
 
-  return { login, bootstrap, confirmSelf, confirmLink, makeLinks, linkSig, techOp, setSecret, hasSecret, ytLive, submitExternalRequest, Fail, scryptHash, pwMatches, writeRoster, readData, writeData };
+  return { login, bootstrap, confirmSelf, confirmLink, makeLinks, linkSig, techOp, setSecret, hasSecret, notesGet, noteAdd, noteDel, ytLive, submitExternalRequest, Fail, scryptHash, pwMatches, writeRoster, readData, writeData };
 }
 
 module.exports = { makeCore, Fail, scryptHash, pwMatches, legacyHash, MIN_PW };

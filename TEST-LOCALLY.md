@@ -22,3 +22,6 @@ Training → open "Camera framing basics" (links, gear, quiz). Crew pass the qui
 
 ## Practical "driving test" + starter modules
 Training → "Add starter modules" (admin) adds six modules built from the Crew, Admin and Master Admin guides, each with a quiz and a practical. Crew pass the quiz; an admin opens the module → "Evaluate someone" and ticks each skill (some are "must pass"). The module completes when both are passed. "Edit module" changes details, links, gear, skills and questions, or deletes the module.
+
+## Training record per person
+Crew → Profiles → open a person → "📄 Training record": quiz passes, practical results (skill by skill), trainer notes, certificates, hours and, for admins, the private performance notes. Download it as a file or print it to PDF. Training → "⬇ All records" downloads everyone in one file. Crew can open their own record (without the admin-only notes).

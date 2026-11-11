@@ -172,6 +172,9 @@ window._kccSignOut = async () => { try { await signOut(auth); } catch (e) {} };
 window._kccTechOp = (p) => call('kccTechOp')(p);
 window._kccSetSecret = (name, value) => call('kccSetSecret')({ name, value });
 window._kccHasSecret = (name) => call('kccHasSecret')({ name });
+window._kccNotesGet = (id) => call('kccNotesGet')({ id });
+window._kccNoteAdd = (p) => call('kccNoteAdd')(p);
+window._kccNoteDel = (p) => call('kccNoteDel')(p);
 window._kccYtLive = (force) => call('kccYtLive')({ force: !!force });
 window._kccSubmitRequest = (p) => call('kccSubmitRequest')(p);
 window._kccConfirm = (key) => call('kccConfirm')({ key });
@@ -1982,6 +1985,7 @@ initFirebase();
 <script src="js/29-summary.js"></script>
 <script src="js/30-training-plus.js"></script>
 <script src="js/31-starter-training.js"></script>
+<script src="js/32-training-record.js"></script>
 <script src="js/22-server.js"></script>
 <script src="js/17-gear-training.js"></script>
 
