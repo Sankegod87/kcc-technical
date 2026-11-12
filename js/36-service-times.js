@@ -10,8 +10,8 @@
     o.innerHTML=`<div style="background:var(--s1,#141a22);border:1px solid var(--border);border-radius:12px;padding:18px;width:100%;max-width:340px">
       <div style="font-weight:800;margin-bottom:4px">Service times</div>
       <div class="dim" style="font-size:12px;margin-bottom:12px">Used for every Sunday, the countdown and the call-sheet emails.</div>
-      <div class="fg"><label>Call time (crew arrive)</label><input type="time" id="st-call" value="${pad(s.callTime||'08:00')}"></div>
-      <div class="fg"><label>Service time (starts)</label><input type="time" id="st-svc" value="${pad(s.serviceTime||'09:00')}"></div>
+      <div class="fg"><label>Call time (crew arrive)</label><input type="time" id="st-call" value="${pad(s.callTime||'09:00')}"></div>
+      <div class="fg"><label>Service time (starts)</label><input type="time" id="st-svc" value="${pad(s.serviceTime||'10:30')}"></div>
       <div class="row gap8" style="margin-top:12px;justify-content:flex-end"><button class="btn bgh" onclick="document.getElementById('st-ov').remove()">Cancel</button><button class="btn ba" onclick="sdSaveTimes()">Save</button></div></div>`;
     document.body.appendChild(o);
   };
