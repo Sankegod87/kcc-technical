@@ -65,7 +65,7 @@ New address: {address}
 
 Short guide: {guide}
 
-If you cannot sign in, ask one of the admins and we will sort it out.
+If you have any questions, email or text Isaac: 587-664-3421 or ayodejiiojo@gmail.com
 
 Thanks,
 The Video team`;
