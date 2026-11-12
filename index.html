@@ -4916,15 +4916,15 @@ function checkScheduleEmails(){
   // Auto-send schedule emails every Thursday (day 4) for the upcoming Sunday
   const today=new Date();
   if(today.getDay()!==4) return; // not Thursday
-  const lastSent=localStorage.getItem('slt_last_sched_email');
-  const todayStr=today.toDateString();
-  if(lastSent===todayStr) return; // already sent today
-  localStorage.setItem('slt_last_sched_email',todayStr);
+  // Only a signed-in admin can trigger it, and it is recorded in the shared settings:
+  // it goes out once per Sunday, no matter who opens the app or on which device.
+  if(!_techId||!isAdmin()||!db.settings) return;
 
   // Find the upcoming Sunday (3 days away)
   const sunday=new Date(today);
   sunday.setDate(sunday.getDate()+3);
   const key=schedKey(sunday);
+  if(db.settings.schedEmailSent===key) return; // already sent for this Sunday
   const entry=db.schedules[key];
 
   if(!entry||!entry.crew||!entry.crew.length){
@@ -4932,6 +4932,7 @@ function checkScheduleEmails(){
     return;
   }
 
+  db.settings.schedEmailSent=key; save(); // mark first, so a second open cannot send it again
   // Send emails to assigned crew
   setTimeout(()=>{
     sendScheduleEmails(key, entry);
