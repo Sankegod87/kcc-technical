@@ -1,7 +1,7 @@
 // Goes into the OLD app's page. Shows a small "Beta" link; the right password unlocks the new version on this device only.
 // The password hash below is filled in by build-site.js.
 (function(){
-  var HASH='15f456806770375f99783ff735126d7497e0e4be6071a2207f3f729699ec3fa9', FLAG='kcc_beta';
+  var HASH='__HASH__', FLAG='kcc_beta';
   function go(){ location.href='v2/'; }
   try{ if(localStorage.getItem(FLAG)==='1'){ go(); return; } }catch(e){}
   async function sha(t){ var b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)); return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,'0');}).join(''); }
