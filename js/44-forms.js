@@ -10,6 +10,7 @@
     {icon:'⚠️',t:'Damage / incident report',d:'Report broken or damaged gear. Open the item on the Asset Checkout page and tap the warning button.',go:'incident'},
     {icon:'✅',t:'Training sign-off request',d:'Finished a training module? Ask an admin to check you off.',go:'signoff'},
     {icon:'🧭',t:'Pre-event site walk',d:'Walk the room before a big event and check power, audio, video, lights, stream and safety. Admins only.',go:'sitewalk',admin:true},
+    {icon:'📒',t:'Print binder pages',d:'Prints the current fixture list, bulb stock count sheet and gear list for the printed binder. Admins only.',go:'binder',admin:true},
     {icon:'💬',t:'Anonymous feedback',d:'Share a thought without your name on it.',go:'feedback'}
   ];
   const E=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -25,6 +26,7 @@
     else if(k==='incident') go('checkout');
     else if(k==='signoff'){ go('training'); setTimeout(()=>{ if(typeof soOpen==='function') soOpen(); },200); }
     else if(k==='sitewalk') swOpenList();
+    else if(k==='binder') binderPrint();
     else if(k==='feedback'){ if(typeof feedbackNav==='function') feedbackNav(); }
     else if(k==='volReview'){ go('crew'); setTimeout(()=>{ if(typeof volOpen==='function') volOpen(); },250); }
   };
