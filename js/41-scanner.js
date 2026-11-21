@@ -22,7 +22,7 @@
   }
   window.scanSubmitTyped=function(){
     const inp=document.getElementById('manualId'); if(!inp) return;
-    const code=(inp.value||'').trim().toUpperCase().replace(/[\r\n\t]/g,''); if(!code) return;
+    let code=(inp.value||'').trim().replace(/[\r\n\t]/g,''); const sm=/storage=([^&#\s]+)/i.exec(code); if(sm) code=decodeURIComponent(sm[1]); code=code.toUpperCase(); if(!code) return;
     const what=kind(code);
     window._scanLog.unshift({code,what,t:Date.now()}); window._scanLog=window._scanLog.slice(0,30);
     beep(!!what); paintLog();

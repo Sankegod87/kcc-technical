@@ -2,7 +2,9 @@
 (function(){
   const E=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const areas=()=>db.storageAreas=db.storageAreas||[];
-  const find=c=>areas().find(a=>String(a.id).toUpperCase()===String(c||'').trim().toUpperCase());
+  const norm=c=>{ c=String(c||'').trim(); const m=/storage=([^&#\s]+)/i.exec(c); return (m?decodeURIComponent(m[1]):c).toUpperCase(); };
+  const find=c=>areas().find(a=>String(a.id).toUpperCase()===norm(c));
+  const link=a=>location.origin+location.pathname+'#storage='+encodeURIComponent(a.id);
   window.stFind=find;
   function close(){ const o=document.getElementById('st-modal'); if(o) o.remove(); }
   function shell(inner){
@@ -58,7 +60,7 @@
     const tmp=document.createElement('div'); tmp.style.cssText='position:fixed;left:-9999px;top:0'; document.body.appendChild(tmp);
     const imgs=l.map(a=>{
       const d=document.createElement('div'); tmp.appendChild(d);
-      try{ new QRCode(d,{text:String(a.id),width:240,height:240,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
+      try{ new QRCode(d,{text:link(a),width:240,height:240,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
       const c=d.querySelector('canvas'), im=d.querySelector('img');
       return c?c.toDataURL('image/png'):(im?im.src:'');
     });
@@ -70,6 +72,12 @@
     w.document.close();
   };
   window.addEventListener('DOMContentLoaded',()=>{
+    const pend=()=>{ const m=/^#storage=(.+)$/i.exec(location.hash||''); return m?decodeURIComponent(m[1]):''; };
+    let want=pend();
+    window.addEventListener('hashchange',()=>{ const x=pend(); if(x){ want=x; tryOpen(); } });
+    function tryOpen(){ if(!want||!(typeof getCurTech==='function'&&getCurTech())) return; const a=find(want); want=''; try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} if(a) stView(a.id); else toast('Storage area not found','error'); }
+    const _go=go; go=function(){ const r=_go.apply(this,arguments); setTimeout(tryOpen,300); return r; };
+    setTimeout(tryOpen,1500);
     const _sh=smartHandleCode; smartHandleCode=function(code){ const a=find(code); if(a){ stView(a.id); return; } return _sh.apply(this,arguments); };
   });
 })();
