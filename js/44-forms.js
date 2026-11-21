@@ -11,6 +11,7 @@
     {icon:'✅',t:'Training sign-off request',d:'Finished a training module? Ask an admin to check you off.',go:'signoff'},
     {icon:'🧭',t:'Pre-event site walk',d:'Walk the room before a big event and check power, audio, video, lights, stream and safety. Admins only.',go:'sitewalk',admin:true},
     {icon:'📒',t:'Print binder pages',d:'Prints the current fixture list, bulb stock count sheet and gear list for the printed binder. Admins only.',go:'binder',admin:true},
+    {icon:'🗄️',t:'Storage areas',d:'The file cabinets at the tech desk. See what is inside each one, or scan its QR label on the Scan page.',go:'storage'},
     {icon:'📕',t:'Equipment binder (PDF)',d:'All manuals plus the fixtures, bulb stock and gear lists as of Nov 20, 2026. Open it to print the binder. Use Print binder pages for fresh lists.',go:'binderpdf',admin:true},
     {icon:'💬',t:'Anonymous feedback',d:'Share a thought without your name on it.',go:'feedback'}
   ];
@@ -27,6 +28,7 @@
     else if(k==='incident') go('checkout');
     else if(k==='signoff'){ go('training'); setTimeout(()=>{ if(typeof soOpen==='function') soOpen(); },200); }
     else if(k==='sitewalk') swOpenList();
+    else if(k==='storage') stOpenList();
     else if(k==='binder') binderPrint();
     else if(k==='binderpdf') window.open('manuals/kcc-binder.pdf','_blank','noopener');
     else if(k==='feedback'){ if(typeof feedbackNav==='function') feedbackNav(); }

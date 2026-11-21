@@ -10,6 +10,7 @@
       o.frequency.value=ok?1200:300; g.gain.value=.08; o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+(ok?.08:.25)); }catch(e){}
   }
   function kind(code){
+    if(typeof stFind==='function'){ const sa=stFind(code); if(sa) return 'Storage '+sa.name; }
     if(typeof ssFind==='function'){ const h=ssFind(code); if(h) return h.type==='fixture'?'Fixture '+h.obj.name:'Gear '+(h.obj.name||h.obj.id); }
     const b=(db.bulbRegistry||[]).find(x=>x.bulbId===code); if(b) return 'Bulb '+b.bulbType;
     return '';
