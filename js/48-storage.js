@@ -53,12 +53,21 @@
     db.storageAreas=areas().filter(a=>a.id!==id); save(); stOpenList();
   };
   window.stPrintLabels=function(){
-    if(typeof QRCode==='undefined'){ toast('QR library not loaded','error'); return; }
-    const l=areas(); const pa=document.getElementById('printArea');
-    pa.innerHTML='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;font-family:Arial,sans-serif;background:#fff">'+l.map((a,i)=>
-      '<div style="border:1px dashed #999;padding:14px;text-align:center;break-inside:avoid;color:#000"><div id="stq'+i+'" style="display:inline-block"></div><div style="font-weight:700;font-size:16px;margin-top:6px">'+E(a.name)+'</div><div style="font-family:monospace;font-size:13px">'+E(a.id)+'</div><div style="font-size:11px;color:#555">Scan to see what is inside</div></div>').join('')+'</div>';
-    l.forEach((a,i)=>{ try{ new QRCode(document.getElementById('stq'+i),{text:String(a.id),width:160,height:160,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M}); }catch(e){} });
-    setTimeout(()=>window.print(),500);
+    if(typeof QRCode==='undefined'){ toast('QR library not loaded. Refresh the app and try again.','error'); return; }
+    const l=areas(); if(!l.length){ toast('No storage areas yet','error'); return; }
+    const tmp=document.createElement('div'); tmp.style.cssText='position:fixed;left:-9999px;top:0'; document.body.appendChild(tmp);
+    const imgs=l.map(a=>{
+      const d=document.createElement('div'); tmp.appendChild(d);
+      try{ new QRCode(d,{text:String(a.id),width:240,height:240,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
+      const c=d.querySelector('canvas'), im=d.querySelector('img');
+      return c?c.toDataURL('image/png'):(im?im.src:'');
+    });
+    tmp.remove();
+    const w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print the labels','error'); return; }
+    w.document.write('<!doctype html><title>Storage labels</title><body style="font-family:Arial,sans-serif;margin:16px"><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">'+
+      l.map((a,i)=>'<div style="border:1px dashed #999;padding:16px;text-align:center;break-inside:avoid"><img src="'+imgs[i]+'" width="220" height="220"><div style="font-weight:700;font-size:20px;margin-top:6px">'+E(a.name)+'</div><div style="font-family:monospace;font-size:15px">'+E(a.id)+'</div><div style="font-size:12px;color:#555">Scan to see what is inside</div></div>').join('')+
+      '</div><script>setTimeout(function(){print()},500)<\/script></body>');
+    w.document.close();
   };
   window.addEventListener('DOMContentLoaded',()=>{
     const _sh=smartHandleCode; smartHandleCode=function(code){ const a=find(code); if(a){ stView(a.id); return; } return _sh.apply(this,arguments); };
