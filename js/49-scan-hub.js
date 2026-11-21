@@ -33,8 +33,8 @@
       const co=activeCheckout(o.id), who=co&&(db.technicians.find(x=>x.id===co.personId)||{}).name;
       const due=o.serviceInterval&&o.lastServiceDate?o.lastServiceDate+o.serviceInterval*864e5:null;
       h=head(o.assetId||o.id,o.name,[o.category,o.dept].filter(Boolean).join(' · '),pill(co?'With '+(who||'someone'):'Available',...(co?WARN:GOOD)))+
-        stats([stat(co?'Due back':'Last service',co&&co.dueDate?fmtDate(co.dueDate):(o.lastServiceDate?fmtDate(o.lastServiceDate):'Never')),stat('Service due',due?fmtDate(due):'—')])+
-        acts([co?btn('Return it',"openReturnModal('"+A(co.id)+"')",'bg'):btn('Check out to me',"shCheckout('"+A(o.id)+"')",'bg'),btn('Log service',"shMaintGear('"+A(o.id)+"')"),btn('Report damage',"go('checkout')"),btn('Open gear',"go('checkout')")]);
+        stats([stat(co?'Due back':'Last service',co&&co.dueDate?fmtDate(co.dueDate):(o.lastServiceDate?fmtDate(o.lastServiceDate):'Never')),stat('Service due',due?fmtDate(due):'—'),stat('Stored in',(typeof gearStoreName==='function'&&gearStoreName(o))||'Not set')])+
+        acts([co?btn('Return it',"openReturnModal('"+A(co.id)+"')",'bg'):btn('Check out to me',"shCheckout('"+A(o.id)+"')",'bg'),btn('Log service',"shMaintGear('"+A(o.id)+"')"),btn('Report damage',"go('checkout')"),btn('Open gear',"go('checkout')")].concat(o.storageId?[btn('Show cabinet',"shShow('"+A(o.storageId)+"')")]:[]));
     } else if(r.t==='bulb'){
       const low=o.inStock<=o.threshold;
       h=head('Bulb stock',o.bulbType,'On the shelf',pill(low?'Low':'OK',...(low?BAD:GOOD)))+
@@ -46,10 +46,12 @@
         acts([(o.status==='unassigned'||o.status==='pulled')?btn('Scan into stock',"scanBulbIn('"+A(o.bulbId)+"');shRefresh()",'bg'):'',btn('Inventory',"go('inventory')")].filter(Boolean));
     } else if(r.t==='cab'){
       const ls=String(o.contents||'').split('\n').map(s=>s.trim()).filter(Boolean);
-      h=head(o.id,o.name,(o.where||'Storage')+' · '+ls.length+' items',pill('Storage',...INFO))+
+      const gs=(db.gearItems||[]).filter(g=>g.storageId===o.id);
+      h=head(o.id,o.name,(o.where||'Storage')+' · '+(ls.length+gs.length)+' items',pill('Storage',...INFO))+
+        (gs.length?'<div class="dim" style="font-size:11px;margin-top:10px">Gear stored here</div><ul style="margin:4px 0 0;padding:0;list-style:none">'+gs.map(g=>'<li style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span>'+E(g.name)+'</span><button class="btn bgh bsm" onclick="shShow(\''+A(g.assetId||g.id)+'\')">Open</button></li>').join('')+'</ul>':'')+
         (ls.length?'<ul style="margin:10px 0 0;padding:0;list-style:none">'+ls.map((x,i)=>'<li style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px"><span>'+E(x)+'</span><button class="btn bgh bsm" onclick="shCabTake('+i+')" title="Take this out of the list">Take out</button></li>').join('')+'</ul>':'<div class="dim" style="margin-top:10px;font-size:13px">Nothing listed yet.</div>')+
         '<div style="display:flex;gap:6px;margin-top:10px"><input id="sh-cab-add" placeholder="Add an item (e.g. HDMI cable, drawer 2)" style="flex:1" maxlength="120" onkeydown="if(event.key===\'Enter\')shCabAdd()"><button class="btn ba bsm" onclick="shCabAdd()">Add</button></div>'+
-        (typeof isAdmin==='function'&&isAdmin()?acts([btn('Edit list',"stEdit('"+A(o.id)+"')")]):'');
+        acts([o.id==='BINDER'?btn('Open binder PDF',"window.open('manuals/kcc-binder.pdf','_blank','noopener')",'ba'):'',(typeof isAdmin==='function'&&isAdmin())?btn('Edit list',"stEdit('"+A(o.id)+"')"):''].filter(Boolean));
     } else {
       h='<div style="font-weight:700">Not found</div><div class="dim" style="font-size:13px;margin-top:4px">No fixture, gear, bulb or storage area uses the code <span style="font-family:var(--mono)">'+E(r.code)+'</span>. Check the label or type it again.</div>';
     }

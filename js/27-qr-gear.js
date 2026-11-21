@@ -14,7 +14,7 @@
     tmp.remove();
     const w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print the labels','error'); return; }
     w.document.write('<!doctype html><title>'+E(title)+'</title><body style="font-family:Arial,sans-serif;margin:12px"><div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:8px">'+
-      list.map((x,i)=>'<div style="border:1px dashed #999;padding:8px;text-align:center;break-inside:avoid"><img src="'+imgs[i]+'" width="'+size+'" height="'+size+'"><div style="font-weight:700;font-size:12px;margin-top:4px">'+E(line1(x))+'</div><div style="font-size:11px;color:#555">'+E(line2(x))+'</div></div>').join('')+
+      list.map((x,i)=>'<div style="border:1px dashed #999;padding:8px;text-align:center;break-inside:avoid"><img src="'+imgs[i]+'" width="'+size+'" height="'+size+'"><div style="font-weight:700;font-size:12px;margin-top:4px">'+E(line1(x))+'</div><div style="font-size:11px;color:#555">'+E(line2(x))+'</div>'+'<div style="margin-top:6px">'+(typeof kccBarcode==='function'?kccBarcode(String(code(x))).replace('<svg ','<svg style="max-width:100%" '):'')+'</div>'+'</div>').join('')+
       '</div><script>setTimeout(function(){print()},500)<\/script></body>');
     w.document.close();
   }

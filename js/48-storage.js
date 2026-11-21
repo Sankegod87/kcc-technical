@@ -17,6 +17,7 @@
   window.stOpenList=function(){
     const adm=isAdmin();
     if(adm&&!areas().length){ [['CAB-1','File cabinet 1'],['CAB-2','File cabinet 2']].forEach(p=>areas().push({id:p[0],name:p[1],where:'Main KCC Technical desk',contents:'',updated:0,by:''})); save(); }
+    if(adm&&!find('BINDER')){ areas().push({id:'BINDER',name:'Equipment binder',where:'Main KCC Technical desk',contents:'Tab 1: Lighting station manual\nTab 2: Camera station manual\nTab 3: Switching guide\nTab 4: Presentation station manual\nTab 5: Crew guide\nTab 6: Fixtures\nTab 7: Bulb stock\nTab 8: Gear and items',updated:Date.now(),by:'Setup'}); save(); }
     shell('<div class="mh"><span class="mt">🗄️ Storage areas</span><button class="xb" onclick="stClose()">✕</button></div><div class="mb">'+
       (adm?'<div class="row gap6 mb14" style="flex-wrap:wrap"><button class="btn ba bsm" onclick="stAdd()">+ Add storage area</button><button class="btn bgh bsm" onclick="stPrintLabels()">🏷️ Print QR labels</button></div>':'')+
       (areas().length?areas().map(a=>'<div class="panel" style="margin-bottom:10px"><div class="pb"><div class="row jbet"><div><div class="fw7">'+E(a.name)+'</div><div class="dim" style="font-size:12px">'+E(a.id)+(a.where?' · '+E(a.where):'')+' · '+lines(a).length+' items</div></div><div class="row gap6"><button class="btn ba bsm" onclick="stView(\''+E(a.id)+'\')">Open</button>'+(adm?'<button class="btn bgh bsm" onclick="stEdit(\''+E(a.id)+'\')">Edit</button>':'')+'</div></div></div></div>').join(''):'<div class="dim">No storage areas yet.</div>')+
@@ -27,8 +28,9 @@
     const l=lines(a);
     shell('<div class="mh"><span class="mt">🗄️ '+E(a.name)+'</span><button class="xb" onclick="stClose()">✕</button></div><div class="mb"><div class="dim" style="margin-bottom:10px">'+E(a.id)+(a.where?' · '+E(a.where):'')+'</div>'+
       (l.length?'<ul style="margin:0 0 12px 18px;line-height:1.7">'+l.map(x=>'<li>'+E(x)+'</li>').join('')+'</ul>':'<div class="dim" style="margin-bottom:12px">Nothing listed yet.</div>')+
+      ((db.gearItems||[]).filter(g=>g.storageId===a.id).length?'<div class="dim" style="font-size:12px;margin-bottom:4px">Gear stored here</div><ul style="margin:0 0 12px 18px;line-height:1.7">'+(db.gearItems||[]).filter(g=>g.storageId===a.id).map(g=>'<li>'+E(g.name)+(g.assetId?' ('+E(g.assetId)+')':'')+'</li>').join('')+'</ul>':'')+
       (a.updated?'<div class="dim" style="font-size:11px">Updated '+new Date(a.updated).toLocaleDateString('en-CA')+(a.by?' by '+E(a.by):'')+'</div>':'')+
-      '<div class="row gap6" style="margin-top:12px">'+(isAdmin()?'<button class="btn ba bsm" onclick="stEdit(\''+E(a.id)+'\')">Edit contents</button>':'')+'<button class="btn bgh bsm" onclick="stOpenList()">All areas</button></div></div>');
+      '<div class="row gap6" style="margin-top:12px">'+(a.id==='BINDER'?'<button class="btn ba bsm" onclick="window.open(\'manuals/kcc-binder.pdf\',\'_blank\',\'noopener\')">Open binder PDF</button>':'')+(isAdmin()?'<button class="btn ba bsm" onclick="stEdit(\''+E(a.id)+'\')">Edit contents</button>':'')+'<button class="btn bgh bsm" onclick="stOpenList()">All areas</button></div></div>');
   };
   window.stEdit=function(id){
     const a=find(id); if(!a||!isAdmin()) return;
@@ -67,7 +69,7 @@
     tmp.remove();
     const w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print the labels','error'); return; }
     w.document.write('<!doctype html><title>Storage labels</title><body style="font-family:Arial,sans-serif;margin:16px"><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">'+
-      l.map((a,i)=>'<div style="border:1px dashed #999;padding:16px;text-align:center;break-inside:avoid"><img src="'+imgs[i]+'" width="220" height="220"><div style="font-weight:700;font-size:20px;margin-top:6px">'+E(a.name)+'</div><div style="font-family:monospace;font-size:15px">'+E(a.id)+'</div><div style="font-size:12px;color:#555">Scan to see what is inside</div></div>').join('')+
+      l.map((a,i)=>'<div style="border:1px dashed #999;padding:16px;text-align:center;break-inside:avoid"><img src="'+imgs[i]+'" width="220" height="220"><div style="font-weight:700;font-size:20px;margin-top:6px">'+E(a.name)+'</div><div style="font-family:monospace;font-size:15px">'+E(a.id)+'</div><div style="font-size:12px;color:#555">Scan to see what is inside</div>'+'<div style="margin-top:6px">'+(typeof kccBarcode==='function'?kccBarcode(String(a.id)).replace('<svg ','<svg style="max-width:100%" '):'')+'</div>'+'</div>').join('')+
       '</div><script>setTimeout(function(){print()},500)<\/script></body>');
     w.document.close();
   };
