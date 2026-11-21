@@ -3,25 +3,25 @@
 (function(){
   const E=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const codeOf=g=>String(g.assetId||g.id);
-  window.qrPrintLabels=function(){
-    const items=(db.gearItems||[]); if(!items.length){ toast('No gear items yet','error'); return; }
-    if(typeof QRCode==='undefined'){ toast('QR library not loaded','error'); return; }
-    const pa=document.getElementById('printArea');
-    pa.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-family:monospace;background:#fff">'+items.map((g,i)=>
-      `<div style="border:1px dashed #999;padding:8px;text-align:center;break-inside:avoid;color:#000"><div id="qrl${i}" style="display:inline-block"></div><div style="font-weight:700;font-size:12px;margin-top:4px">${E(g.name)}</div><div style="font-size:11px">${E(codeOf(g))}</div></div>`).join('')+'</div>';
-    items.forEach((g,i)=>{ try{ new QRCode(document.getElementById('qrl'+i),{text:codeOf(g),width:110,height:110,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M}); }catch(e){} });
-    setTimeout(()=>window.print(),500);
-  };
-  // QR labels for stage fixtures (code = fixture ID; scanning opens the normal scan sheet)
-  window.qrPrintFixtures=function(){
-    const fx=(db.fixtures||[]); if(!fx.length){ toast('No fixtures yet','error'); return; }
-    if(typeof QRCode==='undefined'){ toast('QR library not loaded','error'); return; }
-    const pa=document.getElementById('printArea');
-    pa.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-family:monospace;background:#fff">'+fx.map((f,i)=>
-      `<div style="border:1px dashed #999;padding:8px;text-align:center;break-inside:avoid;color:#000"><div id="qrf${i}" style="display:inline-block"></div><div style="font-weight:700;font-size:12px;margin-top:4px">${E(f.id)}</div><div style="font-size:9px;color:#555">${E(f.name||f.type||'')}</div></div>`).join('')+'</div>';
-    fx.forEach((f,i)=>{ try{ new QRCode(document.getElementById('qrf'+i),{text:String(f.id),width:100,height:100,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M}); }catch(e){} });
-    setTimeout(()=>window.print(),500);
-  };
+  // Labels print from their own window with the QR codes drawn as images, so they always show.
+  function labelSheet(title,list,cols,size,code,line1,line2){
+    if(!list.length){ toast('Nothing to print yet','error'); return; }
+    if(typeof QRCode==='undefined'){ toast('QR library not loaded. Refresh the app and try again.','error'); return; }
+    const tmp=document.createElement('div'); tmp.style.cssText='position:fixed;left:-9999px;top:0'; document.body.appendChild(tmp);
+    const imgs=list.map(x=>{ const d=document.createElement('div'); tmp.appendChild(d);
+      try{ new QRCode(d,{text:String(code(x)),width:size*2,height:size*2,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
+      const c=d.querySelector('canvas'), im=d.querySelector('img'); return c?c.toDataURL('image/png'):(im?im.src:''); });
+    tmp.remove();
+    const w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print the labels','error'); return; }
+    w.document.write('<!doctype html><title>'+E(title)+'</title><body style="font-family:Arial,sans-serif;margin:12px"><div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:8px">'+
+      list.map((x,i)=>'<div style="border:1px dashed #999;padding:8px;text-align:center;break-inside:avoid"><img src="'+imgs[i]+'" width="'+size+'" height="'+size+'"><div style="font-weight:700;font-size:12px;margin-top:4px">'+E(line1(x))+'</div><div style="font-size:11px;color:#555">'+E(line2(x))+'</div></div>').join('')+
+      '</div><script>setTimeout(function(){print()},500)<\/script></body>');
+    w.document.close();
+  }
+  window.qrLabelSheet=labelSheet;
+  window.qrPrintLabels=function(){ labelSheet('Gear labels',db.gearItems||[],3,110,codeOf,g=>g.name,codeOf); };
+  // QR labels for stage fixtures (code = fixture ID; scanning shows the fixture card)
+  window.qrPrintFixtures=function(){ labelSheet('Fixture labels',db.fixtures||[],4,100,f=>f.id,f=>f.id,f=>f.name||f.type||''); };
   // ── rapid scan ──
   const RS={on:false,scanner:null,mode:'auto',last:'',lastAt:0,log:[]};
   window.rsHandle=function(raw){

@@ -553,47 +553,26 @@ function printLabels(){
     if(!bulbType){toast('Bulb type required to register labels','error');return;}
   }
 
-  const pa=document.getElementById('printArea');
-  pa.innerHTML=`<div style="font-family:monospace;padding:10px"><h2 style="font-size:14px;margin-bottom:12px;color:#000">KCC Technical — ${type==='1'?'Fixture':'Bulb'} Labels</h2><div id="pqg" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px"></div></div>`;
-  const grid=document.getElementById('pqg');
-  const newLabels=[];
-
+  const newLabels=[], list=[];
   for(let i=1;i<=qty;i++){
     const code=prefix+'-'+String(i).padStart(3,'0');
-
-    // Register bulb labels in the registry as UNASSIGNED — they don't count as
-    // stock until someone actually sticks the label on a bulb and scans it in.
+    // Register bulb labels in the registry as UNASSIGNED. They don't count as
+    // stock until someone sticks the label on a bulb and scans it in.
     if(type==='2'){
       const exists=db.bulbRegistry.find(b=>b.bulbId===code);
       if(!exists){
-        db.bulbRegistry.push({
-          bulbId:code,
-          bulbType,
-          status:'unassigned',     // unassigned | in_stock | installed | pulled | disposed
-          createdAt:Date.now(),
-          installedIn:null,
-          installedAt:null,
-          installedBy:null,
-          history:[]               // array of {event,fixture,tech,timestamp}
-        });
+        db.bulbRegistry.push({bulbId:code,bulbType,status:'unassigned',createdAt:Date.now(),installedIn:null,installedAt:null,installedBy:null,history:[]});
         newLabels.push(code);
       }
     }
-
-    const div=document.createElement('div');
-    div.style.cssText='background:#fff;border:1px solid #ccc;border-radius:4px;padding:8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;break-inside:avoid';
-    const qd=document.createElement('div');qd.id='plq'+i;div.appendChild(qd);
-    const lb=document.createElement('div');lb.style.cssText='font-family:monospace;font-size:9px;font-weight:700;color:#000;margin-top:4px';lb.textContent=code;div.appendChild(lb);
-    const sb=document.createElement('div');sb.style.cssText='font-family:monospace;font-size:8px;color:#555';sb.textContent=type==='1'?'FIXTURE':bulbType||'BULB';div.appendChild(sb);
-    grid.appendChild(div);
-    try{new QRCode(qd,{text:code,width:90,height:90,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M});}catch(e){}
+    list.push({code,sub:type==='1'?'FIXTURE':bulbType||'BULB'});
   }
 
   if(newLabels.length>0){
     save();
     toast(newLabels.length+' bulb stickers printed — scan each one in (Scan → Bulb Scan IN) once it\'s on a bulb','success');
   }
-  setTimeout(()=>window.print(),600);
+  if(typeof qrLabelSheet==='function') qrLabelSheet('KCC Technical labels',list,4,90,x=>x.code,x=>x.code,x=>x.sub);
 }
 
 // ── Inv tabs ──
