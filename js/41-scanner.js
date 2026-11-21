@@ -13,6 +13,7 @@
     if(typeof stFind==='function'){ const sa=stFind(code); if(sa) return 'Storage '+sa.name; }
     if(typeof ssFind==='function'){ const h=ssFind(code); if(h) return h.type==='fixture'?'Fixture '+h.obj.name:'Gear '+(h.obj.name||h.obj.id); }
     const b=(db.bulbRegistry||[]).find(x=>x.bulbId===code); if(b) return 'Bulb '+b.bulbType;
+    const bi=(db.inventory||[]).find(x=>String(x.bulbType).toUpperCase()===code); if(bi) return 'Bulb stock '+bi.bulbType;
     return '';
   }
   function paintLog(){
