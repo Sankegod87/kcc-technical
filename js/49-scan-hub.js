@@ -98,6 +98,12 @@
     const cam=document.getElementById('camBtn'); if(cam&&!document.getElementById('sh-rapid')){ const b=document.createElement('button'); b.id='sh-rapid'; b.className='btn ba'; b.style.cssText='width:100%;justify-content:center;margin-bottom:10px'; b.textContent='⚡ Rapid scan (check many items out or in)'; b.onclick=()=>{ if(typeof rsStart==='function') rsStart(); }; cam.parentNode.insertBefore(b,cam.nextSibling); }
     const _sh=smartHandleCode;
     smartHandleCode=function(code){ if(typeof _curPage!=='undefined'&&_curPage==='scan'&&shShow(code)) return; return _sh.apply(this,arguments); };
+    const _ogs=openGlobalScanner;
+    openGlobalScanner=function(fieldTarget){
+      if(fieldTarget) return _ogs.apply(this,arguments);
+      closeScanSheet(); go('scan');
+      setTimeout(()=>{ const c=document.getElementById('camBtn'); if(c&&/start/i.test(c.textContent)&&typeof toggleCamera==='function') toggleCamera(); },350);
+    };
     const _go=go; go=function(p){ const r=_go.apply(this,arguments); if(p==='scan'&&cur) setTimeout(shRefresh,50); return r; };
   });
 })();
