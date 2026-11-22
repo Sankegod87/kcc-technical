@@ -26,4 +26,17 @@
       return r;
     };
   });
+  // Export the whole asset (gear) list as a spreadsheet file (CSV opens in Excel and Google Sheets).
+  window.exportGearList=function(){
+    const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"', d=t=>t?new Date(t).toLocaleDateString('en-CA'):'';
+    const rows=[['Asset ID','Name','Category','Department','Qty','Stored in','Status','Checked out to','Due back','Last service','Service every (days)','Notes']];
+    [...(db.gearItems||[])].sort((a,b)=>String(a.category||'').localeCompare(String(b.category||''))||String(a.name||'').localeCompare(String(b.name||''))).forEach(g=>{
+      const co=typeof activeCheckout==='function'?activeCheckout(g.id):null, who=co?((db.technicians||[]).find(x=>x.id===co.personId)||{}).name||'':'';
+      rows.push([g.assetId||g.id,g.name,g.category,g.dept,g.qty||1,gearStoreName(g),co?'Checked out':'Available',who,co?d(co.dueDate):'',d(g.lastServiceDate),g.serviceInterval||'',g.notes||'']);
+    });
+    if(rows.length<2){ toast('No gear to export yet','error'); return; }
+    const blob=new Blob(['\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kcc-asset-list-'+new Date().toLocaleDateString('en-CA')+'.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    toast('Exported '+(rows.length-1)+' items','success');
+  };
 })();
