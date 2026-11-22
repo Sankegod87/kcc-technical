@@ -178,7 +178,9 @@ async function sendWelcomeEmail(tech, password) {
     ? '🔑 User Admin — manage crew, fixtures, inventory & schedule'
     : '👤 Regular User — report outages & replacements';
 
-  const pin = password ? password.slice(-4) : '????';
+  const pwLine = password
+    ? 'Password:    ' + password + '\n             (please change it after you sign in: Settings > My account > Change my password)\n\n'
+    : 'Password:    the password your crew lead gave you\n\n';
 
   const canScheduleNote = tech.canSchedule
     ? 'Scheduling:  ✅ You can edit the Sunday schedule\n'
@@ -197,7 +199,7 @@ async function sendWelcomeEmail(tech, password) {
     '════════════════════════════\n' +
     'App Link:    ' + appUrl + '\n' +
     'Your Name:   ' + tech.name + '\n' +
-    'PIN:         ' + pin + '  (last 4 digits of your phone number)\n\n' +
+    pwLine +
 
     '════════════════════════════\n' +
     'YOUR ROLE & ACCESS\n' +
