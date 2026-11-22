@@ -8,19 +8,37 @@ let _importConflictRow = null;
 let _importOverwriteAll = false;
 let _importSkipAll = false;
 
+// Column headers are matched ignoring case, spaces and punctuation, and a few common alternative names are accepted.
+const _nk=k=>String(k).toLowerCase().replace(/[^a-z0-9]/g,'');
+function getCol(r,names){
+  if(!r._k){ Object.defineProperty(r,'_k',{value:Object.keys(r).reduce((m,k)=>{m[_nk(k)]=k;return m;},{}),enumerable:false}); }
+  for(const n of names){ const k=r._k[_nk(n)]; if(k!==undefined&&String(r[k]).trim()!=='') return r[k]; }
+  return undefined;
+}
+function parseImportDate(v){
+  if(v===undefined||v==='') return undefined;
+  if(typeof v==='number') return v>20000?Math.round((v-25569)*86400000):undefined;
+  const t=String(v).trim(); const d=/^\d{4}-\d{2}-\d{2}$/.test(t)?new Date(t+'T12:00:00'):new Date(t);
+  return isNaN(d)?undefined:d.getTime();
+}
+function findStorageId(v){
+  if(v===undefined) return undefined; const t=String(v).trim().toLowerCase(); if(!t) return '';
+  const a=(db.storageAreas||[]).find(x=>String(x.id).toLowerCase()===t||String(x.name).toLowerCase()===t||(String(x.name).toLowerCase()+' ('+String(x.id).toLowerCase()+')')===t);
+  return a?a.id:undefined;
+}
 const IMPORT_SCHEMA = {
   fixtures: {
     hint: 'Required: <b>Fixture ID, Name, Bulb Type, Location</b> &nbsp;|&nbsp; Optional: Status, Department, Notes',
     idField: 'id',
     rowToObj(r){
       return {
-        id:   (r['Fixture ID']||'').toString().toUpperCase().trim(),
-        name: (r['Name']||'').toString().trim(),
-        bulbType: (r['Bulb Type']||'').toString().trim(),
-        location: (r['Location']||'').toString().trim(),
-        status: (r['Status']||'ok').toString().toLowerCase().trim(),
-        dept: (r['Department']||'').toString().trim(),
-        notes: (r['Notes']||'').toString().trim(),
+        id:   (getCol(r,['Fixture ID','ID'])||'').toString().toUpperCase().trim(),
+        name: (getCol(r,['Name'])||'').toString().trim(),
+        bulbType: (getCol(r,['Bulb Type','Bulb'])||'').toString().trim(),
+        location: (getCol(r,['Location'])||'').toString().trim(),
+        status: (getCol(r,['Status'])||'ok').toString().toLowerCase().trim(),
+        dept: (getCol(r,['Department','Dept'])||'').toString().trim(),
+        notes: (getCol(r,['Notes'])||'').toString().trim(),
         added: Date.now()
       };
     },
@@ -32,26 +50,36 @@ const IMPORT_SCHEMA = {
     }
   },
   gear: {
-    hint: 'Required: <b>Item Name, Asset ID</b> &nbsp;|&nbsp; Optional: Category, Department, Notes, Service Interval (days), Last Serviced (YYYY-MM-DD)',
-    idField: 'assetId',
+    hint: 'Required: <b>Name</b> &nbsp;|&nbsp; Optional: Asset ID (made for you if blank), Category, Department, Qty, Stored in, Service every (days), Last service (YYYY-MM-DD), Notes. <br>Tip: use Export asset list, edit the file, then import it back. Existing items are matched by Asset ID and blank cells are left as they are.',
+    idField: 'name',
     rowToObj(r){
-      return {
-        id: 'gear_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-        name: (r['Item Name']||'').toString().trim(),
-        assetId: (r['Asset ID']||'').toString().toUpperCase().trim(),
-        category: (r['Category']||'Other').toString().trim(),
-        dept: (r['Department']||'').toString().trim(),
-        notes: (r['Notes']||'').toString().trim(),
-        serviceInterval: parseInt(r['Service Interval'])||90,
-        lastService: (r['Last Serviced']||'').toString().trim(),
-        addedAt: Date.now()
-      };
+      const o={};
+      const nm=getCol(r,['Name','Item Name','Item']); if(nm!==undefined) o.name=String(nm).trim();
+      const id=getCol(r,['Asset ID','Asset','AssetID']); o.assetId=id!==undefined?String(id).toUpperCase().trim():'';
+      const cat=getCol(r,['Category','Type']); if(cat!==undefined) o.category=String(cat).trim();
+      const dp=getCol(r,['Department','Dept']); if(dp!==undefined) o.dept=String(dp).trim();
+      const nt=getCol(r,['Notes','Note']); if(nt!==undefined) o.notes=String(nt).trim();
+      const q=parseInt(getCol(r,['Qty','Quantity'])); if(q>0) o.qty=q;
+      const si=parseInt(getCol(r,['Service every (days)','Service Interval','Service every'])); if(si>0) o.serviceInterval=si;
+      const ls=parseImportDate(getCol(r,['Last service','Last Serviced','Last service date'])); if(ls!==undefined) o.lastServiceDate=ls;
+      const st=getCol(r,['Stored in','Storage','Storage area','Location']); const sid=findStorageId(st); if(sid!==undefined) o.storageId=sid; else if(st!==undefined) o._badStore=String(st);
+      return o;
     },
-    findDup(obj){ return (db.gearItems||[]).find(g=>g.assetId&&g.assetId===obj.assetId); },
+    prepare(list){
+      const used=new Set((db.gearItems||[]).map(g=>g.assetId).concat(list.map(x=>x.assetId)).filter(Boolean));
+      list.forEach(o=>{
+        if(o.assetId) return;
+        const pre=((o.category||'GEAR').replace(/[^A-Za-z]/g,'').slice(0,4)||'GEAR').toUpperCase(); let n=1, c;
+        do{ c=pre+'-'+String(n++).padStart(3,'0'); }while(used.has(c)); used.add(c); o.assetId=c; o._auto=true;
+      });
+    },
+    findDup(obj){ return obj.assetId?(db.gearItems||[]).find(g=>g.assetId===obj.assetId):null; },
     applyToDb(obj, overwrite){
-      const idx=(db.gearItems||[]).findIndex(g=>g.assetId&&g.assetId===obj.assetId);
-      if(idx>=0){ if(overwrite) db.gearItems[idx]={...db.gearItems[idx],...obj}; }
-      else { if(!db.gearItems)db.gearItems=[]; db.gearItems.push(obj); }
+      if(!db.gearItems) db.gearItems=[];
+      const {_auto,_badStore,...clean}=obj;
+      const idx=clean.assetId?db.gearItems.findIndex(g=>g.assetId===clean.assetId):-1;
+      if(idx>=0){ if(overwrite) db.gearItems[idx]={...db.gearItems[idx],...clean}; }
+      else db.gearItems.push({id:'gear_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),category:'Other',dept:'',notes:'',qty:1,serviceInterval:90,lastServiceDate:null,storageId:'',addedAt:Date.now(),...clean});
     }
   },
   inventory: {
@@ -59,12 +87,12 @@ const IMPORT_SCHEMA = {
     idField: 'bulbType',
     rowToObj(r){
       return {
-        bulbType: (r['Bulb Type']||'').toString().trim(),
-        inStock:  parseInt(r['In Stock'])||0,
-        threshold:parseInt(r['Threshold'])||5,
-        totalReceived:parseInt(r['Total Received'])||0,
-        totalUsed: parseInt(r['Total Used'])||0,
-        notes: (r['Notes']||'').toString().trim()
+        bulbType: (getCol(r,['Bulb Type','Bulb'])||'').toString().trim(),
+        inStock:  parseInt(getCol(r,['In Stock','Stock','Qty']))||0,
+        threshold:parseInt(getCol(r,['Threshold','Minimum','Min']))||5,
+        totalReceived:parseInt(getCol(r,['Total Received']))||0,
+        totalUsed: parseInt(getCol(r,['Total Used']))||0,
+        notes: (getCol(r,['Notes'])||'').toString().trim()
       };
     },
     findDup(obj){ return (db.inventory||[]).find(i=>i.bulbType===obj.bulbType); },
@@ -79,7 +107,7 @@ const IMPORT_SCHEMA = {
 function openImportModal(type){
   _importType = type;
   resetImportModal();
-  const titles = { fixtures:'Import Fixtures', inventory:'Import Bulb Inventory' };
+  const titles = { fixtures:'Import Fixtures', inventory:'Import Bulb Inventory', gear:'Import Gear' };
   document.getElementById('importModalTitle').textContent = 'IMPORT — ' + (titles[type]||type).toUpperCase();
   const schema = IMPORT_SCHEMA[type];
   const hint = document.getElementById('importColHint');
@@ -130,22 +158,22 @@ async function handleImportFile(file){
 }
 
 function parseCSVToObjects(text){
-  const lines=text.trim().split(/\r?\n/);
-  if(lines.length<2) return [];
-  const headers=lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
-  return lines.slice(1).filter(l=>l.trim()).map(line=>{
-    const vals=[];
-    let cur='',inQ=false;
-    for(let c of line){
-      if(c==='"'){inQ=!inQ;}
-      else if(c===','&&!inQ){vals.push(cur.trim());cur='';}
+  text=String(text).replace(/^\ufeff/,'');
+  const rows=[]; let row=[], cur='', inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else inQ=false; }
       else cur+=c;
-    }
-    vals.push(cur.trim());
-    const obj={};
-    headers.forEach((h,i)=>{ obj[h]=(vals[i]||'').replace(/^"|"$/g,'').trim(); });
-    return obj;
-  });
+    } else if(c==='"') inQ=true;
+    else if(c===','){ row.push(cur.trim()); cur=''; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(cur.trim()); cur=''; if(row.some(v=>v!=='')) rows.push(row); row=[]; }
+    else cur+=c;
+  }
+  row.push(cur.trim()); if(row.some(v=>v!=='')) rows.push(row);
+  if(rows.length<2) return [];
+  const headers=rows[0].map(h=>h.trim());
+  return rows.slice(1).map(vals=>{ const obj={}; headers.forEach((h,i)=>{ obj[h]=(vals[i]||'').trim(); }); return obj; });
 }
 
 async function parseXLSXToObjects(file){
@@ -167,14 +195,21 @@ async function parseXLSXToObjects(file){
 
 function renderImportPreview(rows){
   if(!rows.length) return;
+  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const schema=IMPORT_SCHEMA[_importType];
   const headers=Object.keys(rows[0]);
-  const thead=document.getElementById('importPreviewHead');
-  const tbody=document.getElementById('importPreviewBody');
-  thead.innerHTML='<tr>'+headers.map(h=>'<th>'+h+'</th>').join('')+'</tr>';
-  tbody.innerHTML=rows.slice(0,20).map(r=>
-    '<tr>'+headers.map(h=>'<td style="font-family:var(--mono);font-size:11px">'+(r[h]??'')+'</td>').join('')+'</tr>'
+  let nNew=0,nUpd=0,nBad=0,badStore=0;
+  const res=rows.map(r=>{
+    const o=schema.rowToObj(r);
+    if(!o[schema.idField]){ nBad++; return ['Skipped: missing '+(schema.idField==='name'?'name':schema.idField),'var(--red)']; }
+    if(o._badStore) badStore++;
+    const dup=schema.findDup(o); if(dup){ nUpd++; return ['Update','var(--amber,#e0a800)']; } nNew++; return ['New','var(--green,#2DD4A0)'];
+  });
+  document.getElementById('importPreviewHead').innerHTML='<tr><th>Result</th>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>';
+  document.getElementById('importPreviewBody').innerHTML=rows.slice(0,20).map((r,i)=>
+    '<tr><td style="font-size:11px;font-weight:700;color:'+res[i][1]+'">'+esc(res[i][0])+'</td>'+headers.map(h=>'<td style="font-family:var(--mono);font-size:11px">'+esc(r[h])+'</td>').join('')+'</tr>'
   ).join('');
-  document.getElementById('importRowCount').textContent=rows.length+(rows.length>20?' (showing first 20)':'');
+  document.getElementById('importRowCount').textContent=rows.length+(rows.length>20?' (showing first 20)':'')+' · '+nNew+' new, '+nUpd+' to update, '+nBad+' skipped'+(badStore?' · '+badStore+' with a storage area that does not exist (ignored)':'');
   document.getElementById('importPreviewWrap').style.display='';
   document.getElementById('importStartBtn').style.display='';
   document.getElementById('importDropZone').style.display='none';
@@ -184,6 +219,7 @@ async function startImport(){
   const schema=IMPORT_SCHEMA[_importType];
   if(!schema||!_importRows.length){ toast('No data to import','error'); return; }
   _importQueue=_importRows.map(r=>schema.rowToObj(r)).filter(o=>o[schema.idField]);
+  if(schema.prepare) schema.prepare(_importQueue);
   if(!_importQueue.length){ toast('No valid rows found (check required columns)','error'); return; }
   document.getElementById('importStartBtn').style.display='none';
   document.getElementById('importPreviewWrap').style.display='none';
@@ -246,7 +282,7 @@ function downloadImportTemplate(type){
   const templates={
     fixtures:'Fixture ID,Name,Bulb Type,Location,Status,Department,Notes\nFX-001,Front Wash Left,PAR64 1000W,Stage Left,ok,Lighting,\nFX-002,Front Wash Right,PAR64 1000W,Stage Right,ok,Lighting,',
     inventory:'Bulb Type,In Stock,Threshold,Total Received,Total Used,Notes\nPAR64 1000W,10,5,20,10,\nLED PAR,6,3,8,2,',
-    gear:'Item Name,Asset ID,Category,Department,Notes,Service Interval,Last Serviced\nCanon XA55 Camera,CAM-001,Camera,Cameras,Main broadcast cam,90,2024-01-15\nShure SM58,MIC-001,Audio,Audio,Lead vocal mic,180,2024-03-01\nMacBook Pro 16,LAP-001,Computer,IT,Presentation laptop,365,'
+    gear:'Asset ID,Name,Category,Department,Qty,Stored in,Service every (days),Last service,Notes\nCAM-001,Canon XA55 Camera,Cameras,Cameras,1,File cabinet 1,90,2026-01-15,Main broadcast cam\nMIC-001,Shure SM58,Audio,Audio,2,File cabinet 2,180,2026-03-01,Lead vocal mic',
   };
   const csv=templates[type]||'';
   const blob=new Blob([csv],{type:'text/csv'});
