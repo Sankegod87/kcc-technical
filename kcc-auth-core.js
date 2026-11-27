@@ -534,7 +534,8 @@ function makeCore(deps) {
       requesterEmail: email, eventType, startTime, endTime, location, requesterType, attendance, bookingRef, ref: ('R' + String(t).slice(-6)), history: [{ t, what: 'Submitted' }]
     };
     if (av) req.av = av;
-    if (uploadFolder) req.uploadFolder = uploadFolder;
+    let uploadToken = '';
+    if (uploadFolder) { uploadToken = rand() + rand() + rand(); uploadFolder.th = crypto.createHash('sha256').update(uploadToken).digest('hex'); uploadFolder.n = 0; req.uploadFolder = uploadFolder; }
     if (folderNote) req.history.push({ t, what: folderNote });
     if (signed) { signed.signedAt = t; signed.ipHash = ipKey.slice(3); req.agreement = signed; req.history.push({ t, what: 'Agreement signed', by: signed.signerName }); }
     await fs.runTransaction(async tx => {
@@ -554,10 +555,35 @@ function makeCore(deps) {
         if (email) await Promise.resolve(deps.mail({ kind: 'requester', to: email, name, req })).catch(() => {});
       } catch (e) { /* ignore */ }
     }
-    return { ok: true, ref: req.ref, uploadUrl: uploadFolder && uploadFolder.shared ? uploadFolder.url : '', signedAt: req.agreement ? req.agreement.signedAt : null, hash: req.agreement ? req.agreement.hash : null };
+    return { ok: true, ref: req.ref, uploadUrl: uploadFolder && uploadFolder.shared ? uploadFolder.url : '', uploadToken: deps.startUpload ? uploadToken : '', signedAt: req.agreement ? req.agreement.signedAt : null, hash: req.agreement ? req.agreement.hash : null };
   }
 
-  return { login, bootstrap, confirmSelf, confirmLink, makeLinks, linkSig, techOp, setSecret, hasSecret, notesGet, noteAdd, noteDel, feedbackSend, feedbackList, feedbackAct, applySend, applyList, applyAct, ytLive, submitExternalRequest, Fail, scryptHash, pwMatches, writeRoster, readData, writeData };
+  // A requester sends a file straight to their own Drive folder: we check their upload code, then hand back a Google upload address.
+  const BAD_EXT = /\.(exe|msi|bat|cmd|com|scr|js|jse|vbs|vbe|ps1|sh|jar|app|dmg|apk|dll|lnk|hta|reg)$/i;
+  async function startUpload(data, ctx, ip) {
+    data = data || {};
+    if (!deps.startUpload) throw new Fail('failed-precondition', 'File upload is not set up yet.');
+    const ref = String(data.ref || ''), tok = String(data.token || '');
+    const name = String(data.name || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+    const size = Math.floor(Number(data.size)), type = String(data.type || '').slice(0, 100).replace(/[^\w.+\/-]/g, '');
+    if (!/^R\d{6}$/.test(ref) || !tok || !name) throw new Fail('invalid-argument', 'Bad upload request.');
+    if (!(size > 0) || size > 524288000) throw new Fail('invalid-argument', 'Each file must be under 500 MB.');
+    if (BAD_EXT.test(name)) throw new Fail('invalid-argument', 'That file type is not allowed.');
+    const th = crypto.createHash('sha256').update(tok).digest('hex');
+    let folderId = '';
+    await fs.runTransaction(async tx => {
+      const list = await readData(tx, 'techRequests', []);
+      const r = list.find(x => x.ref === ref && x.uploadFolder && x.uploadFolder.th);
+      if (!r || !safeEq(r.uploadFolder.th, th)) throw new Fail('permission-denied', 'Upload not allowed.');
+      if ((r.uploadFolder.n || 0) >= 10) throw new Fail('resource-exhausted', 'You can add up to 10 files here. Please contact the tech team for more.');
+      r.uploadFolder.n = (r.uploadFolder.n || 0) + 1; folderId = r.uploadFolder.id;
+      writeData(tx, 'techRequests', list);
+    });
+    const out = await deps.startUpload({ folderId, name, size, type: type || 'application/octet-stream', origin: String(data.origin || '').slice(0, 200) });
+    return { ok: true, url: out.url };
+  }
+
+  return { login, bootstrap, confirmSelf, confirmLink, makeLinks, linkSig, techOp, setSecret, hasSecret, notesGet, noteAdd, noteDel, feedbackSend, feedbackList, feedbackAct, applySend, applyList, applyAct, ytLive, submitExternalRequest, startUpload, Fail, scryptHash, pwMatches, writeRoster, readData, writeData };
 }
 
 module.exports = { makeCore, Fail, scryptHash, pwMatches, legacyHash, MIN_PW };

@@ -723,6 +723,7 @@ async function submitExternalRequest(){
     window._erLast=agreement?{ref,requesterDept:dept,requesterName:name,requesterEmail:email,requesterContact:contact,eventType,neededBy:dateVal?new Date(dateVal+'T12:00:00').getTime():null,startTime,endTime,location,attendance,bookingRef,agreement:Object.assign({},agreement,{signedAt:out.signedAt||Date.now(),hash:out.hash||''})}:null;
     const saveBtn=document.getElementById('er-save-copy');if(saveBtn)saveBtn.style.display=agreement?'':'none';
     const upBox=document.getElementById('er-success-upload');if(upBox){const u=String(out.uploadUrl||'');const okU=/^https:\/\/(drive|docs)\.google\.com\//i.test(u);upBox.style.display=okU?'':'none';if(okU)document.getElementById('er-success-upload-link').href=u;}
+    window._erUp={ref:out.ref,token:out.uploadToken||''};const dz=document.getElementById('er-drop');if(dz)dz.style.display=(out.uploadToken&&okUp(out))?'':'none';
     const refEl=document.getElementById('er-success-ref');if(refEl)refEl.textContent=ref?'Reference: '+ref:'';
     const msgEl=document.getElementById('er-success-msg');if(msgEl)msgEl.textContent='The tech team has been notified and will follow up with you.'+(email?' We also sent a confirmation to '+email+'.':'');
     document.getElementById('extReq-form').style.display='none';
@@ -1572,3 +1573,28 @@ function gdCheckout(){
 function gdLogService(){
   const id=window._gdId; closeM('gearDetail'); openM_addMaintEntry(); document.getElementById('me-item').value=id;
 }
+
+// Drop zone on the request success screen: each file goes straight to this request's Drive folder.
+function okUp(out){return !!(out&&out.uploadToken&&out.ref);}
+(function(){
+  function put(url,file,onp){return new Promise((res,rej)=>{const x=new XMLHttpRequest();x.open('PUT',url);x.upload.onprogress=e=>{if(e.lengthComputable)onp(Math.round(e.loaded/e.total*100));};x.onload=()=>(x.status>=200&&x.status<300)?res():rej(new Error('Upload failed ('+x.status+')'));x.onerror=()=>rej(new Error('Upload failed. Check your connection.'));x.send(file);});}
+  async function send(files){
+    const u=window._erUp,list=document.getElementById('er-drop-list');if(!u||!u.token||!list)return;
+    for(const f of Array.from(files)){
+      const row=document.createElement('div');row.textContent=f.name+' …';list.appendChild(row);
+      try{
+        const r=await window._kccStartUpload({ref:u.ref,token:u.token,name:f.name,size:f.size,type:f.type,origin:location.origin});
+        const out=(r&&r.data)||r||{};if(!out.url||!/^https:\/\/[^\s]+$/i.test(out.url))throw new Error('Could not start the upload');
+        await put(out.url,f,p=>{row.textContent=f.name+' '+p+'%';});
+        row.textContent='✓ '+f.name;
+      }catch(e){row.textContent='✗ '+f.name+' — '+((e&&e.message)||'failed').replace(/^.*?:\s*/,'').slice(0,120);}
+    }
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    const dz=document.getElementById('er-drop'),inp=document.getElementById('er-drop-input');if(!dz||!inp)return;
+    dz.addEventListener('click',()=>inp.click());inp.addEventListener('change',()=>{send(inp.files);inp.value='';});
+    ['dragover','dragenter'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.background='rgba(128,128,128,.12)';}));
+    ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.background='';}));
+    dz.addEventListener('drop',e=>{if(e.dataTransfer&&e.dataTransfer.files)send(e.dataTransfer.files);});
+  });
+})();

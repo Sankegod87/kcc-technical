@@ -141,6 +141,12 @@ let n = 0; const ok = name => console.log('  ok', ++n, name);
     const r1 = await cF.submitExternalRequest({ name: 'Sam', dept: 'Youth/Kids', details: 'x', cats: ['Lighting'] }, {}, '3.3.3.1'); assert.strictEqual(r1.uploadUrl, 'https://drive.google.com/drive/folders/F1'); assert.ok(!/[\\/]/.test(named[0]) && /^R\d{6} Youth Kids/.test(named[0])); reqs = JSON.parse(f.store.get('data/techRequests').p); assert.strictEqual(reqs[0].uploadFolder.id, 'F1');
     const cB = makeCore({ fs: f.fs, auth: f.auth, now: () => T, stamp: () => 'ts', makeFolder: async () => { throw new Error('boom'); } });
     const r2 = await cB.submitExternalRequest({ name: 'Sam', dept: 'Youth', details: 'x', cats: ['Lighting'] }, {}, '3.3.3.2'); assert.ok(r2.ok && !r2.uploadUrl); reqs = JSON.parse(f.store.get('data/techRequests').p); assert.ok(!reqs[0].uploadFolder); ok('Drive upload folder is created per request; a Drive failure never blocks the request'); }
+  { const sess = []; const cU = makeCore({ fs: f.fs, auth: f.auth, now: () => T, stamp: () => 'ts', makeFolder: async () => ({ id: 'F9', url: 'https://drive.google.com/drive/folders/F9', shared: true }), startUpload: async o => { sess.push(o); return { url: 'https://upload.example/s1' }; } });
+    const r = await cU.submitExternalRequest({ name: 'Sam', dept: 'Youth', details: 'x', cats: ['Lighting'] }, {}, '3.3.3.3'); assert.ok(r.uploadToken);
+    const up = (o) => cU.startUpload(Object.assign({ ref: r.ref, token: r.uploadToken, name: 'song.mp3', size: 5000, type: 'audio/mpeg' }, o), {}, '3.3.3.3');
+    assert.strictEqual((await up()).url, 'https://upload.example/s1'); assert.strictEqual(sess[0].folderId, 'F9');
+    await rejects(up({ token: 'wrong' }), 'permission-denied'); await rejects(up({ name: 'virus.exe' }), 'invalid-argument'); await rejects(up({ size: 600000000 }), 'invalid-argument');
+    for (let i = 0; i < 9; i++) await up(); await rejects(up(), 'resource-exhausted'); ok('file uploads: need the right code, no programs, 500 MB cap, 10 files per request'); }
   await sub({}, '1.1.1.1'); await rejects(sub({}, '1.1.1.1'), 'resource-exhausted'); ok('4th request from one address in 10 min refused');
   await sub({}, '2.2.2.2'); T += 601000; await sub({}, '1.1.1.1'); ok('other addresses unaffected; limit resets after 10 min');
   f.store.set('rl/all', { start: T, n: 60 }); await rejects(sub({}, '9.9.9.9'), 'resource-exhausted'); f.store.delete('rl/all'); ok('global hourly cap');

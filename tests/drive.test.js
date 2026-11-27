@@ -14,5 +14,8 @@ const assert = require('assert'); const d = require('../kcc-drive.js');
   assert.ok(JSON.parse(calls.find(c => /\/files\?/.test(c[0]))[2]).parents[0] === 'ROOT');
   assert.ok(JSON.parse(calls.find(c => /permissions/.test(c[0]))[2]).type === 'anyone');
   assert.strictEqual(await d.createFolder({ name: 'x', rootId: '', fetchFn }), null);
+  const f2 = async (u, o) => { calls.push([u, o && o.method, o && o.body, o && o.headers]); if (u.includes('uploadType=resumable')) return { ok: true, headers: { get: k => k === 'location' ? 'https://up.example/x' : null } }; return fetchFn(u, o); };
+  const s = await d.startUpload({ folderId: 'FID', name: 'a.mp4', size: 99, type: 'video/mp4', origin: 'https://sankegod87.github.io', fetchFn: f2 });
+  assert.strictEqual(s.url, 'https://up.example/x'); const c = calls.find(x => /uploadType=resumable/.test(x[0])); assert.strictEqual(c[3].Origin, 'https://sankegod87.github.io'); assert.deepStrictEqual(JSON.parse(c[2]).parents, ['FID']);
   console.log('ok drive folder');
 })().catch(e => { console.error(e); process.exit(1); });

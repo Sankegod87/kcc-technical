@@ -25,6 +25,7 @@ const drive = require("./kcc-drive.js");
 const core = makeCore({
   mail: sendRequestMail,
   makeFolder: process.env.DRIVE_ROOT_FOLDER_ID ? ({ name }) => drive.createFolder({ name, rootId: process.env.DRIVE_ROOT_FOLDER_ID, fetchFn: fetch }) : null,
+  startUpload: process.env.DRIVE_ROOT_FOLDER_ID ? (o) => drive.startUpload(Object.assign({ fetchFn: fetch }, o)) : null,
   fs: {
     doc: (p) => fsAdmin.doc(p),
     runTransaction: (fn) => fsAdmin.runTransaction(fn),
@@ -63,4 +64,5 @@ exports.kccApplyAct = functions.https.onCall(wrap((d, c) => core.applyAct(d, c))
 exports.kccHasSecret = functions.https.onCall(wrap((d, c) => core.hasSecret(d, c)));
 exports.kccYtLive = functions.https.onCall(wrap((d, c) => core.ytLive(d, c)));
 exports.kccSubmitRequest = functions.https.onCall(wrap((d, c, ip) => core.submitExternalRequest(d, c, ip)));
+exports.kccStartUpload = functions.https.onCall(wrap((d, c, ip) => core.startUpload(d, c, ip)));
 exports._core = core;

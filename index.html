@@ -187,6 +187,7 @@ window._kccApplyAct = (p) => call('kccApplyAct')(p);
 window._kccNoteDel = (p) => call('kccNoteDel')(p);
 window._kccYtLive = (force) => call('kccYtLive')({ force: !!force });
 window._kccSubmitRequest = (p) => call('kccSubmitRequest')(p);
+window._kccStartUpload = (p) => call('kccStartUpload')(p);
 window._kccConfirm = (key) => call('kccConfirm')({ key });
 window._kccConfirmLink = (p) => call('kccConfirmLink')(p);
 window._kccLinks = (key, techIds) => call('kccLinks')({ key, techIds });
@@ -514,7 +515,7 @@ initFirebase();
       <h2>Request sent</h2>
       <p id="er-success-msg">The tech team has been notified and will follow up with you.</p>
       <div id="er-success-ref" class="er2-ref"></div>
-      <div id="er-success-upload" style="display:none;margin-top:14px;text-align:left;border:1px solid rgba(128,128,128,.3);border-radius:12px;padding:12px 14px"><div style="font-weight:700;margin-bottom:4px">Upload your files</div><div style="font-size:13px;opacity:.8;margin-bottom:10px">Add slides, songs or videos to this folder. It is only for your request. Anyone with the link can add files, so please do not share it.</div><a id="er-success-upload-link" class="er2-btn" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none">Open your upload folder</a></div>
+      <div id="er-success-upload" style="display:none;margin-top:14px;text-align:left;border:1px solid rgba(128,128,128,.3);border-radius:12px;padding:12px 14px"><div style="font-weight:700;margin-bottom:4px">Add your files</div><div id="er-drop" style="border:2px dashed rgba(128,128,128,.5);border-radius:12px;padding:18px;text-align:center;cursor:pointer;margin-bottom:8px"><div>Drop files here or tap to choose</div><div style="font-size:12px;opacity:.7">Slides, songs, videos. Up to 10 files, 500 MB each.</div><input id="er-drop-input" type="file" multiple style="display:none"></div><div id="er-drop-list" style="font-size:13px;margin-bottom:8px"></div><div style="font-size:13px;opacity:.8;margin-bottom:10px">Add slides, songs or videos to this folder. It is only for your request. Anyone with the link can add files, so please do not share it.</div><a id="er-success-upload-link" class="er2-btn" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none">Open your upload folder</a></div>
       <button class="er2-btn" id="er-save-copy" style="display:none;margin-top:16px" onclick="erSaveCopy()">📄 Save or print a copy of the agreement</button>
       <button class="er2-btn er2-ghost" onclick="resetExternalRequestForm()">Send another request</button>
     </div>

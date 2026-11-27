@@ -36,4 +36,18 @@ async function createFolder({ name, rootId, fetchFn }) {
   return { id: file.id, url: file.webViewLink || ('https://drive.google.com/drive/folders/' + file.id), shared };
 }
 
-module.exports = { createFolder, getToken, _reset() { cached = null; } };
+// Starts a Google resumable upload inside one request folder; the browser then sends the file straight to Google.
+async function startUpload({ folderId, name, size, type, origin, fetchFn }) {
+  const f = fetchFn || fetch;
+  const token = await getToken(f);
+  const h = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Length': String(size) };
+  if (type) h['X-Upload-Content-Type'] = type;
+  if (origin) h.Origin = origin;
+  const r = await f('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id', { method: 'POST', headers: h, body: JSON.stringify({ name, parents: [folderId] }) });
+  if (!r.ok) throw new Error('Drive upload ' + r.status);
+  const loc = r.headers && r.headers.get ? r.headers.get('location') : '';
+  if (!loc) throw new Error('No upload address');
+  return { url: loc };
+}
+
+module.exports = { createFolder, startUpload, getToken, _reset() { cached = null; } };
