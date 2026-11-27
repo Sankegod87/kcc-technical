@@ -722,6 +722,7 @@ async function submitExternalRequest(){
     const ref=out.ref;
     window._erLast=agreement?{ref,requesterDept:dept,requesterName:name,requesterEmail:email,requesterContact:contact,eventType,neededBy:dateVal?new Date(dateVal+'T12:00:00').getTime():null,startTime,endTime,location,attendance,bookingRef,agreement:Object.assign({},agreement,{signedAt:out.signedAt||Date.now(),hash:out.hash||''})}:null;
     const saveBtn=document.getElementById('er-save-copy');if(saveBtn)saveBtn.style.display=agreement?'':'none';
+    const upBox=document.getElementById('er-success-upload');if(upBox){const u=String(out.uploadUrl||'');const okU=/^https:\/\/(drive|docs)\.google\.com\//i.test(u);upBox.style.display=okU?'':'none';if(okU)document.getElementById('er-success-upload-link').href=u;}
     const refEl=document.getElementById('er-success-ref');if(refEl)refEl.textContent=ref?'Reference: '+ref:'';
     const msgEl=document.getElementById('er-success-msg');if(msgEl)msgEl.textContent='The tech team has been notified and will follow up with you.'+(email?' We also sent a confirmation to '+email+'.':'');
     document.getElementById('extReq-form').style.display='none';

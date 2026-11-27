@@ -21,8 +21,10 @@ async function sendRequestMail({ kind, to, name, req, subject, notice }) {
   if (!res.ok) throw new Error("EmailJS " + res.status);
 }
 
+const drive = require("./kcc-drive.js");
 const core = makeCore({
   mail: sendRequestMail,
+  makeFolder: process.env.DRIVE_ROOT_FOLDER_ID ? ({ name }) => drive.createFolder({ name, rootId: process.env.DRIVE_ROOT_FOLDER_ID, fetchFn: fetch }) : null,
   fs: {
     doc: (p) => fsAdmin.doc(p),
     runTransaction: (fn) => fsAdmin.runTransaction(fn),

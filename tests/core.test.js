@@ -137,6 +137,10 @@ let n = 0; const ok = name => console.log('  ok', ++n, name);
   reqs = JSON.parse(f.store.get('data/techRequests').p); assert.deepStrictEqual(reqs[0].photos, ['data:image/png;base64,AAAA']); ok('only real images kept');
   await sub({ fileLinks: ['https://drive.google.com/file/d/abc', 'javascript:alert(1)', 'http://insecure.example/x', 'https://ok.example/a b', 'https://dropbox.com/s/xyz'] }, '2.2.2.9');
   reqs = JSON.parse(f.store.get('data/techRequests').p); assert.deepStrictEqual(reqs[0].fileLinks, ['https://drive.google.com/file/d/abc', 'https://dropbox.com/s/xyz']); ok('only https file links kept');
+  { const named = []; const cF = makeCore({ fs: f.fs, auth: f.auth, now: () => T, stamp: () => 'ts', makeFolder: async ({ name }) => { named.push(name); return { id: 'F1', url: 'https://drive.google.com/drive/folders/F1', shared: true }; } });
+    const r1 = await cF.submitExternalRequest({ name: 'Sam', dept: 'Youth/Kids', details: 'x', cats: ['Lighting'] }, {}, '3.3.3.1'); assert.strictEqual(r1.uploadUrl, 'https://drive.google.com/drive/folders/F1'); assert.ok(!/[\\/]/.test(named[0]) && /^R\d{6} Youth Kids/.test(named[0])); reqs = JSON.parse(f.store.get('data/techRequests').p); assert.strictEqual(reqs[0].uploadFolder.id, 'F1');
+    const cB = makeCore({ fs: f.fs, auth: f.auth, now: () => T, stamp: () => 'ts', makeFolder: async () => { throw new Error('boom'); } });
+    const r2 = await cB.submitExternalRequest({ name: 'Sam', dept: 'Youth', details: 'x', cats: ['Lighting'] }, {}, '3.3.3.2'); assert.ok(r2.ok && !r2.uploadUrl); reqs = JSON.parse(f.store.get('data/techRequests').p); assert.ok(!reqs[0].uploadFolder); ok('Drive upload folder is created per request; a Drive failure never blocks the request'); }
   await sub({}, '1.1.1.1'); await rejects(sub({}, '1.1.1.1'), 'resource-exhausted'); ok('4th request from one address in 10 min refused');
   await sub({}, '2.2.2.2'); T += 601000; await sub({}, '1.1.1.1'); ok('other addresses unaffected; limit resets after 10 min');
   f.store.set('rl/all', { start: T, n: 60 }); await rejects(sub({}, '9.9.9.9'), 'resource-exhausted'); f.store.delete('rl/all'); ok('global hourly cap');

@@ -517,6 +517,16 @@ function makeCore(deps) {
       tx.set(fs.doc('rl/' + ipKey), a); tx.set(fs.doc('rl/all'), g);
     });
     const t = now();
+    // Upload folder (Google Drive), if the server is set up for it. Never blocks the request.
+    let uploadFolder = null, folderNote = '';
+    if (deps.makeFolder) {
+      try {
+        const day = needBy ? new Date(needBy).toISOString().slice(0, 10) : '';
+        const fname = ('R' + String(t).slice(-6) + ' ' + dept + (day ? ' ' + day : '')).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+        const fo = await deps.makeFolder({ name: fname });
+        if (fo && fo.id) uploadFolder = { id: String(fo.id).slice(0, 120), url: String(fo.url || '').slice(0, 300), shared: fo.shared !== false };
+      } catch (e) { folderNote = 'Upload folder could not be created'; }
+    }
     const req = {
       id: 'req_' + t + rand().slice(0, 3), title: dept + ' — ' + (cats.length ? cats.join(', ') : 'Other'), category: cats.length ? cats.join(', ') : 'Other',
       priority: (needBy && needBy - t < 7 * 864e5) ? 'urgent' : 'normal', neededBy: needBy, requestedBy: '', details, status: 'open', assignedTo: '', adminNotes: '', createdAt: t,
@@ -524,6 +534,8 @@ function makeCore(deps) {
       requesterEmail: email, eventType, startTime, endTime, location, requesterType, attendance, bookingRef, ref: ('R' + String(t).slice(-6)), history: [{ t, what: 'Submitted' }]
     };
     if (av) req.av = av;
+    if (uploadFolder) req.uploadFolder = uploadFolder;
+    if (folderNote) req.history.push({ t, what: folderNote });
     if (signed) { signed.signedAt = t; signed.ipHash = ipKey.slice(3); req.agreement = signed; req.history.push({ t, what: 'Agreement signed', by: signed.signerName }); }
     await fs.runTransaction(async tx => {
       const list = await readData(tx, 'techRequests', []);
@@ -542,7 +554,7 @@ function makeCore(deps) {
         if (email) await Promise.resolve(deps.mail({ kind: 'requester', to: email, name, req })).catch(() => {});
       } catch (e) { /* ignore */ }
     }
-    return { ok: true, ref: req.ref, signedAt: req.agreement ? req.agreement.signedAt : null, hash: req.agreement ? req.agreement.hash : null };
+    return { ok: true, ref: req.ref, uploadUrl: uploadFolder && uploadFolder.shared ? uploadFolder.url : '', signedAt: req.agreement ? req.agreement.signedAt : null, hash: req.agreement ? req.agreement.hash : null };
   }
 
   return { login, bootstrap, confirmSelf, confirmLink, makeLinks, linkSig, techOp, setSecret, hasSecret, notesGet, noteAdd, noteDel, feedbackSend, feedbackList, feedbackAct, applySend, applyList, applyAct, ytLive, submitExternalRequest, Fail, scryptHash, pwMatches, writeRoster, readData, writeData };

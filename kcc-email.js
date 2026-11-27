@@ -138,6 +138,7 @@
     if (r.attendance) rows.push(['Expected attendance', String(r.attendance)]);
     if (r.bookingRef) rows.push(['Booking reference', r.bookingRef]);
     if (r.category) rows.push(['Needs', r.category]);
+    if (r.uploadFolder && r.uploadFolder.url && r.uploadFolder.shared !== false) rows.push(['Upload your files', r.uploadFolder.url]);
     avRows(r.av).forEach(function (x) { rows.push(x); });
     return rows.filter(function (x) { return x[1]; });
   }

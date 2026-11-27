@@ -45,6 +45,7 @@
       (r.av&&KCC_EMAIL.avRows(r.av).length?'<div class="rq-av"><b>🎛 AV setup</b>'+KCC_EMAIL.avRows(r.av).map(x=>'<div><span>'+esc(x[0].replace('AV: ',''))+'</span> '+esc(x[1])+'</div>').join('')+'</div>':'')+
       (r.photos&&r.photos.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+r.photos.map(p=>'<img src="'+esc(safeImg(p))+'" onclick="viewPhotoLightbox(this.src)" style="width:48px;height:48px;object-fit:cover;border-radius:8px;cursor:pointer">').join('')+'</div>':'')+
       (assigned?'<div class="rq-sub">Assigned: <b>'+esc(assigned.name)+'</b></div>':'')+
+      (r.uploadFolder&&/^https:\/\/(drive|docs)\.google\.com\//i.test(r.uploadFolder.url||'')?'<div class="rq-sub">📁 <a href="'+esc(r.uploadFolder.url)+'" target="_blank" rel="noopener noreferrer">Upload folder</a></div>':'')+
       ((r.fileLinks||[]).length?'<div class="rq-sub">📎 Files: '+r.fileLinks.filter(u=>/^https:\/\//i.test(u)).map((u,i)=>'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Link '+(i+1)+'</a>').join(' · ')+'</div>':'')+
       ((r.crewNeeded||r.estHours||(r.gearIds||[]).length)?'<div class="rq-sub">🧰 Plan: '+[r.crewNeeded?r.crewNeeded+' crew':'',r.estHours?r.estHours+' h':'',(r.gearIds||[]).length?r.gearIds.length+' gear items':''].filter(Boolean).join(' · ')+'</div>':'')+
       (r.adminNotes?'<div class="rq-sub" style="font-style:italic">Note: '+esc(r.adminNotes)+'</div>':'')+
