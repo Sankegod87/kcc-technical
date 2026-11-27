@@ -698,6 +698,9 @@ async function submitExternalRequest(){
     if(window._erSig.mode==='drawn'&&!window._erSig.dirty){fail('Please draw your signature, or choose to sign with your typed name.');return;}
     agreement={version:(window.KCC_AGREEMENT||{}).VERSION,accepted:true,authorised:true,signerName,method:window._erSig.mode,signature:window._erSig.mode==='drawn'?document.getElementById('er-sig-canvas').toDataURL('image/png'):'',ua:(navigator.userAgent||'').slice(0,200)};
   }
+  const fileLinks=(document.getElementById('er-links')?document.getElementById('er-links').value:'').split(/[\s,]+/).map(x=>x.trim()).filter(Boolean);
+  if(fileLinks.length>5){fail('Please share up to 5 links.');return;}
+  if(fileLinks.some(x=>!/^https:\/\/[^\s<>"']+$/i.test(x)||x.length>300)){fail('Each file link must start with https://');return;}
   if(name.length>80||dept.length>80||details.length>2000||contact.length>120||email.length>120||location.length>120){fail('One of the answers is too long. Please shorten it.');return;}
   if(!window._kccSubmitRequest){fail('Cannot reach the server. Please try again in a moment.');return;}
   // The server checks length, images and rate limits again; this device only blocks quick repeats.
@@ -712,7 +715,7 @@ async function submitExternalRequest(){
       handMics:parseInt(g('er-av-hand').value,10)||0,headMics:parseInt(g('er-av-head').value,10)||0,loadIn:g('er-av-loadin').value,soundCheck:g('er-av-check').value,tearDown:g('er-av-tear').value,
       dayName:g('er-av-dayname').value.trim(),dayPhone:g('er-av-dayphone').value.trim(),slides:g('er-av-slides').checked,playback:g('er-av-playback').checked,band:g('er-av-band').checked,laptop:g('er-av-tv').checked,notes:g('er-av-notes').value.trim()}:null;
     const res=await window._kccSubmitRequest({name,dept,contact,email,details,cats,eventType,startTime,endTime,location,requesterType,attendance,bookingRef,agreement,av,
-      neededBy:dateVal?new Date(dateVal+'T12:00:00').getTime():null,
+      neededBy:dateVal?new Date(dateVal+'T12:00:00').getTime():null,fileLinks,
       photos:_erMediaList.slice(0,3).filter(safeImg)});
     try{localStorage.setItem('kcc_ext_last',String(Date.now()));}catch(e){}
     const out=(res&&res.data)||res||{};

@@ -135,6 +135,8 @@ let n = 0; const ok = name => console.log('  ok', ++n, name);
   await rejects(sub({ name: '' }), 'invalid-argument'); await rejects(sub({ details: 'x'.repeat(2001) }), 'invalid-argument'); ok('required fields and length caps');
   reqs = JSON.parse(f.store.get('data/techRequests').p); await sub({ photos: ['javascript:alert(1)', 'data:image/png;base64,AAAA', 'data:text/html;base64,AAAA'] }, '1.1.1.1');
   reqs = JSON.parse(f.store.get('data/techRequests').p); assert.deepStrictEqual(reqs[0].photos, ['data:image/png;base64,AAAA']); ok('only real images kept');
+  await sub({ fileLinks: ['https://drive.google.com/file/d/abc', 'javascript:alert(1)', 'http://insecure.example/x', 'https://ok.example/a b', 'https://dropbox.com/s/xyz'] }, '2.2.2.9');
+  reqs = JSON.parse(f.store.get('data/techRequests').p); assert.deepStrictEqual(reqs[0].fileLinks, ['https://drive.google.com/file/d/abc', 'https://dropbox.com/s/xyz']); ok('only https file links kept');
   await sub({}, '1.1.1.1'); await rejects(sub({}, '1.1.1.1'), 'resource-exhausted'); ok('4th request from one address in 10 min refused');
   await sub({}, '2.2.2.2'); T += 601000; await sub({}, '1.1.1.1'); ok('other addresses unaffected; limit resets after 10 min');
   f.store.set('rl/all', { start: T, n: 60 }); await rejects(sub({}, '9.9.9.9'), 'resource-exhausted'); f.store.delete('rl/all'); ok('global hourly cap');

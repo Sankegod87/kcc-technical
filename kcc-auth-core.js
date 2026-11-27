@@ -501,6 +501,7 @@ function makeCore(deps) {
     const cats = (Array.isArray(d.cats) ? d.cats : []).slice(0, 12).map(x => str(x, 40)).filter(Boolean);
     const photos = (Array.isArray(d.photos) ? d.photos : []).slice(0, 3).filter(isImg);
     if (JSON.stringify(photos).length > 500000) throw new Fail('invalid-argument', 'Photos are too large.');
+    const fileLinks = (Array.isArray(d.fileLinks) ? d.fileLinks : []).slice(0, 5).map(x => str(x, 300).trim()).filter(x => /^https:\/\/[^\s<>"']+$/i.test(x));
     let needBy = null;
     if (d.neededBy != null) { needBy = Number(d.neededBy); if (!isFinite(needBy) || needBy < 0 || needBy > 4102444800000) needBy = null; }
     // Rate limit: 3 per 10 minutes per address, 60 per hour for everyone.
@@ -519,7 +520,7 @@ function makeCore(deps) {
     const req = {
       id: 'req_' + t + rand().slice(0, 3), title: dept + ' — ' + (cats.length ? cats.join(', ') : 'Other'), category: cats.length ? cats.join(', ') : 'Other',
       priority: (needBy && needBy - t < 7 * 864e5) ? 'urgent' : 'normal', neededBy: needBy, requestedBy: '', details, status: 'open', assignedTo: '', adminNotes: '', createdAt: t,
-      source: 'external', requesterName: name, requesterDept: dept, requesterContact: contact, photos,
+      source: 'external', requesterName: name, requesterDept: dept, requesterContact: contact, photos, fileLinks,
       requesterEmail: email, eventType, startTime, endTime, location, requesterType, attendance, bookingRef, ref: ('R' + String(t).slice(-6)), history: [{ t, what: 'Submitted' }]
     };
     if (av) req.av = av;

@@ -478,6 +478,11 @@ initFirebase();
         </div>
         <div class="er2-f" style="margin-top:14px"><label for="er-details">Tell us more *</label><textarea id="er-details" placeholder="Describe the event, how many people, what you have in mind, and anything we should know..." style="min-height:110px"></textarea></div>
         <div class="er2-f" style="margin-top:12px">
+          <label for="er-links">Links to your files (optional)</label>
+          <textarea id="er-links" rows="2" placeholder="Paste a Google Drive, Dropbox or OneDrive link to your slides, songs or videos. One link per line." style="min-height:50px"></textarea>
+          <div style="font-size:12px;opacity:.7;margin-top:4px">Make sure the link lets anyone with it view the file. Please do not share private information.</div>
+        </div>
+        <div class="er2-f" style="margin-top:12px">
           <label>Photos or reference (optional)</label>
           <div id="er-media-drop" class="er2-drop" onclick="document.getElementById('er-media-input').click()" ondragover="event.preventDefault();this.style.borderColor='#2DD4A0'" ondragleave="this.style.borderColor=''" ondrop="_erMediaDrop(event)">
             <div>📎 Tap to choose photos, or drag and drop here</div>
@@ -2092,6 +2097,7 @@ initFirebase();
 <script src="js/49-scan-hub.js"></script>
 <script src="js/50-gear-storage.js"></script>
 <script src="js/51-barcode.js"></script>
+<script src="js/52-request-plan.js"></script>
 <script src="js/22-server.js"></script>
 <script src="js/17-gear-training.js"></script>
 
