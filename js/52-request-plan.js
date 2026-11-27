@@ -5,7 +5,7 @@
     if(document.getElementById('erp-box')) return;
     const notes=document.getElementById('er-notes'); if(!notes) return; const row=notes.parentNode;
     const d=document.createElement('div'); d.id='erp-box'; d.style.cssText='grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px';
-    d.innerHTML='<div class="fw7 mb8" style="font-size:13px">Plan</div>'+
+    d.innerHTML='<div class="fw7 mb8" style="font-size:13px">Plan</div>'+'<a id="erp-folder" class="btn btn-sm" target="_blank" rel="noopener noreferrer" style="display:none;text-decoration:none;margin-bottom:10px">📁 Open files folder</a>'+
       '<div class="fgrid"><div class="fg"><label>Crew needed</label><input id="erp-crew" type="number" min="0" max="50" placeholder="e.g. 3"></div>'+
       '<div class="fg"><label>Estimated hours</label><input id="erp-hours" type="number" min="0" max="200" step="0.5" placeholder="e.g. 4"></div></div>'+
       '<div class="fg"><label>Gear for this event</label><input id="erp-gsearch" placeholder="Search gear…" oninput="erpFilter()" style="margin-bottom:6px"><div id="erp-gear" style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px 10px"></div></div>'+
@@ -16,6 +16,7 @@
   function fill(r){
     build();
     document.getElementById('erp-crew').value=r.crewNeeded||''; document.getElementById('erp-hours').value=r.estHours||'';
+    const fb=document.getElementById('erp-folder'); if(fb){ const u=r.uploadFolder&&r.uploadFolder.url; if(u&&/^https:\/\/(drive|docs)\.google\.com\//i.test(u)){ fb.href=u; fb.style.display='inline-block'; } else fb.style.display='none'; }
     document.getElementById('erp-links').value=(r.fileLinks||[]).join('\n'); document.getElementById('erp-gsearch').value='';
     const sel=new Set(r.gearIds||[]);
     const items=[...(db.gearItems||[])].sort((a,b)=>String(a.name).localeCompare(String(b.name)));
