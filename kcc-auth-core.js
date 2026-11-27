@@ -525,7 +525,7 @@ function makeCore(deps) {
         const fname = ('R' + String(t).slice(-6) + ' ' + dept + (day ? ' ' + day : '')).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
         const fo = await deps.makeFolder({ name: fname });
         if (fo && fo.id) uploadFolder = { id: String(fo.id).slice(0, 120), url: String(fo.url || '').slice(0, 300), shared: fo.shared !== false };
-      } catch (e) { folderNote = 'Upload folder could not be created'; }
+      } catch (e) { folderNote = 'Upload folder could not be created: ' + String((e && e.message) || e).slice(0, 300); try { console.error(folderNote); } catch (x) { /* ignore */ } }
     }
     const req = {
       id: 'req_' + t + rand().slice(0, 3), title: dept + ' — ' + (cats.length ? cats.join(', ') : 'Other'), category: cats.length ? cats.join(', ') : 'Other',

@@ -14,7 +14,7 @@ async function getToken(fetchFn) {
   if (!email || !base || !base.access_token) throw new Error('No server identity');
   const res = await fetchFn('https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/' + encodeURIComponent(email) + ':generateAccessToken', {
     method: 'POST', headers: { Authorization: 'Bearer ' + base.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify({ scope: [SCOPE] }) });
-  if (!res.ok) throw new Error('Token ' + res.status);
+  if (!res.ok) throw new Error('Token ' + res.status + ' ' + (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 240));
   const j = await res.json();
   cached = { token: j.accessToken, exp: j.expireTime ? Date.parse(j.expireTime) : Date.now() + 3000000 };
   return cached.token;
@@ -27,7 +27,7 @@ async function createFolder({ name, rootId, fetchFn }) {
   const auth = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
   const r = await f('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,webViewLink', {
     method: 'POST', headers: auth, body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [rootId] }) });
-  if (!r.ok) throw new Error('Drive create ' + r.status);
+  if (!r.ok) throw new Error('Drive create ' + r.status + ' ' + (await r.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 240));
   const file = await r.json();
   let shared = true;
   const p = await f('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(file.id) + '/permissions?supportsAllDrives=true', {
@@ -44,7 +44,7 @@ async function startUpload({ folderId, name, size, type, origin, fetchFn }) {
   if (type) h['X-Upload-Content-Type'] = type;
   if (origin) h.Origin = origin;
   const r = await f('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id', { method: 'POST', headers: h, body: JSON.stringify({ name, parents: [folderId] }) });
-  if (!r.ok) throw new Error('Drive upload ' + r.status);
+  if (!r.ok) throw new Error('Drive upload ' + r.status + ' ' + (await r.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 240));
   const loc = r.headers && r.headers.get ? r.headers.get('location') : '';
   if (!loc) throw new Error('No upload address');
   return { url: loc };
